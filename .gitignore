@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### NPM Projects ##
+node_modules/
+package-lock.json

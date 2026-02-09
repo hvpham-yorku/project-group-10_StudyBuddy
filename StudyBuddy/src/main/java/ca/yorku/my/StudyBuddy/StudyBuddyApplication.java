@@ -3,8 +3,6 @@ package ca.yorku.my.StudyBuddy;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import com.vaughn.studentapp.Student;
-
 @SpringBootApplication
 public class StudyBuddyApplication {
 
