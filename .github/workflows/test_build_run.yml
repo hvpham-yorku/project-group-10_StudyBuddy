@@ -1,0 +1,27 @@
+name: TEST BUILD RUN
+
+on: [push, pull_request]
+
+jobs:
+  test_build_run:
+  runs-on: ubuntu-latest
+
+  steps:
+  # Step 0. Get the repository code
+  - uses: actions/checkout@v4
+
+  # Step 1. Setup Java Environment with JDK 21
+  - name: Java Setup
+    uses: actions/setup-java@v4
+    with:
+      java-version: '21'
+      distribution: 'temurin'
+      cache: maven
+
+  # Step 2. Run the unit tests
+  - name Unit Tests
+    run: ./StudyBuddy/mvnw test
+
+  # Step 3. Build the Docker Image
+  - name Docker Build
+    run: docker build -t app .
