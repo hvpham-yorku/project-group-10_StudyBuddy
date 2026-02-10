@@ -22,7 +22,7 @@ jobs:
   - name Unit Tests
     run: |
       chmod +x ./StudyBuddy/mvnw
-     ./StudyBuddy/mvnw test
+      ./StudyBuddy/mvnw test
 
   # Step 3. Build the Docker Image
   - name Docker Build
