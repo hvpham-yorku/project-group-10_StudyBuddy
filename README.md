@@ -7,6 +7,8 @@ cd project-group-10_StudyBuddy
 docker build -t app .
 docker run -p 8080:8080 app
 ```
+Now, the website should be accessible on [localhost:8080](http://localhost:8080)
+
 ## How to build and run **manually**
 This requires two terminals; one for backend and one for frontend
 
@@ -20,7 +22,7 @@ git clone "https://github.com/hvpham-yorku/project-group-10_StudyBuddy"
 cd StudyBuddy
 ./mvnw spring-boot:run
 ```
-This will startup the Spring Boot middleware at [localhost:8080](localhost:8080)
+This will startup the Spring Boot middleware at [localhost:8080](http://localhost:8080)
 (feel free to explore the backend APIs through this)
 
 Second terminal
@@ -31,4 +33,4 @@ cd ./project-group-10_StudyBuddy/Frontend/
 npm install
 npm run server
 ```
-Now, go to [localhost:5173](localhost:5173) and you should be able to see the frontend.
+Now, go to [localhost:5173](http://localhost:5173) and you should be able to see the frontend.
