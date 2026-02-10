@@ -21,8 +21,9 @@ jobs:
     # Step 2. Run the unit tests
     - name: Unit Tests
       run: |
-        chmod +x ./StudyBuddy/mvnw
-        ./StudyBuddy/mvnw test
+        cd ./StudyBuddy
+        chmod +x mvnw
+        ./mvnw test
 
     # Step 3. Build the Docker Image
     - name: Docker Build
