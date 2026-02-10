@@ -56,7 +56,7 @@ class StudentTests {
 		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[1]").value("SC-PHYS-2020-M"))
 		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[2]").value("LE-EECS-4413-Z"))
 		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[3]").value("LE-EECS-3421-Z"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[4]").value("LE-EECS-2101-X"));
+		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[3]").value("LE-EECS-2101-X"));
 	}
 
 }
