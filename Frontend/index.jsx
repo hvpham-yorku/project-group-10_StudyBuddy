@@ -63,25 +63,16 @@ function App() {
 	}
     ]
 
-    const appendingEvent = 	{
-	"eventId": "12348",
-	"hostId": "xxxd69",
-	"title": "Great vibes",
-	"course": "yeh",
-	"location": "Wherever",
-	"description": "Vibin' harder",
-	"start": "2026-02-13T14:00:00Z",
-	"end": "2026-02-13T15:00:00Z",
-	"participantIds": [
-	    "bhavya99"
-	],
-	"maxCapacity": 200
-    }
-
     const [events, setEvents] = useState(testEvents);
 
     const addEvent = (newEvent) => {
 	setEvents([...events, newEvent]);
+    }
+
+    // Weird gimmick with React: You have to copy ALL the arrays.
+    // You can't just delete the element, as I previously tried before...
+    const deleteEvent = (id) => {
+	setEvents(events.filter(event => event.eventId !== id))
     }
 
     // return (
@@ -116,6 +107,7 @@ function App() {
 		    description={event.description}
 		    maxCapacity={event.maxCapacity}
 		    participantIds={event.participantIds}
+		    onDelete={deleteEvent}
 		/>
 	    ))}
 	    </div>

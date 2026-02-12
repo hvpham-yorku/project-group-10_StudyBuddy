@@ -12,6 +12,12 @@ export default function EventCard(data) {
 		current={data.participantIds.length}
 		max={data.maxCapacity}
 	    />
+
+	    {/* Handles the deletion of the card  */}
+	    <button onClick={() => data.onDelete(data.eventId)}>
+		Delete Event
+	    </button>
+	    
 	</div>
     )
 }
