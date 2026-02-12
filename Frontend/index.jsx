@@ -86,9 +86,12 @@ function App() {
 		>
 	    {/* Go through each event...and then show the card */}
 	    {events.map((event) => (
-		<EventCard 
+		<EventCard
+		    eventId={event.eventId}
 		    title={event.title}
 		    description={event.description}
+		    maxCapacity={event.maxCapacity}
+		    participantIds={event.participantIds}
 		/>
 	    ))}
 	    </div>
