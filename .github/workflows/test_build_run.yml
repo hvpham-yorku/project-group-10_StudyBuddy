@@ -28,3 +28,16 @@ jobs:
     # Step 3. Build the Docker Image
     - name: Docker Build
       run: docker build -t app .
+
+    # --- !!! Push to DockerHub ONLY if it's working!1!1!
+    
+    # Step 4. Push to (Vaughn's) Docker Hub
+    - name: Push to Docker Hub
+      if: github.ref == 'refs/heads/deployment'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          tenaciousvirtue/studybuddy:latest
+          tenaciousvirtue/studybuddy:${{ vars.VERSION }}
