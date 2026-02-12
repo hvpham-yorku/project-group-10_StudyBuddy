@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import EventCard from './EventCard.jsx'
+import EventWizard from './EventWizard.jsx'
 
 function App() {
     // const[data, setData] = useState(null)
@@ -96,10 +97,8 @@ function App() {
 	<div className="app-container" style={{ padding: '20px' }}>
 	    <h1>Welcome to Studdy Buddy!</h1>
 
-	    {/* A button! */}
-	    <button type="submit" onClick={() => addEvent(appendingEvent)}>
-		Create new event
-	    </button>
+	    {/* Events */}
+	    <EventWizard onAddEvent={addEvent} />
 
 	    <div
 		className="events-grid"
