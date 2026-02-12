@@ -17,7 +17,7 @@ function App() {
     // )
     
     // Stub Data
-    const events =  [
+    var testEvents =  [
 	{
 	    "eventId": "12345",
 	    "hostId": "bhavya99",
@@ -60,8 +60,28 @@ function App() {
 	    ],
 	    "maxCapacity": 200
 	}
-	
     ]
+
+    const appendingEvent = 	{
+	"eventId": "12348",
+	"hostId": "xxxd69",
+	"title": "Great vibes",
+	"course": "yeh",
+	"location": "Wherever",
+	"description": "Vibin' harder",
+	"start": "2026-02-13T14:00:00Z",
+	"end": "2026-02-13T15:00:00Z",
+	"participantIds": [
+	    "bhavya99"
+	],
+	"maxCapacity": 200
+    }
+
+    const [events, setEvents] = useState(testEvents);
+
+    const addEvent = (newEvent) => {
+	setEvents([...events, newEvent]);
+    }
 
     // return (
     // 	<div>
@@ -75,6 +95,11 @@ function App() {
     return (	
 	<div className="app-container" style={{ padding: '20px' }}>
 	    <h1>Welcome to Studdy Buddy!</h1>
+
+	    {/* A button! */}
+	    <button type="submit" onClick={() => addEvent(appendingEvent)}>
+		Create new event
+	    </button>
 
 	    <div
 		className="events-grid"
