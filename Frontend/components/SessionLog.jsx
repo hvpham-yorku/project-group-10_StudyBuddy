@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 
+// Default session log
 export default function SessionLog({ studentId }) {
   const [sessions, setSessions] = useState([]);
   const [totalStudyMinutes, setTotalStudyMinutes] = useState(0);
@@ -12,6 +13,7 @@ export default function SessionLog({ studentId }) {
     fetchTotalStudyTime();
   }, [studentId]);
 
+// Call backend to find details
   async function fetchSessionLog() {
     try {
       setLoading(true);
@@ -31,6 +33,7 @@ export default function SessionLog({ studentId }) {
     }
   }
 
+// Get total study time of student
   async function fetchTotalStudyTime() {
     try {
       const response = await fetch(
@@ -43,6 +46,7 @@ export default function SessionLog({ studentId }) {
     }
   }
 
+// Format date and time for user to read
   function formatDateTime(dateTimeString) {
     if (!dateTimeString) return "N/A";
     try {
@@ -53,6 +57,7 @@ export default function SessionLog({ studentId }) {
     }
   }
 
+// Calculate durtion 
   function calculateDuration(startTime, endTime) {
     if (!startTime || !endTime) return "N/A";
     try {
@@ -67,6 +72,7 @@ export default function SessionLog({ studentId }) {
     }
   }
 
+// Format the total study time for the user to be able to read clearly
   function formatTotalStudyTime(minutes) {
     if (minutes === 0) return "0 minutes";
     const hours = Math.floor(minutes / 60);
@@ -87,6 +93,7 @@ export default function SessionLog({ studentId }) {
     }
   }, [filterCourse]);
 
+// Display all details to user
   return (
     <div className="session-log-container">
       <h2>Study Session Log</h2>
