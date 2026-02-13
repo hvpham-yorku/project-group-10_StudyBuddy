@@ -5,11 +5,19 @@ import EventWizard from '../components/EventWizard.jsx'
 import TopBar from "../components/TopBar";
 
 export default function EventsPage() {
-    // TODO: Get the actual user that's logged in
-    const USER = "bobby_lee"
 
+	// Default profile data (Stub database)
+	const DEFAULT_STUDENT = {
+		name: "John Doe",
+		email: "john@my.yorku.ca",
+		major: "Software Engineering",
+		bio: "",
+		courses: ["EECS 2311", "MATH 1013"],
+		preferences: ["Quiet Focus"],
+	};
+
+    const USER = DEFAULT_STUDENT.name;
     const EVENTS_API = "/api/events"
-    
     const [events, setEvents] = useState([]);
 
     // Synchronize with backend (which is connected to the database)
