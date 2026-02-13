@@ -3,24 +3,29 @@ package ca.yorku.my.StudyBuddy;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import ca.yorku.my.StudyBuddy.SessionLogService;
 
 @WebMvcTest(StudentController.class)
 class StudentTests {
 	
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockBean
+	private SessionLogService sessionLogService;
 	
 	// Test if StubDatabase is working
 	// Reference for feature unit tests
 	@Test
 	void unitTest1() throws Exception {
     	String[] s1Courses = {"LE-EECS-2311-Z", "SC-PHYS-2020-M", "LE-EECS-4413-Z", "LE-EECS-3421-Z", "LE-EECS-2101-X"};
-		StubDatabase.STUDENTS.add(new Student("John", "Doe", s1Courses));
+		StubDatabase.STUDENTS.add(new Student("1", "John", "Doe", s1Courses));
 		
 		// Now access it from the database
 		

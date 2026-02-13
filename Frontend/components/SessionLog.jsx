@@ -9,19 +9,18 @@ export default function SessionLog({ studentId }) {
   const [error, setError] = useState(null);
   const [filterCourse, setFilterCourse] = useState("");
 
-
   useEffect(() => {
     fetchSessionLog();
     fetchTotalStudyTime();
   }, [studentId]);
 
-  // Get session log from backend 
+// Call backend to find details
   async function fetchSessionLog() {
     try {
       setLoading(true);
       const endpoint = filterCourse
-        ? `http://localhost:8080/api/studentcontroller/getstudent/${studentId}/sessionlog/course/${filterCourse}`
-        : `http://localhost:8080/api/studentcontroller/getstudent/${studentId}/sessionlog`;
+        ? `/api/studentcontroller/getstudent/${studentId}/sessionlog/course/${filterCourse}`
+        : `/api/studentcontroller/getstudent/${studentId}/sessionlog`;
       
       const response = await fetch(endpoint);
       const data = await response.json();
@@ -34,11 +33,12 @@ export default function SessionLog({ studentId }) {
       setLoading(false);
     }
   }
-// Get total study time from backend
+
+// Get total study time of student
   async function fetchTotalStudyTime() {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/studentcontroller/getstudent/${studentId}/totalstudytime`
+        `api/studentcontroller/getstudent/${studentId}/totalstudytime`
       );
       const minutes = await response.json();
       setTotalStudyMinutes(minutes);
@@ -46,7 +46,8 @@ export default function SessionLog({ studentId }) {
       console.error("Failed to fetch total study time:", err);
     }
   }
-// Help formatting date/time and calculating durations
+
+// Format date and time for user to read
   function formatDateTime(dateTimeString) {
     if (!dateTimeString) return "N/A";
     try {
@@ -56,7 +57,8 @@ export default function SessionLog({ studentId }) {
       return dateTimeString;
     }
   }
-// Calculate duration between start and end times
+
+// Calculate durtion 
   function calculateDuration(startTime, endTime) {
     if (!startTime || !endTime) return "N/A";
     try {
@@ -70,7 +72,8 @@ export default function SessionLog({ studentId }) {
       return "N/A";
     }
   }
-// Format total study time 
+
+// Format the total study time for the user to be able to read clearly
   function formatTotalStudyTime(minutes) {
     if (minutes === 0) return "0 minutes";
     const hours = Math.floor(minutes / 60);
@@ -84,14 +87,13 @@ export default function SessionLog({ studentId }) {
   function handleFilterChange(e) {
     setFilterCourse(e.target.value);
   }
-// Refetch session log when filter changes
   useEffect(() => {
     if (filterCourse !== "") {
       fetchSessionLog();
     }
   }, [filterCourse]);
-  
-// Display
+
+// Display all details to user
   return (
     <div className="session-log-container">
       <h2>Study Session Log</h2>
