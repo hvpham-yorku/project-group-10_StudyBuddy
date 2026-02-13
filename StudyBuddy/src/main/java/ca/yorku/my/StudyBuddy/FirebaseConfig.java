@@ -1,4 +1,3 @@
-
 package ca.yorku.my.StudyBuddy;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -11,7 +10,6 @@ import javax.annotation.PostConstruct;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
 
 
 //*** 

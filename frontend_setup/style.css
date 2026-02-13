@@ -1,0 +1,371 @@
+/* ===================================
+   GLOBAL STYLES
+   =================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ===================================
+   LANDING PAGE STYLES
+   =================================== */
+.container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Left side - White */
+.left-side {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    background: white;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeOut 0.8s ease-in-out 1.5s forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+/* Right side - Blue with animation */
+.right-side {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    background: #215EBA;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: slideLeft 1.5s ease-in-out 1s forwards;
+}
+
+@keyframes slideLeft {
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+/* Logo */
+.logo {
+    max-width: 600px;
+    width: 90%;
+}
+
+.logo img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ===================================
+   LOGIN PAGE STYLES
+   =================================== */
+
+/* Container for login page */
+body.login-page {
+    overflow: auto;
+}
+
+body.login-page .container {
+    display: flex;
+    height: 100vh;
+    position: static;
+}
+
+/* Left side - White with features */
+body.login-page .left-side {
+    position: static;
+    flex: 1;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 40px 60px 40px;
+    width: auto;
+    animation: none;
+    opacity: 1;
+    visibility: visible;
+}
+
+.logo-section {
+    margin-bottom: 40px;
+}
+
+.logo-section img {
+    max-width: 325px;
+    width: 100%;
+    height: auto;
+    transform: scale(1.3);
+    transform-origin: center;
+}
+
+.features {
+    background: #F6982F;
+    border-radius: 20px;
+    padding: 45px 40px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(246, 152, 47, 0.2);
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 35px;
+    color: white;
+}
+
+.feature-item:last-child {
+    margin-bottom: 0;
+}
+
+.checkmark {
+    min-width: 30px;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 15px;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.feature-text {
+    font-size: 16px;
+    line-height: 1.5;
+    padding-top: 4px;
+}
+
+/* Right side - Blue with login form */
+body.login-page .right-side {
+    position: static;
+    flex: 1;
+    background: #215EBA;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 40px 60px 40px;
+    width: auto;
+    animation: none;
+    transform: none;
+    opacity: 1;
+}
+
+.login-card {
+    background: white;
+    border-radius: 15px;
+    padding: 50px 45px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    margin-top: 0;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.login-header h1 {
+    font-size: 32px;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.login-header p {
+    color: #7f8c8d;
+    font-size: 15px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 15px;
+    color: #95a5a6;
+    font-size: 18px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 14px 15px 14px 45px;
+    border: 2px solid #e8e8e8;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #215EBA;
+    background: white;
+}
+
+.form-group input::placeholder {
+    color: #bdc3c7;
+}
+
+.sign-in-btn {
+    width: 100%;
+    padding: 15px;
+    background: #215EBA;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sign-in-btn:hover {
+    background: #1a4a94;
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(33, 94, 186, 0.3);
+}
+
+.arrow {
+    margin-left: 8px;
+    font-size: 18px;
+}
+
+.signup-link {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #7f8c8d;
+}
+
+.signup-link a {
+    color: #215EBA;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.signup-link a:hover {
+    text-decoration: underline;
+}
+
+/* Top bar decoration */
+.top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(to right, #215EBA, #F6982F);
+    z-index: 10;
+}
+
+/* ===================================
+   SIGN UP PAGE SPECIFIC STYLES
+   =================================== */
+
+/* Reduce padding for signup page to fit all fields */
+body.signup-page .login-card {
+    padding: 35px 40px;
+}
+
+body.signup-page .login-header {
+    margin-bottom: 25px;
+}
+
+body.signup-page .login-header h1 {
+    font-size: 28px;
+    margin-bottom: 6px;
+}
+
+body.signup-page .login-header p {
+    font-size: 14px;
+}
+
+body.signup-page .form-group {
+    margin-bottom: 18px;
+}
+
+body.signup-page .form-group label {
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+body.signup-page .form-group input {
+    padding: 12px 15px 12px 45px;
+    font-size: 14px;
+}
+
+body.signup-page .sign-in-btn {
+    padding: 13px;
+    font-size: 15px;
+    margin-top: 8px;
+}
+
+body.signup-page .signup-link {
+    margin-top: 20px;
+    font-size: 13px;
+}
+
+.forgot-password {
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.forgot-password a {
+    color: #215EBA;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}
