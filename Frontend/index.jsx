@@ -49,12 +49,22 @@ function App() {
 	else {
 	    console.log(request)
 	}
-	
     }
 
     // Syncs Frontend Event cards with actual database
-    const deleteEvent = (id) => {
-	setEvents(events.filter(event => event.eventId !== id))
+    const deleteEvent = async (eventId) => {
+	const deletionRequest = `${EVENTS_API}/${eventId}?userId=${USER}`
+	const request = await(fetch(deletionRequest, {
+	    method: 'DELETE',
+	    headers: { 'Content-Type' : 'application/json'},
+	}))
+
+	if (request.ok) {
+	    setEvents(events.filter(event => event.eventId !== eventId))
+	}
+	else {
+	    alert("You cannot delete this event.")
+	}
     }
 
 
