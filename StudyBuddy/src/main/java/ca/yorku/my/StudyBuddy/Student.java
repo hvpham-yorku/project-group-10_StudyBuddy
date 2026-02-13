@@ -19,8 +19,14 @@ public class Student {
 		this.setCourses(courses);
 		this.attendedEventIds = new ArrayList<>();
 	}
+
+	// Backwards-compatible constructor used by older code/tests
+	public Student(String firstName, String lastName, String[] courses) {
+		// generate a simple userId for compatibility; real IDs come from auth in production
+		this(firstName + "-" + lastName, firstName, lastName, courses);
+	}
 	
-	
+	// Setters and getters for all student fields
 	public String getUserId() {
 		return userId;
 	}
