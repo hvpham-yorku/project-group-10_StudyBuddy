@@ -4,9 +4,9 @@ import ProgressBar from './ProgressBar.jsx'
 export default function EventCard(data) {
     return (
 	<div className="eventCard">
-	    <h3>{data.title}</h3>
+	    <h3>{data.title}</h3>		
 	    <p>{data.description}</p>
-	    <p>{data.hostId}</p>
+		<p>Created by {data.hostId}</p>
 
 	    <ProgressBar
 		current={data.participantIds.length}
@@ -14,9 +14,11 @@ export default function EventCard(data) {
 	    />
 
 	    {/* Handles the deletion of the card  */}
-	    <button onClick={() => data.onDelete(data.eventId)}>
-		Delete Event
-	    </button>
+		{data.hostId === data.currentUser && (
+		    <button onClick={() => data.onDelete(data.eventId)}>
+			Delete Event
+		    </button>
+		)}
 	    
 	</div>
     )

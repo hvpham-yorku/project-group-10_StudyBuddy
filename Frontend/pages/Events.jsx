@@ -93,6 +93,8 @@ export default function EventsPage() {
 	    {/* Go through each event...and then show the card */}
 	    {events.map((event) => (
 		<EventCard
+			currentUser={USER}
+			hostId={event.hostId}
 		    eventId={event.eventId}
 		    title={event.title}
 		    description={event.description}
