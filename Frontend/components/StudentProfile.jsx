@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import TopBar from "./TopBar";
+import SessionLog from "./SessionLog";
 
 export default function StudentProfile() {
   const [student, setStudent] = useState({
@@ -113,6 +114,10 @@ export default function StudentProfile() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="session-log-card">
+        <SessionLog studentId="student-1" />
       </div>
     </div>
   </div>

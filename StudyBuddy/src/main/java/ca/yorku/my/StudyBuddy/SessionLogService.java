@@ -10,10 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-/**
- * This service handles all operations related to a student's session log.
- * A session log tracks all events that a student has attended.
- */
+/**  This class manages the session logs of students. It updates the user's session  
+*    when an event is created or joined. It includes information such as duration and location
+*/
 @Service
 public class SessionLogService {
 
