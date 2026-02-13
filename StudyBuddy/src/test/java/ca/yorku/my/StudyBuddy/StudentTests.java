@@ -7,12 +7,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import ca.yorku.my.StudyBuddy.SessionLogService;
 
 @WebMvcTest(StudentController.class)
 class StudentTests {
 	
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockBean
+	private SessionLogService sessionLogService;
 	
 	// Test if StubDatabase is working
 	// Reference for feature unit tests
