@@ -7,6 +7,8 @@ import com.google.firebase.FirebaseOptions;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -27,6 +29,27 @@ public class FirebaseConfig {
     @PostConstruct
     public void initialize() {
         try {
+        	
+        	// Check the secret at runtime
+        	String envKey = System.getenv("FIREBASE_CREDENTIALS");
+        	if (envKey != null && !envKey.isEmpty()) {
+                if (FirebaseApp.getApps().isEmpty()) {
+                    FirebaseOptions options = FirebaseOptions.builder()
+                        .setCredentials(GoogleCredentials.fromStream(
+                            new ByteArrayInputStream(envKey.getBytes())
+                        ))
+                        .build();
+                    
+                    FirebaseApp.initializeApp(options);
+                    System.out.println("Firebase initialized via Environment Variable.");
+                }
+                return; 
+        	}
+        	
+        	
+        	// If doesn't exist, then check if local file exists
+        	// This is for development purposes; one should never push actual
+        	// keys into repository!
             if (FirebaseApp.getApps().isEmpty()) {
                 InputStream serviceAccount = getClass().getClassLoader()
                         .getResourceAsStream("serviceAccountKey.json");

@@ -25,7 +25,7 @@ COPY --from=frontend-build /app/dist ./src/main/resources/static
 RUN mvn clean package
 
 # Copy the .jar file 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-bullseye
 WORKDIR /app
 COPY --from=backend-build /app/target/*.jar app.jar
 
