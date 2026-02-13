@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import EventCard from '../EventCard.jsx'
-import EventWizard from '../EventWizard.jsx'
+import EventCard from '../components/EventCard.jsx'
+import EventWizard from '../components/EventWizard.jsx'
 
 export default function EventsPage() {
 
