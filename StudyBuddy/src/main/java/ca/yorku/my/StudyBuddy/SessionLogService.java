@@ -91,17 +91,17 @@ public class SessionLogService {
     }
 
     private Instant parseToInstant(String ts) {
-        // Try ISO instant first (e.g. 2024-02-12T10:15:30Z)
+        // Try instant first 
         try {
             return Instant.parse(ts);
         } catch (DateTimeParseException ignored) {}
 
-        // Try offset datetime (e.g. 2024-02-12T10:15:30+01:00)
+        // Try offset datetime 
         try {
             return OffsetDateTime.parse(ts).toInstant();
         } catch (DateTimeParseException ignored) {}
 
-        // Fallback to plain LocalDateTime (e.g. 2024-02-12T10:15:30) using system zone
+        // Fallback to plain LocalDateTime using system zone
         return LocalDateTime.parse(ts).atZone(ZoneId.systemDefault()).toInstant();
     }
 }
