@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import TopBar from "./TopBar";
 import SessionLog from "./SessionLog";
 
+// Default student profile 
 export default function StudentProfile() {
   const [student, setStudent] = useState({
     name: "John Doe",
@@ -15,6 +16,7 @@ export default function StudentProfile() {
   const [newCourse, setNewCourse] = useState("");
   const [newPref, setNewPref] = useState("");
 
+// Allows user to add a course to their profile 
   function addCourse() {
     const c = newCourse.trim();
     if (!c) return;
@@ -24,10 +26,12 @@ export default function StudentProfile() {
     setNewCourse("");
   }
 
+// Allows student to remove a course from their profile 
   function removeCourse(course) {
     setStudent({ ...student, courses: student.courses.filter((x) => x !== course) });
   }
 
+// Allows student to add a preference on their profile 
   function addPref() {
     const p = newPref.trim();
     if (!p) return;
@@ -37,10 +41,12 @@ export default function StudentProfile() {
     setNewPref("");
   }
 
+// Allows student to remove a preference on their profile 
   function removePref(pref) {
     setStudent({ ...student, preferences: student.preferences.filter((x) => x !== pref) });
   }
 
+// Displays details of profile 
   return (
   <div>
     <TopBar />
