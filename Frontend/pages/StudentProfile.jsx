@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import TopBar from "./TopBar";
-import SessionLog from "./SessionLog";
+import TopBar from "../components/TopBar";
+import SessionLog from "../components/SessionLog";
 
 const STUDENT_STORAGE_KEY = "studentProfile";
 
