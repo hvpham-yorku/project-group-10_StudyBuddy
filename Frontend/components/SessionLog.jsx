@@ -38,7 +38,7 @@ export default function SessionLog({ studentId }) {
   async function fetchTotalStudyTime() {
     try {
       const response = await fetch(
-        `api/studentcontroller/getstudent/${studentId}/totalstudytime`
+        `/api/studentcontroller/getstudent/${studentId}/totalstudytime`
       );
       const minutes = await response.json();
       setTotalStudyMinutes(minutes);

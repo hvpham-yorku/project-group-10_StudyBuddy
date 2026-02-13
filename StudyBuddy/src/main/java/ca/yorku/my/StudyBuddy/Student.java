@@ -5,9 +5,16 @@ import java.util.List;
 
 public class Student {
 	
-	private String userId;
 	private String firstName;
 	private String lastName;
+	
+	// Registration & Schema Fields
+    private String userId;      
+    private String email;       
+    private String fullName;    
+    private String program;     
+    private String bio;         
+    private String profilePic;  
 	
 	private String[] courses;
 	private List<String> attendedEventIds;
@@ -20,51 +27,9 @@ public class Student {
 		this.attendedEventIds = new ArrayList<>();
 	}
 
-	// Backwards-compatible constructor used by older code/tests
-	public Student(String firstName, String lastName, String[] courses) {
-		// generate a simple userId for compatibility; real IDs come from auth in production
-		this(firstName + "-" + lastName, firstName, lastName, courses);
-	}
-	
-	// Setters and getters for all student fields
-	public String getUserId() {
-		return userId;
-	}
-	
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
-	
-	public String getFirstName() {
-		return firstName;
-	}
-	
-	public void setFirstName(String firstName) {
-		this.firstName = firstName;
-	}
-	
-	public String getLastName() {
-		return lastName;
-	}
-	
-	public void setLastName(String lastName) {
-		this.lastName = lastName;
-	}
-
-    // Registration & Schema Fields
-    private String userId;      
-    private String email;       
-    private String fullName;    
-    private String program;     
-    private String bio;         
-    private String profilePic;  
 
     // 1. MUST HAVE: The empty constructor for Firebase/Spring automation
     public Student() {}
-
-	public void setCourses(String[] courses) {
-		this.courses = courses;
-	}
 	
 	public List<String> getAttendedEventIds() {
 		return attendedEventIds;
@@ -79,11 +44,14 @@ public class Student {
 			this.attendedEventIds.add(eventId);
 		}
 	}
-    // 2. TEAMMATE'S ORIGINAL: Keeps their old code from breaking
+    
+ // teammate/original constructor
     public Student(String firstName, String lastName, String[] courses) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.courses = courses;
+      this.userId = firstName + "-" + lastName;   // or any consistent id you want
+      this.firstName = firstName;
+      this.lastName = lastName;
+      this.courses = courses;
+      this.attendedEventIds = new ArrayList<>();
     }
 
     // Getters and Setters
