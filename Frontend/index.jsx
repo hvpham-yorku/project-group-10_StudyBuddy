@@ -8,7 +8,7 @@ function App() {
     // TODO: Get the actual user that's logged in
     const USER = "bobby_lee"
 
-    const EVENTS_API = "http://localhost:8080/api/events"
+    const EVENTS_API = "/api/events"
     
     const [events, setEvents] = useState([]);
 
