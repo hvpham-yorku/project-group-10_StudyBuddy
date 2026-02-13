@@ -280,7 +280,7 @@ body.login-page .right-side {
 
 .signup-link {
     text-align: center;
-    margin-top: 25px;
+    margin-top: 15px;
     font-size: 14px;
     color: #7f8c8d;
 }
@@ -351,4 +351,21 @@ body.signup-page .sign-in-btn {
 body.signup-page .signup-link {
     margin-top: 20px;
     font-size: 13px;
+}
+
+.forgot-password {
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.forgot-password a {
+    color: #215EBA;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
 }
