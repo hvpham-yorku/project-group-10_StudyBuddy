@@ -35,3 +35,6 @@ build/
 ### NPM Projects ##
 node_modules/
 package-lock.json
+
+# Firebase Security
+serviceAccountKey.json

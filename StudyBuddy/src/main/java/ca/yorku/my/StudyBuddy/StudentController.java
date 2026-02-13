@@ -2,8 +2,7 @@ package ca.yorku.my.StudyBuddy;
 
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
