@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 function App() {
     const[data, setData] = useState(null)
     useEffect(() => {
-	fetch('http://localhost:8080/api/studentcontroller/getstudents')
+	fetch('/api/studentcontroller/getstudents')
 	    .then(res => res.json())
 	    .then(json => setData(json));
     }, []);
