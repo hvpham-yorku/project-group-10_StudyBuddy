@@ -4,6 +4,9 @@ import EventCard from './EventCard.jsx'
 import EventWizard from './EventWizard.jsx'
 
 function App() {
+
+    // TODO: Get the actual user that's logged in
+    const user = "Chris P. Bacon"
     
     const [events, setEvents] = useState([]);
 
@@ -26,11 +29,14 @@ function App() {
 	setEvents(events.filter(event => event.eventId !== id))
     }
 
+
     // MAIN APPLICATION RENDER //
     return (	
 	<div className="app-container" style={{ padding: '20px' }}>
-	    <h1>Welcome to Studdy Buddy!</h1>
-
+	    <h1>Study Buddy</h1>
+	    <hr></hr>
+	    <h2>Welcome, {user}!</h2>
+	    
 	    {/* Events View Wizard*/}
 	    <EventWizard onAddEvent={addEvent} />
 
