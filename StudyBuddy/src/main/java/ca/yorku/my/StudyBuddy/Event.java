@@ -1,6 +1,4 @@
 package ca.yorku.my.StudyBuddy;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,14 +7,15 @@ import java.util.List;
 public class Event{
 
     // Variable Declaration for the event class
+    private String eventId;
     private String hostId;
     private String title;
     private String course;
     private String location;
     private String description;
-    // Keep time as LocalDateTime for easier comparison, sorting, and Type safety.
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
+    // Keep time as String for easier comparison, sorting, and serialization with Firestore. We can use a specific format like "yyyy-MM-dd HH:mm" for consistency.
+    private String startTime;
+    private String endTime;
     private int maxCapacity;
     // Used List<String> to store participantIds for easier management of participants for each event.
     private List<String> participantIds;
@@ -30,20 +29,18 @@ public class Event{
     }
 
     // Constructor for the Event class
-    public Event(  String eventId, String hostId, String title, String course, String location, String description,
-                    LocalDateTime startTime, LocalDateTime endTime, int maxCapacity) {
-        this.eventId = eventId;
-        this.hostId = hostId;
-        this.title = title;
-        this.course = course;
-        this.location = location;
-        this.description = description;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.maxCapacity = maxCapacity;
-        this.participantIds = new ArrayList<>();
-
-    }
+ public Event(String hostId, String title, String course, String location, String description,
+             String startTime, String endTime, int maxCapacity) {
+    this.hostId = hostId;
+    this.title = title;
+    this.course = course;
+    this.location = location;
+    this.description = description;
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.maxCapacity = maxCapacity;
+    this.participantIds = new ArrayList<>();
+}
 
     public String getEventId(){
         return this.eventId;   
@@ -69,11 +66,11 @@ public class Event{
         return this.description;   
     }
 
-    public LocalDateTime getStartTime(){
+    public String getStartTime(){
         return this.startTime;   
     }
 
-    public LocalDateTime getEndTime(){
+    public String getEndTime(){
         return this.endTime;   
     }
 
@@ -112,11 +109,11 @@ public class Event{
         this.description = description;
     }
 
-    public void setStartTime(LocalDateTime startTime){
+    public void setStartTime(String startTime){
         this.startTime = startTime;
     }
 
-    public void setEndTime(LocalDateTime endTime){
+    public void setEndTime(String endTime){
         this.endTime = endTime;
     }
 
@@ -124,16 +121,8 @@ public class Event{
         this.maxCapacity = maxCapacity;
     }
 
-    public void addParticipant( String participantId ){
-
-        if( this.participantIds.size() + 1 <= this.maxCapacity ){
-            this.participantIds.add(participantId);
-        }
-        else{
-            // Handle the case where the event is at max capacity. For now, we can just print a message.
-            System.out.println("Cannot add participant. Event is at max capacity.");
-
-        }
+    public void setParticipantIds(List<String> participantIds) {
+        this.participantIds = participantIds;
     }
 
     public void removeParticipant(String participantId ){ 
