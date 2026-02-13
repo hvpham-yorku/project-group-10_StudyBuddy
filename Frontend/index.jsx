@@ -6,13 +6,15 @@ import EventWizard from './EventWizard.jsx'
 function App() {
 
     // TODO: Get the actual user that's logged in
-    const user = "Chris P. Bacon"
+    const USER = "bobby_lee"
+
+    const EVENTS_API = "http://localhost:8080/api/events"
     
     const [events, setEvents] = useState([]);
 
     // Synchronize with backend (which is connected to the database)
     useEffect(() => {
-	fetch("http://localhost:8080/api/events")
+	fetch(EVENTS_API)
 	    .then(res => res.json())
 	    .then(data => {
 		console.log("Events fetched!")
@@ -20,8 +22,34 @@ function App() {
 	    })
     }, []);
 
-    const addEvent = (newEvent) => {
-	setEvents([...events, newEvent]);
+    const addEvent = async (newEvent) => {
+	const payload = {
+            hostId: USER,
+            title: newEvent.title,
+            course: newEvent.course,
+            location: newEvent.location,
+            description: newEvent.description,
+            maxCapacity: newEvent.maxCapacity || 5,
+            startTime: newEvent.startTime,
+            endTime: newEvent.endTime,
+	    participantIds: newEvent.participantIds
+        }
+
+	const request = await(fetch(EVENTS_API, {
+	    method: 'POST',
+	    headers: { 'Content-Type': 'application/json'},
+	    body: JSON.stringify(payload)
+	}))
+
+	// Update Event Cards after successful addition
+	if (request.ok) {
+	    const savedEvent = await request.json();
+	    setEvents([...events, savedEvent]);
+	}
+	else {
+	    console.log(request)
+	}
+	
     }
 
     // Syncs Frontend Event cards with actual database
@@ -35,7 +63,7 @@ function App() {
 	<div className="app-container" style={{ padding: '20px' }}>
 	    <h1>Study Buddy</h1>
 	    <hr></hr>
-	    <h2>Welcome, {user}!</h2>
+	    <h2>Welcome, {USER}!</h2>
 	    
 	    {/* Events View Wizard*/}
 	    <EventWizard onAddEvent={addEvent} />
