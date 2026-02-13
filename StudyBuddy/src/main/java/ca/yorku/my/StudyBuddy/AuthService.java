@@ -40,10 +40,16 @@ public class AuthService {
 
         // 4. DATABASE: Save the student profile as a NoSQL document
         String generatedId = email.substring(0, email.indexOf("@"));
-        student.setUserId(generatedId);
-        
-        Firestore db = FirestoreClient.getFirestore();
-        db.collection("users").document(generatedId).set(student);
+
+        if (generatedId == null || generatedId.isEmpty()) {
+            throw new IllegalArgumentException("Invalid email format for ID generation.");
+}
+
+student.setUserId(generatedId);
+
+Firestore db = FirestoreClient.getFirestore();
+// The error below should now vanish because you've proven generatedId isn't null
+db.collection("users").document(generatedId).set(student);
 
         return userRecord.getUid();
     }
