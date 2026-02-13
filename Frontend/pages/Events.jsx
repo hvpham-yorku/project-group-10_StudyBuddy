@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import EventCard from '../components/EventCard.jsx'
 import EventWizard from '../components/EventWizard.jsx'
+import TopBar from "../components/TopBar";
 
 export default function EventsPage() {
-
     // TODO: Get the actual user that's logged in
     const USER = "bobby_lee"
 
@@ -71,6 +71,7 @@ export default function EventsPage() {
     // MAIN APPLICATION RENDER //
     return (	
 	<div className="app-container" style={{ padding: '20px' }}>
+		<TopBar />
 	    <h1>Study Buddy</h1>
 	    <hr></hr>
 	    <h2>Welcome, {USER}!</h2>
@@ -94,5 +95,5 @@ export default function EventsPage() {
 	    ))}
 	    </div>
 	</div>
-    );
+   );
 }
