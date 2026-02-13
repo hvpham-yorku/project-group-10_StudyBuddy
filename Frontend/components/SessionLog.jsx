@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import style from "./style.css";
+import "../pages/style.css";
 
 // Default session log data
 export default function SessionLog({ studentId }) {
