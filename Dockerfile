@@ -5,7 +5,7 @@ FROM node:22-alpine AS frontend-build
 WORKDIR /app
 
 # Copy frontend_setup files (signin/up branch frontend)
-COPY ./frontend_setup/ ./
+COPY ./Frontend ./
 
 # --------
 # BACKEND Docker Setup
