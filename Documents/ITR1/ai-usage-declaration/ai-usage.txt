@@ -49,4 +49,4 @@ Prompt: Could you help me write a correct, useful and accurate README.md for our
 
 Output: A few pointers on what could be improved on the README, as well as examples of what details on what sort of topics should be talked about.
 
-Rationale: This was done so that all the various README instructions would be clear, accurate and up to a professional standard. Additionally, having another entity take a look at your startup procedure and point out any missing/ unclear section is also helpful as that helps real developers who are installing and running this program be easier.
+Rationale: This was done so that all the various README instructions would be clear, accurate and up to a professional standard. Additionally, having another entity take a look at your startup procedure and point out any missing/ unclear section is also helpful as that helps real developers who are installing and running this program have an easier installation setup.
