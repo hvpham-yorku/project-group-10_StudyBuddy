@@ -3,7 +3,7 @@ package ca.yorku.my.StudyBuddy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -16,40 +16,40 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody Student student, @RequestParam String password) {
         try {
+            // Using the variable to avoid the 'unused' warning
             String firebaseUid = authService.registerUser(student, password);
-            return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
+            return ResponseEntity.ok("Verification email sent! ID: " + firebaseUid);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());
         }
     }
 
-    // New: Password Reset Feature
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestParam String email) {
+        try {
+            // This triggers the strict .isEmailVerified() check in AuthService
+            String token = authService.loginUser(email);
+            return ResponseEntity.ok(token);
+        } catch (IllegalStateException e) {
+            // Sends 403 if the user hasn't clicked the link in their YorkU inbox
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Login Failed: Account not found.");
+        }
+    }
+
     @PostMapping("/reset-password")
-public ResponseEntity<String> resetPassword(@RequestParam(required = false) String email) {
-    // 1. Check if the frontend actually sent an email
-    if (email == null || email.isEmpty()) {
-        return ResponseEntity.badRequest().body("Error: Please enter your YorkU email first.");
+    public ResponseEntity<String> resetPassword(@RequestParam(required = false) String email) {
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest().body("Error: Please enter your email first.");
+        }
+        try {
+            authService.generateResetLink(email);
+            return ResponseEntity.ok("Reset link generated for " + email);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
-
-    try {
-        authService.generateResetLink(email);
-        return ResponseEntity.ok("Reset link generated for " + email);
-    } catch (IllegalArgumentException e) {
-        return ResponseEntity.status(404).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.internalServerError().body("An unexpected error occurred.");
-    }
-}
-
-@PostMapping("/login")
-public ResponseEntity<String> login(@RequestParam String email) {
-    try {
-        String sessionToken = authService.loginUser(email);
-        return ResponseEntity.ok("Login Successful! Session Token: " + sessionToken);
-    } catch (IllegalStateException e) {
-        return ResponseEntity.status(403).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.badRequest().body("Login Failed: User not found.");
-    }
-}
 }

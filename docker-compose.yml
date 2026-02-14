@@ -1,0 +1,12 @@
+services:
+  backend:
+    build: ./StudyBuddy
+    ports:
+      - "8080:8080"  # This links your computer's 8080 to Docker's 8080
+
+  frontend:
+    build: ./Frontend
+    ports:
+      - "5173:5173"  # This links your computer's 5173 to Docker's 5173
+    depends_on:
+      - backend
