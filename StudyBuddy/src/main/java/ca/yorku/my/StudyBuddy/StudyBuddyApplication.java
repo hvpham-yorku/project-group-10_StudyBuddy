@@ -6,14 +6,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class StudyBuddyApplication {
 
-	public static void main(String[] args) {
-		
-		// TEMPORARY CODE FOR REFERENCE
-    	String[] s1Courses = {"LE-EECS-2311-Z", "SC-PHYS-2020-M", "LE-EECS-4413-Z", "LE-EECS-3421-Z", "LE-EECS-2101-X"};
-    	StubDatabase.STUDENTS.add(new Student("John", "Doe", s1Courses));
-    	
-    	
-		SpringApplication.run(StudyBuddyApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        //  removed the hardcoded test student because the Student model has changed.
+        //  will now use  'curl' command to add students dynamically
+        SpringApplication.run(StudyBuddyApplication.class, args);
+    }
 }

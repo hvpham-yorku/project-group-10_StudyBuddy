@@ -1,0 +1,278 @@
+/* Reset */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f4f6f9;
+  color: #1f2937;
+}
+
+/* Top Bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.topbar-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.profile-icon {
+  font-size: 18px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  transition: 0.2s ease;
+  background: white;
+}
+
+.profile-icon:hover {
+  background-color: #e0e7ff;
+  cursor: pointer;
+}
+
+/* Page Container */
+.page-container {
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Profile Card */
+.profile-card {
+  background: white;
+  padding: 30px;
+  width: 100%;
+  max-width: 700px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Headings */
+.profile-card h1 {
+  margin-top: 0;
+}
+
+.profile-card h2 {
+  margin-top: 30px;
+  font-size: 18px;
+}
+
+/* Inputs */
+input,
+textarea {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+textarea {
+  width: 100%;
+  resize: none;
+}
+
+/* Buttons */
+button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #4f46e5;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+button:hover {
+  background-color: #4338ca;
+}
+
+/* Remove button */
+.remove-btn {
+  background-color: #ef4444;
+  margin-left: 10px;
+}
+
+.remove-btn:hover {
+  background-color: #dc2626;
+}
+
+/* Lists */
+ul {
+  padding-left: 20px;
+}
+
+/* Session Log Card */
+.session-log-card {
+  background: white;
+  padding: 30px;
+  width: 100%;
+  max-width: 700px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  margin-top: 20px;
+}
+
+/* Session Log Container */
+.session-log-container {
+  width: 100%;
+}
+
+.session-log-container h2 {
+  margin-top: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Session Stats */
+.session-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-box h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* Filter Section */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filter-section label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.filter-section select {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* Sessions List */
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Session Card */
+.session-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #fafafa;
+  transition: 0.2s ease;
+}
+
+.session-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background-color: white;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.session-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.session-course {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.session-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detail-item {
+  font-size: 13px;
+}
+
+.detail-item strong {
+  color: #6b7280;
+}
+
+.session-description,
+.session-participants {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.session-participants {
+  color: #6b7280;
+}
+
+/* Loading, Error, No Sessions Messages */
+.loading,
+.error,
+.no-sessions {
+  text-align: center;
+  padding: 20px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.loading {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.no-sessions {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
