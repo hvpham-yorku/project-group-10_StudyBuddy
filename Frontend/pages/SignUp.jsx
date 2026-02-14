@@ -72,7 +72,7 @@ export default function SignUpPage() {
 
                     <button type="button" 
                     className="sign-in-btn" 
-                    onClick={() => { navigate('/'); }}>
+                    onClick={() => { navigate('/signin'); }}>
                         Sign Up
                         <span className="arrow">→</span>
                     </button>

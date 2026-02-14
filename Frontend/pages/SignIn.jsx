@@ -61,7 +61,7 @@ export default function SignInPage() {
 
                             <button type="button" 
                                 className="sign-in-btn"
-                                onClick={() => { navigate('/'); }}>
+                                onClick={() => { navigate('/home'); }}>
                                 Sign In
                                 <span className="arrow">→</span>
                             </button>
