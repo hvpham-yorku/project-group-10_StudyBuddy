@@ -1,0 +1,52 @@
+Prompt: Help me generate 10 unit tests in the java backend please. You can use other unit tests as examples to help you out
+
+Output: 10 Unit tests
+
+Rationale:  These unit tests verify constructor, getter and setter methods, tests out if the methods work on the Stub Database, and checks edge cases (get when no students exist, or handle events when we're trying to get session logs when the student doesn't exist)
+
+Prompt: I've attached all backend code I need you to generate the plantUML code so I can have class UML Diagrams auto generated with reference to my classes
+
+Output: 7 Packages, 9 Classes all with Inheritance relation 
+
+Prompt: I have one file that that acts as the landing page and signin page. This is achieved by a timer script but I need you to split it and take out the css from all two files into a separate style.css file. I've also attached a signup file take it's css out into the style file. 
+
+Output: index.html, signin.html, signup.html, style.css
+
+Rationale: This improves file organization by separating structure (html), styling (css) and functionality (JavaScript). This also consolidates repeated div elements styling into reusable css classes. This improved maintainability, simplification for future updates and makes the code base more scalable.
+
+Prompt: How do I make it so that the session log service interacts with the event and event controller class? 
+
+Output/Rationale: Explanation of how the session log class connects through the data that is inputted to the event and event controller class. This is done through the connection of the backend/database of the project. The understanding from this was that the event/event controller class would allow the user to create an event. This event would then be stored in the Firebase database. The session log service class would then access this information through the backend and display it to the user through the frontend. This is necessary for when we want to display all the events that the user has attended in the past. 
+
+Prompt: What is local storage and how do I use it to store the information that is inputted by the user, ensuring that it saves upon browser reload and browser close/reopen?
+
+Output: SessionLog.jsx
+
+Rationale: Explained that local storage is a Web API that stores key-value pairs in the browser stay upon browser reload and close/reopen, only being removed after being deleted manually.  It is done with the use of useState() which is used to manage state, as well as useEffect() which is used to to sync the state with the local storage. This is needed to store user information when they may have accidentally refreshed/closed the tab, as well as for future sign-up/sign-ins.
+
+Prompt: just to make sure I would not be able to make it so a user can input there own information like name email and all that without an authentication and that right
+
+Output: Thorough explanation on this topic that I had no prior knowledge on.
+
+Summary of AI usage (generalized summary of numerous prompts in developing individual features) in developing back end for registering and login authorization in addition to integration. Not every single prompt is explained but general areas are.
+
+Architecture & Tech Stack Initialization
+AI assisted in generating Dockerfile configurations and docker-compose.yml to ensure networking between containers (8080 and 5713).
+
+Backend Development (Spring Boot & Firebase)
+AI assisted in developing AuthService and AuthController java files to handle Google SMTP for verifying emails and mapping student profiles to NoSQL collections.
+
+Frontend Integration & State Management
+AI assisted in debugging index.jsx state logic to ensure verification of user's email is required to reach "Welcome" dashboard. Verified through Firebase. 
+
+Full-Stack Debugging & Error Resolution
+AI assisted in solving cross-origin issues (CORS), setting correct host exposures (vite --host 0.0.0.0), and Docker build cache failures. 
+
+Automated Testing (Unit Tests)
+AI assisted in generating JUnit 5 test cases to verify each detailed user story as part of login/registering/session based login was being verified for correctness and safety.
+
+Prompt: Could you help me write a correct, useful and accurate README.md for our project. I already have a working version but I want you to iterate over it and tell me if there's anything missing that I should add which would be helpful for someone to install, deploy and test our project.
+
+Output: A few pointers on what could be improved on the README, as well as examples of what details on what sort of topics should be talked about.
+
+Rationale: This was done so that all the various README instructions would be clear, accurate and up to a professional standard. Additionally, having another entity take a look at your startup procedure and point out any missing/ unclear section is also helpful as that helps real developers who are installing and running this program be easier.
