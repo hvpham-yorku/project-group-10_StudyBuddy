@@ -1,20 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TopBar from "../components/TopBar";
 import SessionLog from "../components/SessionLog";
 
 // Default student profile 
 export default function StudentProfile() {
-  const [student, setStudent] = useState({
+  const [student, setStudent] = useState(() => {
+  const saved = localStorage.getItem("studentProfile");
+  return saved ? JSON.parse(saved) : {
     name: "John Doe",
     email: "john@my.yorku.ca",
     major: "Software Engineering",
     bio: "",
     courses: ["EECS 2311", "MATH 1013"],
-    preferences: ["Quiet Focus"],
+    preferences: ["Quiet Focus"],};
   });
 
   const [newCourse, setNewCourse] = useState("");
   const [newPref, setNewPref] = useState("");
+
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem("studentProfile", JSON.stringify(student));
+  }, [student]);
 
 // Allows user to add a course to their profile 
   function addCourse() {
