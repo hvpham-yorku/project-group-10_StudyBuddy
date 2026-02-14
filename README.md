@@ -225,7 +225,7 @@ npm install
 
 ## License
 
-This project is part of the York University CSE 3310 Software Design Course.
+This project is part of York University's EECS 2311 Software Development Project.
 
 ---
 
