@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import StudentProfile from "./pages/StudentProfile";
 import EventsPage from "./pages/Events";
 import SignInPage from "./pages/SignIn";
+import SignUpPage from "./pages/SignUp";
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/profile" element={<StudentProfile />} />
 		    <Route path="/events" element={<EventsPage/>} />
         <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
       </Routes>
     </BrowserRouter>
   );
