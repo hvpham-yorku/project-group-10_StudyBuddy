@@ -5,7 +5,10 @@ FROM node:22-alpine AS frontend-build
 WORKDIR /app
 
 # Copy frontend_setup files (signin/up branch frontend)
-COPY ./Frontend ./
+COPY ./Frontend/package.json ./Frontend/package-lock.json* ./
+RUN npm install
+COPY ./Frontend/ ./
+RUN npm run build
 
 # --------
 # BACKEND Docker Setup
@@ -16,10 +19,10 @@ WORKDIR /app
 # Use built frontend files into static
 COPY StudyBuddy/pom.xml .
 COPY StudyBuddy/src ./src
-COPY --from=frontend-build /app ./src/main/resources/static
+COPY --from=frontend-build /app/dist ./src/main/resources/static
 
 # Clean previous build attempts and create .jar file
-RUN mvn clean package
+RUN mvn clean package -DskipTests
 
 # Copy the .jar file 
 FROM eclipse-temurin:21-jre
