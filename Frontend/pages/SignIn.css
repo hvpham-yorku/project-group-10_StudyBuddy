@@ -35,7 +35,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    animation: fadeOut 0.8s ease-in-out 1.5s forwards;
 }
 
 @keyframes fadeOut {
@@ -58,7 +57,6 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    animation: slideLeft 1.5s ease-in-out 1s forwards;
 }
 
 @keyframes slideLeft {
