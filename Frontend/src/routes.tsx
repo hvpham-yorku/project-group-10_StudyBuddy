@@ -25,6 +25,10 @@ export const router = createBrowserRouter([
     path: "/register",
     element: <Register />,
   },
+  {
+    path: "/2fa",
+    element: <TwoFA />,
+  },
 
   // --- App Routes (With Sidebar) ---
   {
