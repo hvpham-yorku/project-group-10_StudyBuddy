@@ -29,6 +29,10 @@ export const router = createBrowserRouter([
     path: "/2fa",
     element: <TwoFA />,
   },
+  {
+    path: "/*",
+    element: <NotFound />,
+  },
 
   // --- App Routes (With Sidebar) ---
   {
