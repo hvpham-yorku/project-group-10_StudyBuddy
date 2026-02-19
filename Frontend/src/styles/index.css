@@ -1,0 +1,7 @@
+/* 
+ * This is where PostCSS dumps the compiled Tailwind CSS. You can add your own custom styles here as well, and they will be processed by PostCSS
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
