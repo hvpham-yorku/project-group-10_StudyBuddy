@@ -8,7 +8,7 @@ WORKDIR /app
 COPY ./Frontend/package.json ./Frontend/package-lock.json* ./
 RUN npm install
 COPY ./Frontend/ ./
-RUN npm run build
+RUN npx vite build
 
 # --------
 # BACKEND Docker Setup
