@@ -1,5 +1,356 @@
-import React from 'react'
+/* 
+ * Chat.tsx
+ * Main chat interface for one-on-one and group conversations.
+ */
+
+import { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import {
+  Search, Send, Paperclip, MoreVertical,
+  Users, Circle, X, File, Image as ImageIcon, Link as LinkIcon
+} from "lucide-react";
+import { chats, currentUser } from "../data/mockData";
+
+function OnlineDot({ status }: { status: "online" | "offline" | "idle" }) {
+  const colors = { online: "bg-green-500", offline: "bg-slate-300", idle: "bg-yellow-400" };
+  return <div className={`w-2.5 h-2.5 rounded-full border-2 border-white ${colors[status]}`}></div>;
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1.5 px-4 py-1.5">
+      <div className="flex items-center gap-1 bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm border border-slate-100">
+        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+      </div>
+      <span className="text-xs text-slate-400">typing...</span>
+    </div>
+  );
+}
 
 export default function Chat() {
-  return <h1>Chat Page</h1>;
+  const { id } = useParams<{ id?: string }>();
+  const [selectedChatId, setSelectedChatId] = useState<string>(id || chats[0].id);
+  const [messageInput, setMessageInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [localChats, setLocalChats] = useState(chats);
+  const [showAttach, setShowAttach] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const selectedChat = localChats.find((c) => c.id === selectedChatId)!;
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selectedChat?.messages]);
+
+  const handleTyping = (val: string) => {
+    setMessageInput(val);
+    setIsTyping(true);
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => setIsTyping(false), 1500);
+  };
+
+  const sendMessage = () => {
+    if (!messageInput.trim()) return;
+    const newMsg = {
+      id: `m_${Date.now()}`,
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatar,
+      text: messageInput,
+      timestamp: new Date().toISOString(),
+      type: "text" as const,
+    };
+    setLocalChats((prev) =>
+      prev.map((c) =>
+        c.id === selectedChatId
+          ? { ...c, messages: [...c.messages, newMsg], lastMessage: { sender: "You", text: messageInput, timestamp: newMsg.timestamp, read: true } }
+          : c
+      )
+    );
+    setMessageInput("");
+    setIsTyping(false);
+  };
+
+  const formatTime = (ts: string) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const formatChatTime = (ts: string) => {
+    const d = new Date(ts);
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return formatTime(ts);
+    return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+  };
+
+  const filteredChats = localChats.filter(
+    (c) => c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getOnlineStatus = (chat: typeof chats[0]): "online" | "offline" | "idle" => {
+    if (chat.type === "direct") {
+      const other = chat.members.find((m) => m.id !== currentUser.id) as any;
+      if (other?.isOnline) return "online";
+      return "offline";
+    }
+    return "online";
+  };
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Chat List Sidebar */}
+      <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
+        <div className="px-4 py-4 border-b border-slate-100">
+          <h2 className="text-slate-800 mb-3" style={{ fontWeight: 700, fontSize: "1rem" }}>Messages</h2>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search conversations..."
+              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {filteredChats.map((chat) => {
+            const status = getOnlineStatus(chat);
+            const isSelected = chat.id === selectedChatId;
+            return (
+              <div
+                key={chat.id}
+                onClick={() => setSelectedChatId(chat.id)}
+                className={`px-4 py-3.5 cursor-pointer transition-colors border-b border-slate-50 hover:bg-slate-50 ${isSelected ? "bg-blue-50 border-blue-100" : ""}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative shrink-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${chat.type === "group" ? "bg-blue-100" : "bg-orange-100"} overflow-hidden`}>
+                      {chat.type === "group" ? (
+                        <Users size={18} className="text-blue-600" />
+                      ) : (
+                        (() => {
+                          const other = chat.members.find((m) => m.id !== currentUser.id) as any;
+                          return other?.avatar ? (
+                            <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-orange-600" style={{ fontWeight: 700 }}>{chat.name.charAt(0)}</span>
+                          );
+                        })()
+                      )}
+                    </div>
+                    <div className="absolute -bottom-0.5 -right-0.5">
+                      <OnlineDot status={status} />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-800 truncate" style={{ fontWeight: isSelected ? 600 : 500 }}>{chat.name}</p>
+                      <span className="text-xs text-slate-400 shrink-0">{formatChatTime(chat.lastMessage.timestamp)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-slate-500 truncate">
+                        {chat.lastMessage.sender === "You" ? "" : `${chat.lastMessage.sender}: `}
+                        {chat.lastMessage.text}
+                      </p>
+                      {chat.unreadCount > 0 && (
+                        <span className="ml-1 min-w-[18px] h-[18px] bg-orange-500 text-white rounded-full flex items-center justify-center shrink-0" style={{ fontSize: "10px", fontWeight: 700 }}>
+                          {chat.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      {selectedChat ? (
+        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+          {/* Chat Header */}
+          <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 shrink-0">
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${selectedChat.type === "group" ? "bg-blue-100" : "bg-orange-100"} overflow-hidden`}>
+              {selectedChat.type === "group" ? (
+                <Users size={16} className="text-blue-600" />
+              ) : (
+                (() => {
+                  const other = selectedChat.members.find((m) => m.id !== currentUser.id) as any;
+                  return other?.avatar ? (
+                    <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-orange-600" style={{ fontWeight: 700 }}>{selectedChat.name.charAt(0)}</span>
+                  );
+                })()
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-slate-800" style={{ fontWeight: 600 }}>{selectedChat.name}</p>
+              <div className="flex items-center gap-1.5">
+                <Circle size={7} className="fill-green-500 text-green-500" />
+                <p className="text-xs text-slate-400">
+                  {selectedChat.type === "group"
+                    ? `${selectedChat.members.length} members`
+                    : "Active now"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {selectedChat.type === "group" && (
+                <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+                  <Users size={16} className="text-slate-500" />
+                </button>
+              )}
+              <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+                <MoreVertical size={16} className="text-slate-500" />
+              </button>
+            </div>
+          </div>
+
+          {/* Online Members (for groups) */}
+          {selectedChat.type === "group" && (
+            <div className="bg-white border-b border-slate-100 px-5 py-2 flex items-center gap-3">
+              <p className="text-xs text-slate-400">Members:</p>
+              <div className="flex items-center gap-2">
+                {selectedChat.members.map((m) => {
+                  const member = m as any;
+                  return (
+                    <div key={m.id} className="flex items-center gap-1">
+                      <div className="relative">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-blue-100">
+                          {member.avatar ? (
+                            <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "9px", fontWeight: 700 }}>
+                              {member.name.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${member.isOnline !== false ? "bg-green-500" : "bg-slate-300"}`}></div>
+                      </div>
+                      <span className="text-xs text-slate-500">{member.name.split(" ")[0]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            {selectedChat.messages.map((msg, idx) => {
+              const isMe = msg.senderId === currentUser.id;
+              const prevMsg = selectedChat.messages[idx - 1];
+              const showSender = !isMe && (!prevMsg || prevMsg.senderId !== msg.senderId);
+              return (
+                <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} gap-2`}>
+                  {!isMe && (
+                    <div className={`w-7 h-7 rounded-full bg-blue-100 overflow-hidden shrink-0 self-end ${!showSender ? "opacity-0" : ""}`}>
+                      {msg.senderAvatar ? (
+                        <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "10px", fontWeight: 700 }}>
+                          {msg.senderName.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className={`max-w-xs lg:max-w-sm ${isMe ? "items-end" : "items-start"} flex flex-col`}>
+                    {showSender && <p className="text-xs text-slate-400 mb-1 ml-1">{msg.senderName}</p>}
+                    <div
+                      className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                        isMe
+                          ? "bg-blue-700 text-white rounded-br-sm"
+                          : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"
+                      } ${msg.type === "file" ? "flex items-center gap-2" : ""}`}
+                    >
+                      {msg.type === "file" ? (
+                        <>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isMe ? "bg-blue-600" : "bg-orange-50"}`}>
+                            <File size={16} className={isMe ? "text-blue-200" : "text-orange-500"} />
+                          </div>
+                          <div>
+                            <p className="text-xs" style={{ fontWeight: 600 }}>{(msg as any).attachment?.name}</p>
+                            <p className={`text-xs ${isMe ? "text-blue-200" : "text-slate-400"}`}>{(msg as any).attachment?.size}</p>
+                          </div>
+                        </>
+                      ) : (
+                        msg.text
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 mx-1">{formatTime(msg.timestamp)}</p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Typing Indicator (mock - shows occasionally) */}
+            {isTyping && selectedChat.messages[selectedChat.messages.length - 1]?.senderId !== currentUser.id && (
+              <TypingIndicator />
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Attachment Options */}
+          {showAttach && (
+            <div className="bg-white border-t border-slate-200 px-4 py-3 flex gap-3">
+              {[
+                { icon: File, label: "File", color: "bg-orange-50 text-orange-500" },
+                { icon: ImageIcon, label: "Image", color: "bg-green-50 text-green-500" },
+                { icon: LinkIcon, label: "Link", color: "bg-blue-50 text-blue-500" },
+              ].map(({ icon: Icon, label, color }) => (
+                <button
+                  key={label}
+                  className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity ${color.split(" ")[0]}`}
+                  onClick={() => setShowAttach(false)}
+                >
+                  <Icon size={18} className={color.split(" ")[1]} />
+                  <span className="text-xs text-slate-500">{label}</span>
+                </button>
+              ))}
+              <button onClick={() => setShowAttach(false)} className="ml-auto">
+                <X size={16} className="text-slate-400" />
+              </button>
+            </div>
+          )}
+
+          {/* Message Input */}
+          <div className="bg-white border-t border-slate-200 px-4 py-3 flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setShowAttach(!showAttach)}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showAttach ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}
+            >
+              <Paperclip size={16} />
+            </button>
+            <input
+              value={messageInput}
+              onChange={(e) => handleTyping(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              placeholder={`Message ${selectedChat.name}...`}
+              className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!messageInput.trim()}
+              className="w-9 h-9 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            >
+              <Send size={15} className="text-white" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center bg-slate-50">
+          <div className="text-center">
+            <Users size={40} className="text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">Select a conversation</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
