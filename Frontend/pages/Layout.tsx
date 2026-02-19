@@ -13,6 +13,11 @@ export default function Layout() {
         <ul>
           <li><Link to="/dashboard">Dashboard</Link></li>
           <li><Link to="/profile">Profile</Link></li>
+          <li><Link to="/events">Events</Link></li>
+          <li><Link to="/map">Map View</Link></li>
+          <li><Link to="/chat">Chat</Link></li>
+          <li><Link to="/network">Network</Link></li>
+          <li><Link to="/settings">Settings</Link></li>
           <li><Link to="/">Logout</Link></li>
         </ul>
       </nav>
