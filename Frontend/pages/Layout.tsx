@@ -1,3 +1,7 @@
+// This code file is necessary for the layout of the application. For instance,
+// the user should be able to navigate to the dashboard, profile, and etc. via the sidebar.
+
+import React from 'react'
 import { Outlet, Link } from "react-router-dom";
 
 export default function Layout() {
