@@ -62,12 +62,24 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+    
+      <dependency>
+        <groupId>io.github.wulkanowy.sdk</groupId>
+        <artifactId>sdk-scrapper</artifactId>
+        <version>2.7.0</version>
+      </dependency>
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
+    
+      <dependency>
+        <groupId>io.github.wulkanowy.sdk</groupId>
+        <artifactId>sdk-scrapper</artifactId>
+        <version>2.7.0</version>
+      </dependency>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>

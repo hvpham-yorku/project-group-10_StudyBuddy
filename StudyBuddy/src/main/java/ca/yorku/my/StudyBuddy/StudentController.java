@@ -3,6 +3,8 @@ package ca.yorku.my.StudyBuddy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import io.github.wulkanowy.sdk.scrapper.repository.StudentRepository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -12,7 +14,10 @@ import java.util.*;
 @RequestMapping("/api/studentcontroller")
 @CrossOrigin(origins = "*")
 public class StudentController {
-	
+
+	@Autowired
+	private StudentRepository studentRepository;
+
 	@Autowired
 	private SessionLogService sessionLogService;
 	
