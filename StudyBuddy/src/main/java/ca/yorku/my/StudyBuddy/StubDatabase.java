@@ -4,5 +4,6 @@ import java.util.ArrayList;
 
 public class StubDatabase {
 	
-	public static ArrayList<Student> STUDENTS = new ArrayList<Student>();
+	public static ArrayList<Student> STUDENTS = new ArrayList<>(List.of(new Student("123", "John", "Doe")));
+
 }

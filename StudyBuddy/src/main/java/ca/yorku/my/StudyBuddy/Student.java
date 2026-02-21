@@ -19,7 +19,7 @@ public class Student {
     private String profilePic;  
 	
 	private List<String> courses = new ArrayList<>();
-    private String studyVibe;
+    private List<String> studyVibes = new ArrayList<>();
     private Map<String, Boolean> privacySettings = new HashMap<>();
 	private List<String> attendedEventIds = new ArrayList<>();
 
@@ -41,13 +41,15 @@ public class Student {
 	}
     
  // teammate/original constructor
-    public Student(String firstName, String lastName, List<String> courses) {
-      this.userId = firstName + "-" + lastName;   // or any consistent id you want
-      this.firstName = firstName;
-      this.lastName = lastName;
-      this.courses = courses;
-      this.attendedEventIds = new ArrayList<>();
+    public Student(String userId, String firstName, String lastName) {
+        this.userId = userId;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.courses = new ArrayList<>();
+        this.studyVibes = new ArrayList<>();
+        this.privacySettings = new HashMap<>();
     }
+
 
     // Getters and Setters
     public String getUserId() { return userId; }
@@ -76,8 +78,8 @@ public class Student {
     public List<String> getCourses() { return courses; }
     public void setCourses(List<String> courses) { this.courses = courses; }
 
-    public String getStudyVibe() { return studyVibe; }
-    public void setStudyVibe(String studyVibe) { this.studyVibe = studyVibe; }
+    public List<String> getStudyVibes() { return studyVibes; }
+    public void setStudyVibes(List<String> studyVibes) { this.studyVibes = studyVibes; }
 
     public Map<String, Boolean> getPrivacySettings() { return privacySettings; }
     public void setPrivacySettings(Map<String, Boolean> privacySettings) { this.privacySettings = privacySettings; }

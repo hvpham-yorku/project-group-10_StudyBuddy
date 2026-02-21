@@ -47,9 +47,9 @@ public class StudentController {
 	}
 
 	// This method allows for a student's study vibe to be updated in the database through an API call
-	@PutMapping("/{studentID}/study-vibe")
-	public void updateStudyVibe(@PathVariable String studentID, @RequestBody String studyVibe) throws Exception {
-		studentRepository.updateStudyVibe(studentID, studyVibe);
+	@PutMapping("/{studentID}/study-vibes")
+	public void updateStudyVibes(@PathVariable String studentID, @RequestBody List<String> studyVibes) throws Exception {
+		studentRepository.updateStudyVibes(studentID, studyVibes);
 	}
 	
 	// This method allows for a student's privacy settings to be updated in the database through an API call

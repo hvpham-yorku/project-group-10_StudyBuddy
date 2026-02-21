@@ -38,12 +38,20 @@ public class StubStudentRepository implements StudentRepository {
 
     // Updates the study vibe a student inputs in their profile
     @Override
-    public void updateStudyVibe(String userId, String studyVibe) throws Exception {
+    public void updateStudyVibes(String userId, List<String> studyVibes) throws Exception {
         Student student = getStudent(userId);
         if(student != null){
-        student.setStudyVibe(studyVibe);
+        student.setStudyVibes(studyVibes);
     }
 }
+
+    // Updates the bio of a student based on their input
+    @Override
+    public void updateBio(String userId, String bio) throws Exception {
+        Student student = getStudent(userId);
+        student.setBio(bio);
+    }
+
 
     // Updates the privacy settings of a student based on their choices
     @Override

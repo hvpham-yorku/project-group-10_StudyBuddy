@@ -43,9 +43,15 @@ public class FirestoreStudentRepository implements StudentRepository {
 
     // Updates the study vibe a student inputs in their profile
     @Override
-    public void updateStudyVibe(String userId, String studyVibe) throws Exception {
-        db.collection("students").document(userId).update("studyVibe", studyVibe).get();
+    public void updateStudyVibes(String userId, List<String> studyVibes) throws Exception {
+        db.collection("students").document(userId).update("studyVibes", studyVibes).get();
     }
+
+    // Updates the bio of a student based on their input
+    @Override
+    public void updateBio(String userId, String bio) throws Exception {
+    db.collection("students").document(userId).update("bio", bio).get();
+}
 
     // Updates the privacy settings of a student based on their choices
     @Override

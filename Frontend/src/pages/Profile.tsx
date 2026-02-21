@@ -18,12 +18,12 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
 
   const [editingBio, setEditingBio] = useState(false);
-  const [bio, setBio] = useState(currentUser.bio);
+  const [bio, setBio] = useState("");
   const [tempBio, setTempBio] = useState(currentUser.bio);
   const [editingCourses, setEditingCourses] = useState(false);
-  const [courses, setCourses] = useState([...(currentUser.courses) || []]);
+  const [courses, setCourses] = useState<string[]>([]);
   const [courseInput, setCourseInput] = useState("");
-  const [vibes, setVibes] = useState([...currentUser.studyVibes]);
+  const [vibes, setVibes] = useState<string[]>([]);
   const [editingVibes, setEditingVibes] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
 
@@ -82,7 +82,7 @@ export default function Profile() {
         body: JSON.stringify({
           courses,
           studyVibes: vibes,
-          privacySettings: currentUser.privacySettings
+          privacySettings: {}
         })
       });
     } catch (err) {

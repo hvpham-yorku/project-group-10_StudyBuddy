@@ -16,10 +16,13 @@ public interface StudentRepository {
     void updateCourses(String userId, List<String> courses) throws Exception;
 
     // Updates the study vibe a student inputs in their profile
-    void updateStudyVibe(String userId, String studyVibe) throws Exception;
+    void updateStudyVibes(String userId, List<String> studyVibes) throws Exception;
 
     // Updates the privacy settings of a student based on their choices
     void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception;
+
+    // Updates the bio of a student based on their input
+    void updateBio(String userId, String bio) throws Exception;
 
 
 }
