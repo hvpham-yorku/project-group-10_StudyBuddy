@@ -1,9 +1,10 @@
 package ca.yorku.my.StudyBuddy;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
-
-import scala.collection.immutable.List;
 
 @Service
 @Profile("stub")
@@ -28,7 +29,7 @@ public class StubStudentRepository implements StudentRepository {
 
     // Updates the courses a student is currently enrolled in
     @Override
-    public void updateCourses(String userId, List<Course> courses) throws Exception {
+    public void updateCourses(String userId, List<String> courses) throws Exception {
         Student student = getStudent(userId);
         if (student != null){
             student.setCourses(courses);
@@ -37,14 +38,14 @@ public class StubStudentRepository implements StudentRepository {
 
     // Updates the study vibe a student inputs in their profile
     @Override
-    public void updateStudyVibe(String userId, Object studyVibe) throws Exception {
+    public void updateStudyVibe(String userId, String studyVibe) throws Exception {
         Student student = getStudent(userId);
         student.setStudyVibe(studyVibe);
     }
 
     // Updates the privacy settings of a student based on their choices
     @Override
-    public void updatePrivacySettings(String userId, Object privacySettings) throws Exception {
+    public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
         Student student = getStudent(userId);
         student.setPrivacySettings(privacySettings);
     }
