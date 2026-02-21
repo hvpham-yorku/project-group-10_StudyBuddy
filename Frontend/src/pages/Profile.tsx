@@ -74,7 +74,7 @@ export default function Profile() {
   }, []);
 
   // Save profile to backend
-  async function saveProfile(updatedBio: string) {
+  async function saveProfile(updatedBio?: string) {
     try {
       await fetch(`http://localhost:8080/api/studentcontroller/profile/update/${userId}`, {
         method: "POST",
