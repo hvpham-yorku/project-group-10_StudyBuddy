@@ -16,17 +16,8 @@ public class Student {
     private String bio;         
     private String profilePic;  
 	
-	private String[] courses;
+	private List<String> courses;
 	private List<String> attendedEventIds;
-	
-	public Student(String userId, String firstName, String lastName, String[] courses) {
-		this.userId = userId;
-		this.firstName = firstName;
-		this.lastName = lastName;
-		this.setCourses(courses);
-		this.attendedEventIds = new ArrayList<>();
-	}
-
 
     // 1. MUST HAVE: The empty constructor for Firebase/Spring automation
     public Student() {}
@@ -44,15 +35,21 @@ public class Student {
 			this.attendedEventIds.add(eventId);
 		}
 	}
-    
- // teammate/original constructor
-    public Student(String firstName, String lastName, String[] courses) {
-      this.userId = firstName + "-" + lastName;   // or any consistent id you want
-      this.firstName = firstName;
-      this.lastName = lastName;
-      this.courses = courses;
-      this.attendedEventIds = new ArrayList<>();
-    }
+	
+	public Student(String userId, String email, String fullName, String firstName,
+			String lastName, String program, String bio, String profilePic,
+			List<String> courses, List<String> attendedEventIds) {
+		this.userId = userId;
+		this.email = email;
+		this.fullName = fullName;
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.program = program;
+		this.bio = bio;
+		this.profilePic = profilePic;
+		this.courses = courses;
+		this.attendedEventIds = attendedEventIds;
+	}
 
     // Getters and Setters
     public String getUserId() { return userId; }
@@ -77,6 +74,6 @@ public class Student {
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-    public String[] getCourses() { return courses; }
-    public void setCourses(String[] courses) { this.courses = courses; }
+    public List<String> getCourses() { return courses; }
+    public void setCourses(List<String> courses) { this.courses = courses; }
 }

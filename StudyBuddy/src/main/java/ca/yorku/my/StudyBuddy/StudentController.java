@@ -1,6 +1,8 @@
 package ca.yorku.my.StudyBuddy;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -9,88 +11,64 @@ import java.util.concurrent.ExecutionException;
 import java.util.*;
 
 @RestController 
-@RequestMapping("/api/studentcontroller")
+@RequestMapping("/api/students")
 @CrossOrigin(origins = "*")
 public class StudentController {
 	
 	@Autowired
-	private SessionLogService sessionLogService;
+	private StudentService studentService;
 	
-	@GetMapping("/getstudents")
-	public ArrayList<Student> getAllStudents() {
-		return StubDatabase.STUDENTS;
-	}
-	
-	/**
-	 * Get a student's session log (all events they have attended)
-	 */
-	@GetMapping("/getstudent/{studentId}/sessionlog")
-	public List<Event> getStudentSessionLog(@PathVariable String studentId) throws ExecutionException, InterruptedException {
-		// Find student by ID from StubDatabase
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return new ArrayList<>();
+	@GetMapping("/{studentId}")
+	public ResponseEntity<StudentDTO> getStudentById(@PathVariable String studentId) {
+		try {
+			Student student = studentService.getStudentById(studentId);
+			StudentDTO studentDTO = new StudentDTO(
+					student.getUserId(),
+					student.getEmail(),
+					student.getFullName(),
+					student.getFirstName(),
+					student.getLastName(),
+					student.getProgram(),
+					student.getBio(),
+					student.getProfilePic(),
+					student.getCourses(),
+					student.getAttendedEventIds()
+					);
+			
+			return ResponseEntity.ok(studentDTO);
+			
+		} catch (Exception e) {
+			System.out.println("Error occured during firebase conncetion");
+			return null;
 		}
-		
-		return sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
 	}
 	
-	/**
-	 * Get total study time (in minutes) for a student
-	 */
-	@GetMapping("/getstudent/{studentId}/totalstudytime")
-	public long getTotalStudyTime(@PathVariable String studentId) throws ExecutionException, InterruptedException {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return 0;
-		}
-		
-		List<Event> sessionLog = sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
-		return sessionLogService.getTotalStudyMinutes(sessionLog);
-	}
+	@PostMapping
+    public ResponseEntity<StudentDTO> createStudent(@RequestBody StudentDTO studentDTO) {
+        try {
+        	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
+        	Student student = new Student(
+        		"", // Let this be filled out by Firebase
+        		studentDTO.email(),
+        		studentDTO.displayName(),
+        		studentDTO.firstName(),
+        		studentDTO.lastName(),
+        		studentDTO.program(),
+        		studentDTO.bio(),
+        		studentDTO.profilePic(),
+        		studentDTO.courses(),
+        		studentDTO.attendedEventIds()
+        			);
+        	
+        	// 2. Store the event in firebase + generated the id
+        	studentService.createStudent(student);
+        		
+        	// 3. Print it back to user to indicate success
+        	return ResponseEntity.status(HttpStatus.CREATED).body(studentDTO);
+
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 	
-	/**
-	 * Get student's session log filtered by course code
-	 */
-	@GetMapping("/getstudent/{studentId}/sessionlog/course/{courseCode}")
-	public List<Event> getSessionLogByCourse(@PathVariable String studentId, @PathVariable String courseCode) 
-			throws ExecutionException, InterruptedException {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return new ArrayList<>();
-		}
-		
-		List<Event> sessionLog = sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
-		return sessionLogService.filterSessionLogByCourse(sessionLog, courseCode);
-	}
-	
-	/**
-	 * Mark a student as having attended an event
-	 */
-	@PostMapping("/getstudent/{studentId}/addeventtosessionlog/{eventId}")
-	public Boolean addEventToSessionLog(@PathVariable String studentId, @PathVariable String eventId) {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return false;
-		}
-		
-		sessionLogService.addEventToSessionLog(student, eventId);
-		return true;
-	}
 }
