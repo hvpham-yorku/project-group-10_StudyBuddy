@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -37,10 +38,39 @@ public class EventController {
     // This mapping endpoint allows clients to retrieve a list of all events by sending a GET request. It returns the list of events if successful, or an error status if there was an issue.
 
     @GetMapping
-    public ResponseEntity<List<Event>> getAllEvents() {
+    public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
         try {
-            List<Event> events = eventService.getAllEvents();
-            return ResponseEntity.ok(events);
+            // 1. Get the raw Events from firestore
+        	List<Event> events = eventService.getAllEvents();
+
+            // 2. Empty list to hold formatted DTOs
+            List<EventResponseDTO> eventDTOs = new ArrayList<>();
+
+            // 3. Loop through each event, get the host details, and create a DTO for each event
+            for (Event event : events) {
+                EventResponseDTO dto = new EventResponseDTO(
+                    event.getEventId(), 				// id
+                    event.getTitle(),					// title
+                    event.getCourse(),			// course
+                    event.getLocation(),		// location
+                    event.getDescription(), //description
+                    //status=event.getStatus(),
+                    "Placeholder status",		//status
+                    "", // date
+                    "", // time
+                    0, //duration
+                    event.getMaxCapacity(), // maxParticipants
+                    event.getParticipantIds(), // attendees
+                    List.of("Placeholder tag 1", "Placeholder tag 2"), // tags
+                    List.of("Placeholder review 1", "Placeholder review 2"), // reviews
+                    event.getHostId(), // hostId
+                    "Placeholder name",  // hostName
+                    "Placeholder avatar" // hostAvatar
+                );
+                eventDTOs.add(dto);
+            }
+                		
+            return ResponseEntity.ok(eventDTOs);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
