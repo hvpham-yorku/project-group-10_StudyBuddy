@@ -8,17 +8,20 @@ public class Event{
 
     // Variable Declaration for the event class
     private String eventId;
-    private String hostId;
+    private String hostId; 
     private String title;
     private String course;
     private String location;
     private String description;
     // Keep time as String for easier comparison, sorting, and serialization with Firestore. We can use a specific format like "yyyy-MM-dd HH:mm" for consistency.
     private String startTime;
-    private String endTime;
+    private String startDate;
     private int maxCapacity;
+    private int duration;
     // Used List<String> to store participantIds for easier management of participants for each event.
     private List<String> participantIds;
+    private List<String> tags;
+    private List<String> reviews;
     
 
     // Default constructor for the Event class. Used for Firebase SDK.
@@ -29,18 +32,17 @@ public class Event{
     }
 
     // Constructor for the Event class
- public Event(String hostId, String title, String course, String location, String description,
-             String startTime, String endTime, int maxCapacity) {
-    this.hostId = hostId;
-    this.title = title;
-    this.course = course;
-    this.location = location;
-    this.description = description;
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.maxCapacity = maxCapacity;
-    this.participantIds = new ArrayList<>();
-}
+	public Event(String hostId, String title, String course, String location, String description,
+	             String startTime, String endTime, int maxCapacity) {
+	    this.hostId = hostId;
+	    this.title = title;
+	    this.course = course;
+	    this.location = location;
+	    this.description = description;
+	    this.startTime = startTime;
+	    this.maxCapacity = maxCapacity;
+	    this.participantIds = new ArrayList<>();
+	}
 
     public String getEventId(){
         return this.eventId;   
@@ -68,10 +70,6 @@ public class Event{
 
     public String getStartTime(){
         return this.startTime;   
-    }
-
-    public String getEndTime(){
-        return this.endTime;   
     }
 
     public int getMaxCapacity(){
@@ -113,10 +111,6 @@ public class Event{
         this.startTime = startTime;
     }
 
-    public void setEndTime(String endTime){
-        this.endTime = endTime;
-    }
-
     public void setMaxCapacity(int maxCapacity){
         this.maxCapacity = maxCapacity;
     }
@@ -136,6 +130,38 @@ public class Event{
 
         }
     }
+
+	public String getStartDate() {
+		return startDate;
+	}
+
+	public void setStartDate(String startDate) {
+		this.startDate = startDate;
+	}
+
+	public int getDuration() {
+		return duration;
+	}
+
+	public void setDuration(int duration) {
+		this.duration = duration;
+	}
+
+	public List<String> getTags() {
+		return tags;
+	}
+
+	public void setTags(List<String> tags) {
+		this.tags = tags;
+	}
+
+	public List<String> getReviews() {
+		return reviews;
+	}
+
+	public void setReviews(List<String> reviews) {
+		this.reviews = reviews;
+	}
 
 
     } // End of event class.
