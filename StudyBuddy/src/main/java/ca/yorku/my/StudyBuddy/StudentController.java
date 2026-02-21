@@ -43,6 +43,38 @@ public class StudentController {
 		}
 	}
 	
+	@GetMapping
+	public ResponseEntity<List<StudentDTO>> getAllStudents() {
+		try {
+			// 1. Get raw Students from Firestore
+			List<Student> students = studentService.getAllStudents();
+			
+			// 2. Empty list to hold formatted DTOs
+			List<StudentDTO> studentDTOs = new ArrayList<>();
+			
+			// 3. Loop through each student
+			for (Student student : students) {
+				StudentDTO studentDTO = new StudentDTO(
+						student.getUserId(),
+						student.getEmail(),
+						student.getFullName(),
+						student.getFirstName(),
+						student.getLastName(),
+						student.getProgram(),
+						student.getBio(),
+						student.getProfilePic(),
+						student.getCourses(),
+						student.getAttendedEventIds()
+						);
+				studentDTOs.add(studentDTO);
+			}
+			
+			return ResponseEntity.ok(studentDTOs);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+	
 	@PostMapping
     public ResponseEntity<StudentDTO> createStudent(@RequestBody StudentDTO studentDTO) {
         try {

@@ -28,7 +28,7 @@ public class StudentService {
     private static final String COLLECTION = "students";
 
     /**
-     * Retrieves all events a student has attended based on their attended event IDs.
+     * Retrieves student by a specific ID
      */
     public Student getStudentById(String studentId) throws ExecutionException, InterruptedException {
 
@@ -41,6 +41,25 @@ public class StudentService {
         } else {
         	return null;
         }
+    }
+    
+    /**
+     * Get all students
+     */
+    public List<Student> getAllStudents() throws ExecutionException, InterruptedException {
+    	Firestore db = FirestoreClient.getFirestore();
+    	
+    	ApiFuture<QuerySnapshot> future = db.collection(COLLECTION).get();
+    	List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+    	
+    	List<Student> students = new ArrayList<>();
+    	for (QueryDocumentSnapshot doc : documents) {
+    		Student student = doc.toObject(Student.class);
+    		student.setUserId(doc.getId());
+    		students.add(student);
+    	}
+    	
+    	return students;
     }
     
     /**
