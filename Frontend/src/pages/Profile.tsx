@@ -3,7 +3,7 @@
  * Renders the user's profile page and displays their information
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";   
 import { useNavigate } from "react-router-dom";
 import {
   Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
@@ -13,6 +13,10 @@ import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "..
 
 export default function Profile() {
   const navigate = useNavigate();
+
+  const userId = "123"; // replace with real user ID
+  const [loading, setLoading] = useState(true);
+
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(currentUser.bio);
   const [tempBio, setTempBio] = useState(currentUser.bio);
@@ -47,6 +51,46 @@ export default function Profile() {
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+
+  // Load profile from backend
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await fetch(`http://localhost:8080/students/${userId}`);
+        const data = await res.json();
+
+        setBio(data.bio || "");
+        setTempBio(data.bio || "");
+        setCourses(data.courses || []);
+        setVibes(data.studyVibes || []);
+      } catch (err) {
+        console.error("Failed to load profile", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, []);
+
+  // Save profile to backend
+  async function saveProfile() {
+    try {
+      await fetch(`http://localhost:8080/students/${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courses,
+          studyVibes: vibes,
+          privacySettings: currentUser.privacySettings
+        })
+      });
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    }
+  }
+
+  if (loading) return <p className="p-6">Loading profile...</p>; 
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -135,6 +179,7 @@ export default function Profile() {
 
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
           {/* Bio */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-3">
@@ -156,7 +201,16 @@ export default function Profile() {
                   <span className="text-xs text-slate-400">{tempBio.length}/200</span>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingBio(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => { setBio(tempBio); setEditingBio(false); }} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1">
+
+                    {/* Save bio + backend */}
+                    <button
+                      onClick={async () => {
+                        setBio(tempBio);
+                        setEditingBio(false);
+                        await saveProfile();   
+                      }}
+                      className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+                    >
                       <Check size={12} /> Save
                     </button>
                   </div>
@@ -188,7 +242,15 @@ export default function Profile() {
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setEditingVibes(false)} className="mt-3 px-4 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1">
+
+                {/* Save vibes */}
+                <button
+                  onClick={async () => {
+                    setEditingVibes(false);
+                    await saveProfile();   
+                  }}
+                  className="mt-3 px-4 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+                >
                   <Check size={12} /> Done
                 </button>
               </div>
@@ -208,10 +270,21 @@ export default function Profile() {
           <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>My Courses</h2>
-              <button onClick={() => setEditingCourses(!editingCourses)} className="text-blue-500 hover:text-blue-600">
+
+              {/* Save courses when finishing edit */}
+              <button
+                onClick={async () => {
+                  if (editingCourses) {
+                    await saveProfile();   
+                  }
+                  setEditingCourses(!editingCourses);
+                }}
+                className="text-blue-500 hover:text-blue-600"
+              >
                 {editingCourses ? <Check size={14} /> : <Edit2 size={14} />}
               </button>
             </div>
+
             <div className="flex flex-wrap gap-2">
               {courses.map((c) => (
                 <div
@@ -228,6 +301,7 @@ export default function Profile() {
                   )}
                 </div>
               ))}
+
               {editingCourses && (
                 <div className="flex gap-2">
                   <select
@@ -240,6 +314,7 @@ export default function Profile() {
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
+
                   <button
                     onClick={() => addCourse(courseInput)}
                     className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center gap-1"
@@ -250,79 +325,7 @@ export default function Profile() {
               )}
             </div>
           </div>
-        </div>
-      )}
 
-      {activeTab === "log" && (
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>Study Session History</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{sessionHistory.length} sessions · {totalHours} hours total</p>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Clock size={13} />
-              <span>This semester</span>
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-50">
-            {sessionHistory.map((s) => (
-              <div key={s.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.role === "host" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`} style={{ fontWeight: 600 }}>
-                        {s.role === "host" ? "Hosted" : "Attended"}
-                      </span>
-                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{s.course}</span>
-                    </div>
-                    <p className="text-sm text-slate-800" style={{ fontWeight: 600 }}>{s.title}</p>
-                    <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <CalendarDays size={11} />
-                        {formatDate(s.date)} at {s.time}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <Clock size={11} />
-                        {s.duration} min
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <MapPin size={11} />
-                        {s.location}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-xs text-slate-400 mb-1">Topics covered:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {s.topicsCovered.map((t) => (
-                          <span key={t} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{t}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="flex flex-col items-end gap-1">
-                      {s.participants.slice(0, 3).map((p, i) => (
-                        <div key={p.id} className="flex items-center gap-1.5">
-                          <span className="text-xs text-slate-400 truncate max-w-20">{p.name.split(" ")[0]}</span>
-                          <div className="w-6 h-6 rounded-full bg-blue-100 overflow-hidden shrink-0">
-                            {p.avatar ? (
-                              <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "10px", fontWeight: 700 }}>
-                                {p.name.charAt(0)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
