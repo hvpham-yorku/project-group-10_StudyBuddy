@@ -26,10 +26,27 @@ public class EventController {
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
 
     @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
+    public ResponseEntity<EventResponseDTO> createEvent(@RequestBody EventResponseDTO eventDTO) {
         try {
-            Event createdEvent = eventService.createEvent(event);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
+        	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
+        	Event newEvent = new Event(
+        		eventDTO.hostId(),
+        		eventDTO.title(),
+        		eventDTO.course(),
+        		eventDTO.location(),
+        		eventDTO.description(),
+        		eventDTO.date(),
+        		"TBD",
+        		eventDTO.maxParticipants()
+        	);
+        	
+        	// 2. Store the event in firebase
+        	eventService.createEvent(newEvent);
+        		
+        	// X. Print it back to user to indicate success
+        	return ResponseEntity.status(HttpStatus.CREATED).body(eventDTO);
+            //Event createdEvent = eventService.createEvent(event);
+            // return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
