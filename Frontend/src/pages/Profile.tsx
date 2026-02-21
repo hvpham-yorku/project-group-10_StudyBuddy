@@ -3,7 +3,7 @@
  * Renders the user's profile page and displays their information
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
