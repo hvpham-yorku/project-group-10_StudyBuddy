@@ -1,0 +1,25 @@
+package ca.yorku.my.StudyBuddy;
+
+import java.util.List;
+import java.util.Map;
+
+// This interface creates methods that allow for information in student database
+public interface StudentRepository {
+
+    // Retrieves student by their ID, if they exist, otherwise throws an exception
+    Student getStudent(String userId) throws Exception;
+
+    // Saves a student to the database using their ID
+    void saveStudent(Student student) throws Exception;
+
+    // Updates the courses a student is currently enrolled in
+    void updateCourses(String userId, List<String> courses) throws Exception;
+
+    // Updates the study vibe a student inputs in their profile
+    void updateStudyVibe(String userId, String studyVibe) throws Exception;
+
+    // Updates the privacy settings of a student based on their choices
+    void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception;
+
+
+}

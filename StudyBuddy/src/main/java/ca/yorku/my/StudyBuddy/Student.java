@@ -1,7 +1,9 @@
 package ca.yorku.my.StudyBuddy;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Student {
 	
@@ -16,17 +18,10 @@ public class Student {
     private String bio;         
     private String profilePic;  
 	
-	private String[] courses;
-	private List<String> attendedEventIds;
-	
-	public Student(String userId, String firstName, String lastName, String[] courses) {
-		this.userId = userId;
-		this.firstName = firstName;
-		this.lastName = lastName;
-		this.setCourses(courses);
-		this.attendedEventIds = new ArrayList<>();
-	}
-
+	private List<String> courses = new ArrayList<>();
+    private String studyVibe;
+    private Map<String, Boolean> privacySettings = new HashMap<>();
+	private List<String> attendedEventIds = new ArrayList<>();
 
     // 1. MUST HAVE: The empty constructor for Firebase/Spring automation
     public Student() {}
@@ -46,7 +41,7 @@ public class Student {
 	}
     
  // teammate/original constructor
-    public Student(String firstName, String lastName, String[] courses) {
+    public Student(String firstName, String lastName, List<String> courses) {
       this.userId = firstName + "-" + lastName;   // or any consistent id you want
       this.firstName = firstName;
       this.lastName = lastName;
@@ -77,6 +72,13 @@ public class Student {
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-    public String[] getCourses() { return courses; }
-    public void setCourses(String[] courses) { this.courses = courses; }
+    
+    public List<String> getCourses() { return courses; }
+    public void setCourses(List<String> courses) { this.courses = courses; }
+
+    public String getStudyVibe() { return studyVibe; }
+    public void setStudyVibe(String studyVibe) { this.studyVibe = studyVibe; }
+
+    public Map<String, Boolean> getPrivacySettings() { return privacySettings; }
+    public void setPrivacySettings(Map<String, Boolean> privacySettings) { this.privacySettings = privacySettings; }
 }

@@ -40,13 +40,17 @@ public class StubStudentRepository implements StudentRepository {
     @Override
     public void updateStudyVibe(String userId, String studyVibe) throws Exception {
         Student student = getStudent(userId);
+        if(student != null){
         student.setStudyVibe(studyVibe);
     }
+}
 
     // Updates the privacy settings of a student based on their choices
     @Override
     public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
         Student student = getStudent(userId);
+        if(student != null){
         student.setPrivacySettings(privacySettings);
+        }
     }
 }
