@@ -56,7 +56,7 @@ export default function Profile() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch(`http://localhost:8080/students/${userId}`);
+        const res = await fetch(`http://localhost:8080/api/studentcontroller/${userId}`);
         const data = await res.json();
 
         setBio(data.bio || "");
@@ -74,15 +74,16 @@ export default function Profile() {
   }, []);
 
   // Save profile to backend
-  async function saveProfile() {
+  async function saveProfile(updatedBio: string) {
     try {
-      await fetch(`http://localhost:8080/students/${userId}`, {
+      await fetch(`http://localhost:8080/api/studentcontroller/profile/update/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courses,
           studyVibes: vibes,
-          privacySettings: {}
+          privacySettings: {},
+          bio: updatedBio
         })
       });
     } catch (err) {
@@ -205,9 +206,9 @@ export default function Profile() {
                     {/* Save bio + backend */}
                     <button
                       onClick={async () => {
+                        await saveProfile(tempBio);   
                         setBio(tempBio);
                         setEditingBio(false);
-                        await saveProfile();   
                       }}
                       className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
                     >

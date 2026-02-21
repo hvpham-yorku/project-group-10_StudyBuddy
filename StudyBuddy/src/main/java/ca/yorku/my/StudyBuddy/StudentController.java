@@ -22,6 +22,25 @@ public class StudentController {
 	@Autowired
 	private SessionLogService sessionLogService;
 	
+	@PostMapping("/profile/update/{studentID}")
+	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequest req) throws Exception {
+		System.out.println("🔥 UPDATE ENDPOINT HIT for student " + studentID);
+    if (req.courses() != null) {
+        studentRepository.updateCourses(studentID, req.courses());
+    }
+
+    if (req.studyVibes() != null) {
+        studentRepository.updateStudyVibes(studentID, req.studyVibes());
+    }
+
+    if (req.privacySettings() != null) {
+        studentRepository.updatePrivacySettings(studentID, req.privacySettings());
+    }
+
+    if (req.bio() != null) {
+        studentRepository.updateBio(studentID, req.bio());
+    }
+}
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")
 	public ArrayList<Student> getAllStudents() {
