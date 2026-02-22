@@ -24,8 +24,10 @@ public class StubStudentRepository implements StudentRepository {
     // Saves the student to the stub database
     @Override
     public void saveStudent(Student student) throws Exception {
+    // Remove any existing student with same ID
+        StubDatabase.STUDENTS.removeIf(s -> s.getUserId().equals(student.getUserId()));
         StubDatabase.STUDENTS.add(student);
-    }
+}
 
     // Updates the courses a student is currently enrolled in
     @Override
@@ -54,13 +56,14 @@ public class StubStudentRepository implements StudentRepository {
         }
     }
 
+    @Override
     public void updateProgram(String userId, String program) throws Exception {
         Student student = getStudent(userId);
         if (student != null) {
             student.setProgram(program);
     }
 }
-
+    @Override
     public void updateYear(String userId, String year) throws Exception {
         Student student = getStudent(userId);
         if (student != null) {

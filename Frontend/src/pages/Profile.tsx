@@ -30,8 +30,9 @@ export default function Profile() {
   // STUDY VIBES
   const [vibes, setVibes] = useState<string[]>([]);
   const [editingVibes, setEditingVibes] = useState(false);
+  const [vibeInput, setVibeInput] = useState("");
 
-  // PROGRAM + YEAR 
+  // PROGRAM + YEAR
   const [program, setProgram] = useState("");
   const [year, setYear] = useState("");
 
@@ -51,8 +52,11 @@ export default function Profile() {
     if (c && !courses.includes(c)) setCourses((prev) => [...prev, c]);
     setCourseInput("");
   };
-  const toggleVibe = (v: string) => {
-    setVibes((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
+
+  const removeVibe = (v: string) => setVibes((prev) => prev.filter((x) => x !== v));
+  const addVibe = (v: string) => {
+    if (v && !vibes.includes(v)) setVibes((prev) => [...prev, v]);
+    setVibeInput("");
   };
 
   const vibeColors: Record<string, string> = {
@@ -95,19 +99,19 @@ export default function Profile() {
   }, []);
 
   // Save profile to backend
-  async function saveProfile(updatedBio?: string) {
+  async function saveProfile(payload: {
+    courses?: string[];
+    studyVibes?: string[];
+    bio?: string;
+    program?: string;
+    year?: string;
+  } = {}) {
+
     try {
       await fetch(`http://localhost:8080/api/studentcontroller/profile/update/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courses,
-          studyVibes: vibes,
-          privacySettings: {},
-          bio: updatedBio ?? bio,
-          program,
-          year
-        })
+        body: JSON.stringify(payload)
       });
     } catch (err) {
       console.error("Failed to save profile", err);
@@ -191,280 +195,290 @@ export default function Profile() {
                 <Edit2 size={14} />
                 Edit Profile
               </button>
+              {/* BIO EDITOR */}
+              {editingBio && (
+  <div className="mt-4">
+    <textarea
+      value={tempBio}
+      onChange={(e) => setTempBio(e.target.value)}
+      className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+      rows={3}
+    />
+
+    <div className="flex gap-3 mt-2">
+      <button
+        onClick={async () => {
+          await saveProfile({
+            courses,
+            studyVibes: vibes,
+            bio: tempBio,
+            program,
+            year
+          });
+          setBio(tempBio);
+          setEditingBio(false);
+        }}
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+      >
+        Save
+      </button>
+
+      <button
+        onClick={() => setEditingBio(false)}
+        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
             </div>
           </div>
 
           {/* INLINE EDITORS FOR PROGRAM + YEAR */}
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
 
-            {/* EDIT PROGRAM */}
-            {editingProgram ? (
-              <div className="flex items-center gap-2">
-                <input
-                  value={tempProgram}
-                  onChange={(e) => setTempProgram(e.target.value)}
-                  className="border p-2 rounded w-60"
-                />
-                <button
-                  onClick={async () => {
-                    setProgram(tempProgram);
-                    await saveProfile();
-                    setEditingProgram(false);
-                  }}
-                  className="px-3 py-1 bg-blue-600 text-white rounded"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setEditingProgram(false)}
-                  className="px-3 py-1 bg-gray-200 rounded"
-                >
-                  Cancel
-                </button>
+            {/* PROGRAM EDITOR */}
+            <div>
+              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                <GraduationCap size={14} className="text-blue-500" />
+                <span className="font-medium">Major</span>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setTempProgram(program);
-                  setEditingProgram(true);
-                }}
-                className="text-blue-600 underline text-sm"
-              >
-                Edit Major
-              </button>
-            )}
 
-            {/* EDIT YEAR */}
-            {editingYear ? (
-              <div className="flex items-center gap-2">
-                <select
-                  value={tempYear}
-                  onChange={(e) => setTempYear(e.target.value)}
-                  className="border p-2 rounded w-40"
-                >
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
-                </select>
+              {editingProgram ? (
+                <div className="flex items-center gap-3">
+                  <input
+                    value={tempProgram}
+                    onChange={(e) => setTempProgram(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
 
-                <button
-                  onClick={async () => {
-                    setYear(tempYear);
-                    await saveProfile();
-                    setEditingYear(false);
-                  }}
-                  className="px-3 py-1 bg-blue-600 text-white rounded"
-                >
-                  Save
-                </button>
-
-                <button
-                  onClick={() => setEditingYear(false)}
-                  className="px-3 py-1 bg-gray-200 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setTempYear(year);
-                  setEditingYear(true);
-                }}
-                className="text-blue-600 underline text-sm"
-              >
-                Edit Year
-              </button>
-            )}
-
-          </div>
-
-        </div>
-      </div>
-  
-
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
-            <div className="text-center">
-              <p className="text-slate-800" style={{ fontSize: "1.5rem", fontWeight: 700 }}>{currentUser.totalStudyHours}h</p>
-              <p className="text-xs text-slate-500">Total Study Time</p>
-            </div>
-            <div className="text-center border-x border-slate-100">
-              <p className="text-slate-800" style={{ fontSize: "1.5rem", fontWeight: 700 }}>{currentUser.totalSessions}</p>
-              <p className="text-xs text-slate-500">Sessions</p>
-            </div>
-            <div className="text-center">
-              <p className="text-slate-800" style={{ fontSize: "1.5rem", fontWeight: 700 }}>{sessionHistory.filter(s => s.role === "host").length}</p>
-              <p className="text-xs text-slate-500">Hosted</p>
-            </div>
-          </div>
-        
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-5 w-fit">
-        {(["overview", "log"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-lg text-sm transition-colors ${activeTab === tab ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-            style={{ fontWeight: activeTab === tab ? 600 : 400 }}
-          >
-            {tab === "overview" ? "Overview" : "Session Log"}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-          {/* Bio */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>About Me</h2>
-              <button onClick={() => { setTempBio(bio); setEditingBio(true); }} className="text-blue-500 hover:text-blue-600">
-                <Edit2 size={14} />
-              </button>
-            </div>
-            {editingBio ? (
-              <div>
-                <textarea
-                  value={tempBio}
-                  onChange={(e) => setTempBio(e.target.value.slice(0, 200))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                  placeholder="Write a short bio (max 200 characters)"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-slate-400">{tempBio.length}/200</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setEditingBio(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-
-                    {/* Save bio + backend */}
-                    <button
-                      onClick={async () => {
-                        await saveProfile(tempBio);   
-                        setBio(tempBio);
-                        setEditingBio(false);
-                      }}
-                      className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
-                    >
-                      <Check size={12} /> Save
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600 leading-relaxed">{bio || "No bio yet. Click edit to add one."}</p>
-            )}
-          </div>
-
-          {/* Study Vibes */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>Study Vibe</h2>
-              <button onClick={() => setEditingVibes(!editingVibes)} className="text-blue-500 hover:text-blue-600">
-                <Edit2 size={14} />
-              </button>
-            </div>
-            {editingVibes ? (
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  {studyVibeOptions.map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => toggleVibe(v)}
-                      className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${vibes.includes(v) ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300"}`}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Save vibes */}
-                <button
-                  onClick={async () => {
-                    setEditingVibes(false);
-                    await saveProfile();   
-                  }}
-                  className="mt-3 px-4 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
-                >
-                  <Check size={12} /> Done
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {vibes.map((v) => (
-                  <span key={v} className={`px-3 py-1.5 rounded-lg text-xs border ${vibeColors[v] || "bg-slate-50 text-slate-600 border-slate-200"}`} style={{ fontWeight: 500 }}>
-                    {v}
-                  </span>
-                ))}
-                {vibes.length === 0 && <p className="text-xs text-slate-400">No study vibes set. Click edit to add some.</p>}
-              </div>
-            )}
-          </div>
-
-          {/* My Courses */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>My Courses</h2>
-
-              {/* Save courses when finishing edit */}
-              <button
-                onClick={async () => {
-                  if (editingCourses) {
-                    await saveProfile();   
-                  }
-                  setEditingCourses(!editingCourses);
-                }}
-                className="text-blue-500 hover:text-blue-600"
-              >
-                {editingCourses ? <Check size={14} /> : <Edit2 size={14} />}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {courses.map((c) => (
-                <div
-                  key={c}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm"
-                  style={{ fontWeight: 500 }}
-                >
-                  <BookOpen size={12} />
-                  {c}
-                  {editingCourses && (
-                    <button onClick={() => removeCourse(c)} className="hover:text-red-500 ml-1 transition-colors">
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              {editingCourses && (
-                <div className="flex gap-2">
-                  <select
-                    value={courseInput}
-                    onChange={(e) => setCourseInput(e.target.value)}
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  <button
+                    onClick={async () => {
+                      await saveProfile({
+                        courses,
+                        studyVibes: vibes,
+                        bio,
+                        program: tempProgram,
+                        year
+                      });
+                      setProgram(tempProgram);                  
+                      setEditingProgram(false);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
                   >
-                    <option value="">Add a course...</option>
-                    {courseOptions.filter((c) => !courses.includes(c)).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    Save
+                  </button>
+
+                  <button
+                    onClick={() => setEditingProgram(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTempProgram(program);
+                    setEditingProgram(true);
+                  }}
+                  className="text-blue-600 text-sm underline hover:text-blue-700"
+                >
+                  Edit Major
+                </button>
+              )}
+            </div>
+
+            {/* YEAR EDITOR */}
+            <div>
+              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                <Star size={14} className="text-orange-400" />
+                <span className="font-medium">Year</span>
+              </div>
+
+              {editingYear ? (
+                <div className="flex items-center gap-3">
+                  <select
+                    value={tempYear}
+                    onChange={(e) => setTempYear(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 w-40 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
                   </select>
 
                   <button
-                    onClick={() => addCourse(courseInput)}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center gap-1"
+                    onClick={async () => {
+                      await saveProfile({
+                       courses,
+                       studyVibes: vibes,
+                       bio,
+                       program,
+                       year: tempYear        
+                       });
+                      setYear(tempYear);
+                      setEditingYear(false);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
                   >
-                    <Plus size={13} /> Add
+                    Save
+                  </button>
+
+                  <button
+                    onClick={() => setEditingYear(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+                  >
+                    Cancel
                   </button>
                 </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTempYear(year);
+                    setEditingYear(true);
+                  }}
+                  className="text-blue-600 text-sm underline hover:text-blue-700"
+                >
+                  Edit Year
+                </button>
               )}
             </div>
+
           </div>
 
         </div>
-      )}
+      </div>
+
+      {/* COURSES SECTION */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Courses</h2>
+
+        {/* Existing courses */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {courses.map((c) => (
+            <span
+              key={c}
+              className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-sm flex items-center gap-2"
+            >
+              {c}
+              <X
+                size={14}
+                className="cursor-pointer hover:text-blue-900"
+                onClick={() => removeCourse(c)}
+              />
+            </span>
+          ))}
+        </div>
+
+        {/* Add course (preset + custom) */}
+        <div className="flex items-center gap-3">
+          <select
+            onChange={(e) => addCourse(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
+          >
+            <option value="">Add preset course...</option>
+            {courseOptions.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+
+          <input
+            value={courseInput}
+            onChange={(e) => setCourseInput(e.target.value)}
+            placeholder="Custom course..."
+            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
+          />
+
+          <button
+            onClick={() => addCourse(courseInput)}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+          >
+            Add
+          </button>
+        </div>
+        <button
+           onClick={() =>
+            saveProfile({
+            courses,
+            studyVibes: vibes,
+            bio, 
+            program,
+            year
+      })
+  }
+  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+>
+  Save Changes
+</button>
+
+</div>
+
+      {/* STUDY VIBES SECTION */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Study Vibes</h2>
+
+        {/* Existing vibes */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {vibes.map((v) => (
+            <span
+              key={v}
+              className={`px-3 py-1 border rounded-full text-sm flex items-center gap-2 ${vibeColors[v] || "bg-slate-100 text-slate-700 border-slate-300"}`}
+            >
+              {v}
+              <X
+                size={14}
+                className="cursor-pointer hover:text-slate-900"
+                onClick={() => removeVibe(v)}
+              />
+            </span>
+          ))}
+        </div>
+
+        {/* Add vibe (preset + custom) */}
+        <div className="flex items-center gap-3">
+          <select
+            onChange={(e) => addVibe(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
+          >
+            <option value="">Add preset vibe...</option>
+            {studyVibeOptions.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+
+          <input
+            value={vibeInput}
+            onChange={(e) => setVibeInput(e.target.value)}
+            placeholder="Custom vibe..."
+            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
+          />
+
+          <button
+            onClick={() => addVibe(vibeInput)}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+          >
+            Add
+          </button>
+        </div>
+      <button
+        onClick={() =>
+          saveProfile({
+           courses,
+           studyVibes: vibes,
+           bio,
+           program,
+           year
+       })
+  }
+  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+>
+  Save Changes
+</button>
+
+</div>
     </div>
   );
 }
