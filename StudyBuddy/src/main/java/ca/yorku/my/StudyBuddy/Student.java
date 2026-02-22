@@ -5,12 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// This class creates the Student object which contains all the information related to a student
 public class Student {
 	
-	private String firstName;
-	private String lastName;
-	
 	// Registration & Schema Fields
+    private String firstName;
+	private String lastName;
     private String userId;      
     private String email;       
     private String fullName;    
@@ -63,17 +63,18 @@ public class Student {
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
 
-    // Other schema fields (left for the Profile pair)
     public String getProgram() { return program; }
     public void setProgram(String program) { this.program = program; }
+
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+
     public String getProfilePic() { return profilePic; }
     public void setProfilePic(String profilePic) { this.profilePic = profilePic; }
 
-    // original methods
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
+    
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
     

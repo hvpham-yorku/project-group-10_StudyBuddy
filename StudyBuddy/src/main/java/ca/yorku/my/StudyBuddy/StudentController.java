@@ -22,6 +22,7 @@ public class StudentController {
 	@Autowired
 	private SessionLogService sessionLogService;
 	
+	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database
 	@PostMapping("/profile/update/{studentID}")
 	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequest req) throws Exception {
     if (req.courses() != null) {
@@ -84,9 +85,8 @@ public class StudentController {
 		studentRepository.updatePrivacySettings(studentID, privacySettings);
 	}
 
-	/**
-	 * Get a student's session log (all events they have attended)
-	 */
+	
+	// Get a student's session log (all events they have attended)
 	@GetMapping("/getstudent/{studentId}/sessionlog")
 	public List<Event> getStudentSessionLog(@PathVariable String studentId) throws ExecutionException, InterruptedException {
 		// Find student by ID from StubDatabase
@@ -102,9 +102,8 @@ public class StudentController {
 		return sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
 	}
 	
-	/**
-	 * Get total study time (in minutes) for a student
-	 */
+	
+	// Get total study time (in minutes) for a student
 	@GetMapping("/getstudent/{studentId}/totalstudytime")
 	public long getTotalStudyTime(@PathVariable String studentId) throws ExecutionException, InterruptedException {
 		Student student = StubDatabase.STUDENTS.stream()
@@ -120,9 +119,8 @@ public class StudentController {
 		return sessionLogService.getTotalStudyMinutes(sessionLog);
 	}
 	
-	/**
-	 * Get student's session log filtered by course code
-	 */
+	
+	// Get student's session log filtered by course code
 	@GetMapping("/getstudent/{studentId}/sessionlog/course/{courseCode}")
 	public List<Event> getSessionLogByCourse(@PathVariable String studentId, @PathVariable String courseCode) 
 			throws ExecutionException, InterruptedException {
@@ -139,9 +137,8 @@ public class StudentController {
 		return sessionLogService.filterSessionLogByCourse(sessionLog, courseCode);
 	}
 	
-	/**
-	 * Mark a student as having attended an event
-	 */
+	
+	//Mark a student as having attended an event
 	@PostMapping("/getstudent/{studentId}/addeventtosessionlog/{eventId}")
 	public Boolean addEventToSessionLog(@PathVariable String studentId, @PathVariable String eventId) {
 		Student student = StubDatabase.STUDENTS.stream()

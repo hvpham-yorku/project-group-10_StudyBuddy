@@ -197,14 +197,13 @@ export default function Profile() {
               </button>
               {/* BIO EDITOR */}
               {editingBio && (
-  <div className="mt-4">
-    <textarea
-      value={tempBio}
-      onChange={(e) => setTempBio(e.target.value)}
-      className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
-      rows={3}
+              <div className="mt-4">
+                <textarea
+                 value={tempBio}
+                 onChange={(e) => setTempBio(e.target.value)}
+                 className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+                 rows={3}
     />
-
     <div className="flex gap-3 mt-2">
       <button
         onClick={async () => {

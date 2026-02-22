@@ -6,6 +6,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+
+// This class configures CORS settings to allow the React frontend to communicate with the Spring Boot backend without CORS issues
 public class WebConfig {
 
     @Bean

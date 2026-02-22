@@ -56,6 +56,7 @@ public class StubStudentRepository implements StudentRepository {
         }
     }
 
+    // Updates the program of a student based on their input
     @Override
     public void updateProgram(String userId, String program) throws Exception {
         Student student = getStudent(userId);
@@ -63,6 +64,8 @@ public class StubStudentRepository implements StudentRepository {
             student.setProgram(program);
     }
 }
+
+    // Updates the year of a student based on their input
     @Override
     public void updateYear(String userId, String year) throws Exception {
         Student student = getStudent(userId);
