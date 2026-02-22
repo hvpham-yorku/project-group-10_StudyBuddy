@@ -30,7 +30,6 @@ public class StubStudentRepository implements StudentRepository {
     // Updates the courses a student is currently enrolled in
     @Override
     public void updateCourses(String userId, List<String> courses) throws Exception {
-        System.out.println("🔥 Updating courses for " + userId + ": " + courses);
         Student student = getStudent(userId);
         if (student != null){
             student.setCourses(courses);
@@ -40,29 +39,38 @@ public class StubStudentRepository implements StudentRepository {
     // Updates the study vibe a student inputs in their profile
     @Override
     public void updateStudyVibes(String userId, List<String> studyVibes) throws Exception {
-                System.out.println("🔥 Updating study vibes for " + userId + ": " + studyVibes);
-
         Student student = getStudent(userId);
         if(student != null){
-        student.setStudyVibes(studyVibes);
+            student.setStudyVibes(studyVibes);
     }
 }
 
     // Updates the bio of a student based on their input
     @Override
     public void updateBio(String userId, String bio) throws Exception {
-                System.out.println("🔥 Updating bio for " + userId + ": " + bio);
-
         Student student = getStudent(userId);
-        student.setBio(bio);
+        if(student != null){
+            student.setBio(bio);
+        }
     }
 
+    public void updateProgram(String userId, String program) throws Exception {
+        Student student = getStudent(userId);
+        if (student != null) {
+            student.setProgram(program);
+    }
+}
+
+    public void updateYear(String userId, String year) throws Exception {
+        Student student = getStudent(userId);
+        if (student != null) {
+            student.setYear(year);
+    }
+}
 
     // Updates the privacy settings of a student based on their choices
     @Override
     public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
-                System.out.println("🔥 Updating privacy settings for " + userId + ": " + privacySettings);
-
         Student student = getStudent(userId);
         if(student != null){
         student.setPrivacySettings(privacySettings);

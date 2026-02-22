@@ -24,7 +24,6 @@ public class StudentController {
 	
 	@PostMapping("/profile/update/{studentID}")
 	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequest req) throws Exception {
-		System.out.println("🔥 UPDATE ENDPOINT HIT for student " + studentID);
     if (req.courses() != null) {
         studentRepository.updateCourses(studentID, req.courses());
     }
@@ -40,6 +39,14 @@ public class StudentController {
     if (req.bio() != null) {
         studentRepository.updateBio(studentID, req.bio());
     }
+
+	if (req.year() != null) {
+		studentRepository.updateYear(studentID, req.year());
+	}
+
+	if (req.program() != null) {
+		studentRepository.updateProgram(studentID, req.program());
+	}
 }
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")

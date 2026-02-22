@@ -7,5 +7,7 @@ public record UpdateProfileRequest(
         List<String> courses,
         List<String> studyVibes,
         Map<String, Boolean> privacySettings,
-        String bio
+        String bio,
+        String year,
+        String program
 ) {}

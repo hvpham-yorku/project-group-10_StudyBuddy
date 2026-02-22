@@ -17,6 +17,8 @@ public class Student {
     private String program;     
     private String bio;         
     private String profilePic;  
+    private String year;
+
 	
 	private List<String> courses = new ArrayList<>();
     private List<String> studyVibes = new ArrayList<>();
@@ -83,4 +85,7 @@ public class Student {
 
     public Map<String, Boolean> getPrivacySettings() { return privacySettings; }
     public void setPrivacySettings(Map<String, Boolean> privacySettings) { this.privacySettings = privacySettings; }
+
+    public String getYear() { return year; }
+    public void setYear(String year) { this.year = year; }
 }

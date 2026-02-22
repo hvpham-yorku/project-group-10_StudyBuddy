@@ -3,7 +3,7 @@
  * Renders the user's profile page and displays their information
  */
 
-import { useState, useEffect } from "react";   
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
@@ -17,14 +17,30 @@ export default function Profile() {
   const userId = "123"; // replace with real user ID
   const [loading, setLoading] = useState(true);
 
+  // BIO
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState("");
-  const [tempBio, setTempBio] = useState(currentUser.bio);
+  const [tempBio, setTempBio] = useState("");
+
+  // COURSES
   const [editingCourses, setEditingCourses] = useState(false);
   const [courses, setCourses] = useState<string[]>([]);
   const [courseInput, setCourseInput] = useState("");
+
+  // STUDY VIBES
   const [vibes, setVibes] = useState<string[]>([]);
   const [editingVibes, setEditingVibes] = useState(false);
+
+  // PROGRAM + YEAR 
+  const [program, setProgram] = useState("");
+  const [year, setYear] = useState("");
+
+  const [editingProgram, setEditingProgram] = useState(false);
+  const [editingYear, setEditingYear] = useState(false);
+
+  const [tempProgram, setTempProgram] = useState("");
+  const [tempYear, setTempYear] = useState("");
+
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
 
   const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
@@ -50,8 +66,6 @@ export default function Profile() {
     "Exam Prep": "bg-red-50 text-red-700 border-red-200",
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
-
   // Load profile from backend
   useEffect(() => {
     async function loadProfile() {
@@ -63,6 +77,13 @@ export default function Profile() {
         setTempBio(data.bio || "");
         setCourses(data.courses || []);
         setVibes(data.studyVibes || []);
+
+        setProgram(data.program || "");
+        setTempProgram(data.program || "");
+
+        setYear(data.year || "");
+        setTempYear(data.year || "");
+
       } catch (err) {
         console.error("Failed to load profile", err);
       } finally {
@@ -83,7 +104,9 @@ export default function Profile() {
           courses,
           studyVibes: vibes,
           privacySettings: {},
-          bio: updatedBio
+          bio: updatedBio ?? bio,
+          program,
+          year
         })
       });
     } catch (err) {
@@ -91,18 +114,21 @@ export default function Profile() {
     }
   }
 
-  if (loading) return <p className="p-6">Loading profile...</p>; 
+  if (loading) return <p className="p-6">Loading profile...</p>;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+
       {/* Profile Header Card */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-5">
+
         {/* Cover Banner */}
         <div className="h-28 bg-gradient-to-r from-blue-800 to-blue-700 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-800/80 to-orange-700/30"></div>
         </div>
 
         <div className="px-6 pb-6">
+
           {/* Avatar */}
           <div className="relative -mt-12 mb-4 w-fit">
             <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md overflow-hidden bg-blue-100">
@@ -115,22 +141,44 @@ export default function Profile() {
 
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
+
+              {/* Name + Status */}
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-slate-900" style={{ fontSize: "1.35rem", fontWeight: 700 }}>{currentUser.name}</h1>
+                <h1 className="text-slate-900" style={{ fontSize: "1.35rem", fontWeight: 700 }}>
+                  {currentUser.name}
+                </h1>
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                   <span className="text-xs text-green-600">Online</span>
                 </div>
               </div>
+
+              {/* Program + Year + Email */}
               <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-                <span className="flex items-center gap-1.5"><GraduationCap size={14} className="text-blue-500" />{currentUser.major}</span>
-                <span className="flex items-center gap-1.5"><Star size={14} className="text-orange-400" />{currentUser.year}</span>
-                <span className="flex items-center gap-1.5"><Mail size={14} className="text-slate-400" />{currentUser.email}</span>
+
+                {/* PROGRAM */}
+                <span className="flex items-center gap-1.5">
+                  <GraduationCap size={14} className="text-blue-500" />
+                  {program}
+                </span>
+
+                {/* YEAR */}
+                <span className="flex items-center gap-1.5">
+                  <Star size={14} className="text-orange-400" />
+                  {year}
+                </span>
+
+                <span className="flex items-center gap-1.5">
+                  <Mail size={14} className="text-slate-400" />
+                  {currentUser.email}
+                </span>
               </div>
+
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-500">
                 <MapPin size={14} className="text-slate-400" />
                 <span>{currentUser.location}</span>
               </div>
+
               <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
             </div>
 
@@ -145,6 +193,96 @@ export default function Profile() {
               </button>
             </div>
           </div>
+
+          {/* INLINE EDITORS FOR PROGRAM + YEAR */}
+          <div className="mt-4 space-y-3">
+
+            {/* EDIT PROGRAM */}
+            {editingProgram ? (
+              <div className="flex items-center gap-2">
+                <input
+                  value={tempProgram}
+                  onChange={(e) => setTempProgram(e.target.value)}
+                  className="border p-2 rounded w-60"
+                />
+                <button
+                  onClick={async () => {
+                    setProgram(tempProgram);
+                    await saveProfile();
+                    setEditingProgram(false);
+                  }}
+                  className="px-3 py-1 bg-blue-600 text-white rounded"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingProgram(false)}
+                  className="px-3 py-1 bg-gray-200 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setTempProgram(program);
+                  setEditingProgram(true);
+                }}
+                className="text-blue-600 underline text-sm"
+              >
+                Edit Major
+              </button>
+            )}
+
+            {/* EDIT YEAR */}
+            {editingYear ? (
+              <div className="flex items-center gap-2">
+                <select
+                  value={tempYear}
+                  onChange={(e) => setTempYear(e.target.value)}
+                  className="border p-2 rounded w-40"
+                >
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+
+                <button
+                  onClick={async () => {
+                    setYear(tempYear);
+                    await saveProfile();
+                    setEditingYear(false);
+                  }}
+                  className="px-3 py-1 bg-blue-600 text-white rounded"
+                >
+                  Save
+                </button>
+
+                <button
+                  onClick={() => setEditingYear(false)}
+                  className="px-3 py-1 bg-gray-200 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setTempYear(year);
+                  setEditingYear(true);
+                }}
+                className="text-blue-600 underline text-sm"
+              >
+                Edit Year
+              </button>
+            )}
+
+          </div>
+
+        </div>
+      </div>
+  
 
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
@@ -161,9 +299,7 @@ export default function Profile() {
               <p className="text-xs text-slate-500">Hosted</p>
             </div>
           </div>
-        </div>
-      </div>
-
+        
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-5 w-fit">
         {(["overview", "log"] as const).map((tab) => (

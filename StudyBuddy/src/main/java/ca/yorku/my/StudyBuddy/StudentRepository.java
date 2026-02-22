@@ -24,5 +24,9 @@ public interface StudentRepository {
     // Updates the bio of a student based on their input
     void updateBio(String userId, String bio) throws Exception;
 
+    // Updates the year of a student based on their input
+    void updateYear(String userId, String year) throws Exception;
 
+    // Updates the program of a student based on their input
+    void updateProgram(String userId, String program) throws Exception;
 }
