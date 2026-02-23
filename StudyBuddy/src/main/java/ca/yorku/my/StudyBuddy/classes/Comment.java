@@ -1,4 +1,4 @@
-package classes;
+package ca.yorku.my.StudyBuddy.classes;
 
 public class Comment {
 	private String id;

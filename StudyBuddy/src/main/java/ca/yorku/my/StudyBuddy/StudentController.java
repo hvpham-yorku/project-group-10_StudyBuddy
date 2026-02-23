@@ -5,9 +5,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import classes.Student;
-import dtos.StudentDTO;
-import services.StudentService;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.dtos.StudentDTO;
+import ca.yorku.my.StudyBuddy.services.StudentService;
 
 import java.util.ArrayList;
 import java.util.List;

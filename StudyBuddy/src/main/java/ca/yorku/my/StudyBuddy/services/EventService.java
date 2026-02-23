@@ -1,4 +1,4 @@
-package services;
+package ca.yorku.my.StudyBuddy.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
@@ -8,7 +8,7 @@ import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
-import classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Event;
 
 import org.springframework.stereotype.Service;
 
@@ -37,7 +37,7 @@ public class EventService {
         DocumentReference docRef = future.get();
 
         // Stores the generated ID back into the event object
-        event.setEventId(docRef.getId());
+        event.setId(docRef.getId());
 
         // Updates the stored document so it contains eventId too
         docRef.set(event).get();
@@ -56,7 +56,7 @@ public class EventService {
         List<Event> events = new ArrayList<>();
         for (QueryDocumentSnapshot doc : documents) {
             Event event = doc.toObject(Event.class);
-            event.setEventId(doc.getId());
+            event.setId(doc.getId());
             events.add(event);
         }
 
@@ -75,7 +75,7 @@ public class EventService {
         }
 
         Event event = doc.toObject(Event.class);
-        if (event != null && event.getHostId().equals(userId)) {
+        if (event != null && event.getHost().equals(userId)) {
             docRef.delete().get();
             return true;
         }

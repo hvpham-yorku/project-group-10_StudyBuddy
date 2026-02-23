@@ -1,4 +1,4 @@
-package services;
+package ca.yorku.my.StudyBuddy.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
@@ -8,7 +8,7 @@ import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
-import classes.Student;
+import ca.yorku.my.StudyBuddy.classes.Student;
 
 import org.springframework.stereotype.Service;
 

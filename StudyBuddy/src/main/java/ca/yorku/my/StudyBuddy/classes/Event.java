@@ -1,4 +1,4 @@
-package classes;
+package ca.yorku.my.StudyBuddy.classes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -6,7 +6,7 @@ import java.util.List;
 // NOTE: This complete matches the EventResponseDTO
 // Despite this, Event.java is kept this way for architectural purposes
 
-public class Event{
+public class Event {
 	private String id;
 	private String title;
 	private String courses;
@@ -20,7 +20,28 @@ public class Event{
 	private String[] attendees;
 	private String[] tags;
 	private String status;
+	
+	// Reviews need to be populated by the controller
 	private Reviews[] reviews;
+	
+	public Event(String id, String title, String courses, String host, String location, String date, String time,
+			int duration, String description, int maxParticipants, String[] attendees, String[] tags, String status,
+			Reviews[] reviews) {
+		this.id = id;
+		this.title = title;
+		this.courses = courses;
+		this.host = host;
+		this.location = location;
+		this.date = date;
+		this.time = time;
+		this.duration = duration;
+		this.description = description;
+		this.maxParticipants = maxParticipants;
+		this.attendees = attendees;
+		this.tags = tags;
+		this.status = status;
+		this.reviews = reviews;
+	}
 	
 	// Getters //
 	public String getId() {

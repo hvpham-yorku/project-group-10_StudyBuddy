@@ -1,8 +1,8 @@
-package dtos;
+package ca.yorku.my.StudyBuddy.dtos;
 
 import java.util.List;
 
-import classes.Reviews;
+import ca.yorku.my.StudyBuddy.classes.Reviews;
 
 // These fields are required from the frontend.
 // None of this information is confidential except maybe

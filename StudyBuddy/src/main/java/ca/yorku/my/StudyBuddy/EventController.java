@@ -5,9 +5,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import classes.Event;
-import dtos.EventResponseDTO;
-import services.EventService;
+import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
+import ca.yorku.my.StudyBuddy.services.EventService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,23 +34,27 @@ public class EventController {
         try {
         	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
         	Event newEvent = new Event(
-        		eventDTO.hostId(),
+        		eventDTO.id(),
         		eventDTO.title(),
-        		eventDTO.course(),
+        		eventDTO.courses(),
+        		eventDTO.host(),
         		eventDTO.location(),
-        		eventDTO.description(),
         		eventDTO.date(),
-        		"TBD",
-        		eventDTO.maxParticipants()
+        		eventDTO.time(),
+        		eventDTO.duration(),
+        		eventDTO.description(),
+        		eventDTO.maxParticipants(),
+        		eventDTO.attendees(),
+        		eventDTO.tags(),
+        		eventDTO.status(),
+        		eventDTO.reviews()
         	);
         	
         	// 2. Store the event in firebase
         	eventService.createEvent(newEvent);
         		
-        	// X. Print it back to user to indicate success
+        	// 3. Print it back to user to indicate success
         	return ResponseEntity.status(HttpStatus.CREATED).body(eventDTO);
-            //Event createdEvent = eventService.createEvent(event);
-            // return ResponseEntity.status(HttpStatus.CREATED).body(createdEvent);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -70,23 +74,20 @@ public class EventController {
             // 3. Loop through each event, get the host details, and create a DTO for each event
             for (Event event : events) {
                 EventResponseDTO dto = new EventResponseDTO(
-                    event.getEventId(), 				// id
-                    event.getTitle(),					// title
-                    event.getCourse(),			// course
-                    event.getLocation(),		// location
-                    event.getDescription(), //description
-                    //status=event.getStatus(),
-                    "Placeholder status",		//status
-                    "", // date
-                    "", // time
-                    0, //duration
-                    event.getMaxCapacity(), // maxParticipants
-                    event.getParticipantIds(), // attendees
-                    List.of("Placeholder tag 1", "Placeholder tag 2"), // tags
-                    List.of("Placeholder review 1", "Placeholder review 2"), // reviews
-                    event.getHostId(), // hostId
-                    "Placeholder name",  // hostName
-                    "Placeholder avatar" // hostAvatar
+                	event.getId(),
+                	event.getTitle(),
+                	event.getCourses(),
+                	event.getHost(),
+                	event.getLocation(),
+                	event.getDate(),
+                	event.getTime(),
+                	event.getDuration(),
+                	event.getDescription(),
+                	event.getMaxParticipants(),
+                	event.getAttendees(),
+                	event.getTags(),
+                	event.getStatus(),
+                	event.getReviews()
                 );
                 eventDTOs.add(dto);
             }
