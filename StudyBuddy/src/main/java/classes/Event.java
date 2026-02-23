@@ -3,165 +3,113 @@ import java.util.ArrayList;
 import java.util.List;
 
 // This class represents an event that students can create and join.
+// NOTE: This complete matches the EventResponseDTO
+// Despite this, Event.java is kept this way for architectural purposes
 
 public class Event{
-
-    // Variable Declaration for the event class
-    private String eventId;
-    private String hostId; 
-    private String title;
-    private String course;
-    private String location;
-    private String description;
-    // Keep time as String for easier comparison, sorting, and serialization with Firestore. We can use a specific format like "yyyy-MM-dd HH:mm" for consistency.
-    private String startTime;
-    private String startDate;
-    private int maxCapacity;
-    private int duration;
-    // Used List<String> to store participantIds for easier management of participants for each event.
-    private List<String> participantIds;
-    private List<String> tags;
-    private List<String> reviews;
-    
-
-    // Default constructor for the Event class. Used for Firebase SDK.
-    public Event(){
-        
-        participantIds = new ArrayList<>();
-
-    }
-
-    // Constructor for the Event class
-	public Event(String hostId, String title, String course, String location, String description,
-	             String startTime, String endTime, int maxCapacity) {
-	    this.hostId = hostId;
-	    this.title = title;
-	    this.course = course;
-	    this.location = location;
-	    this.description = description;
-	    this.startTime = startTime;
-	    this.maxCapacity = maxCapacity;
-	    this.participantIds = new ArrayList<>();
+	private String id;
+	private String title;
+	private String courses;
+	private String host;
+	private String location;
+	private String date;
+	private String time;
+	private int duration;
+	private String description;
+	private int maxParticipants;
+	private String[] attendees;
+	private String[] tags;
+	private String status;
+	private Reviews[] reviews;
+	
+	// Getters //
+	public String getId() {
+		return id;
 	}
-
-    public String getEventId(){
-        return this.eventId;   
-    }
-
-    public String getHostId(){
-        return this.hostId;   
-    }
-
-    public String getTitle(){
-        return this.title;   
-    }
-
-    public String getCourse(){
-        return this.course;   
-    }
-
-    public String getLocation(){
-        return this.location;   
-    }
-
-    public String getDescription(){
-        return this.description;   
-    }
-
-    public String getStartTime(){
-        return this.startTime;   
-    }
-
-    public int getMaxCapacity(){
-        return this.maxCapacity;   
-    }
-
-    public List<String> getParticipantIds(){
-        return this.participantIds;   
-    }
-
-    // Setter Methods for the Event class.
-
-    public void setEventId(String eventId){
-        this.eventId = eventId;
-    }
-
-    public void setHostId(String hostId){
-        this.hostId = hostId;
-    }
-
-    public void setTitle(String title){
-        this.title = title;
-    }
-
-    public void setCourse(String course){
-        this.course = course;
-    }
-
-    public void setLocation(String location)
-    {
-        this.location = location;
-    }
-
-    public void setDescription(String description){
-        this.description = description;
-    }
-
-    public void setStartTime(String startTime){
-        this.startTime = startTime;
-    }
-
-    public void setMaxCapacity(int maxCapacity){
-        this.maxCapacity = maxCapacity;
-    }
-
-    public void setParticipantIds(List<String> participantIds) {
-        this.participantIds = participantIds;
-    }
-
-    public void removeParticipant(String participantId ){ 
-
-        if(this.participantIds.contains(participantId)){
-            this.participantIds.remove(participantId);
-        }else{
-
-            // Handle the case where the participant is not in the event. We can just print a message for now.
-            System.out.println("Cannot remove participant. Participant is not in the event.");
-
-        }
-    }
-
-	public String getStartDate() {
-		return startDate;
+	public String getTitle() {
+		return title;
 	}
-
-	public void setStartDate(String startDate) {
-		this.startDate = startDate;
+	public String getCourses() {
+		return courses;
 	}
-
+	public String getHost() {
+		return host;
+	}
+	public String getLocation() {
+		return location;
+	}
+	public String getDate() {
+		return date;
+	}
+	public String getTime() {
+		return time;
+	}
 	public int getDuration() {
 		return duration;
 	}
-
+	public String getDescription() {
+		return description;
+	}
+	public int getMaxParticipants() {
+		return maxParticipants;
+	}
+	public String[] getAttendees() {
+		return attendees;
+	}
+	public String[] getTags() {
+		return tags;
+	}
+	public String getStatus() {
+		return status;
+	}
+	public Reviews[] getReviews() {
+		return reviews;
+	}
+	
+	// Setters //
+	public void setId(String id) {
+		this.id = id;
+	}
+	public void setTitle(String title) {
+		this.title = title;
+	}
+	public void setCourses(String courses) {
+		this.courses = courses;
+	}
+	public void setHost(String host) {
+		this.host = host;
+	}
+	public void setLocation(String location) {
+		this.location = location;
+	}
+	public void setDate(String date) {
+		this.date = date;
+	}
+	public void setTime(String time) {
+		this.time = time;
+	}
 	public void setDuration(int duration) {
 		this.duration = duration;
 	}
-
-	public List<String> getTags() {
-		return tags;
+	public void setDescription(String description) {
+		this.description = description;
 	}
-
-	public void setTags(List<String> tags) {
+	public void setMaxParticipants(int maxParticipants) {
+		this.maxParticipants = maxParticipants;
+	}
+	public void setAttendees(String[] attendees) {
+		this.attendees = attendees;
+	}
+	public void setTags(String[] tags) {
 		this.tags = tags;
 	}
-
-	public List<String> getReviews() {
-		return reviews;
+	public void setStatus(String status) {
+		this.status = status;
 	}
-
-	public void setReviews(List<String> reviews) {
+	public void setReviews(Reviews[] reviews) {
 		this.reviews = reviews;
 	}
-
-
-    } // End of event class.
+	
+	
+	
+}
