@@ -3,7 +3,7 @@
  * Page for browsing, searching, and filtering study sessions.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, CalendarDays, Clock, MapPin, Users,
@@ -30,17 +30,6 @@ export default function Events() {
   const [joinedEvents, setJoinedEvents] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Retrieve the information from the backend
-  const [events, setEvents] = useState<any[]>([]);
-  useEffect(() => {
-    fetch("http://localhost:8080/api/events")
-      .then(response => response.json())
-      .then(data => {
-        setEvents(data); // This triggers a re-render with your real data!
-      })
-      .catch(error => console.error("Error fetching events:", error));
-  }, []);
-
   const uniqueCourses = ["All", ...Array.from(new Set(events.map((e) => e.course)))];
 
   const filtered = events.filter((ev) => {
@@ -63,7 +52,7 @@ export default function Events() {
     );
   };
 
-  const isMyEvent = (ev: any) => ev.hostId === currentUser.id;
+  const isMyEvent = (ev: typeof events[0]) => ev.host.id === currentUser.id;
   const isJoined = (id: string) => joinedEvents.includes(id);
 
   return (
@@ -242,15 +231,15 @@ export default function Events() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-blue-100 overflow-hidden">
-                      {ev.hostAvatar ? (
-                        <img src={ev.hostAvatar} alt={ev.hostName} className="w-full h-full object-cover" />
+                      {ev.host.avatar ? (
+                        <img src={ev.host.avatar} alt={ev.host.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "10px", fontWeight: 700 }}>
-                          {ev.hostName ? ev.hostName.charAt(0) : "?"}
+                          {ev.host.name.charAt(0)}
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-slate-500">by <span style={{ fontWeight: 600 }} className="text-slate-700">{ev.hostName}</span></span>
+                    <span className="text-xs text-slate-500">by <span style={{ fontWeight: 600 }} className="text-slate-700">{ev.host.name}</span></span>
                   </div>
 
                   {ev.status === "upcoming" && !isMyEvent(ev) && (
