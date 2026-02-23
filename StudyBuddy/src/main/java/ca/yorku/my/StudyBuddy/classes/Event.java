@@ -24,6 +24,11 @@ public class Event {
 	// Reviews need to be populated by the controller
 	private Reviews[] reviews;
 	
+	// Required for deserialization purposes with Firebase.
+	public Event() {
+		
+	}
+	
 	public Event(String id, String title, String courses, String host, String location, String date, String time,
 			int duration, String description, int maxParticipants, String[] attendees, String[] tags, String status,
 			Reviews[] reviews) {
