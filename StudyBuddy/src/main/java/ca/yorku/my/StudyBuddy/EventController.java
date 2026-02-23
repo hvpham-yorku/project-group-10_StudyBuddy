@@ -97,7 +97,7 @@ public class EventController {
 
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
-            @PathVariable String eventId,k
+            @PathVariable String eventId,
             @RequestParam String userId) {
         try {
             boolean deleted = eventService.deleteEvent(eventId, userId);
