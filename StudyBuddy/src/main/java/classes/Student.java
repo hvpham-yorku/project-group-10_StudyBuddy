@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package classes;
 
 import java.util.ArrayList;
 import java.util.List;

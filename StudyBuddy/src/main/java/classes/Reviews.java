@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package classes;
 
 // TODO: Make associated DTO; Currently sent raw from middle layer instead
 // of being processed.

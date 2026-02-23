@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package dtos;
 
 import java.util.List;
 
