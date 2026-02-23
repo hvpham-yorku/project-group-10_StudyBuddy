@@ -48,6 +48,7 @@ public class StudentController {
 	if (req.program() != null) {
 		studentRepository.updateProgram(studentID, req.program());
 	}
+	
 }
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")

@@ -46,6 +46,14 @@ export default function Profile() {
   const [profilePic, setProfilePic] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // PRIVACY SETTINGS
+  const [showBio, setShowBio] = useState(true);
+  const [showProgram, setShowProgram] = useState(true);
+  const [showYear, setShowYear] = useState(true);
+  const [showCourses, setShowCourses] = useState(true);
+  const [showStudyVibes, setShowStudyVibes] = useState(true);
+  const [showEmail, setShowEmail] = useState(true);
+
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
 
   const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
@@ -94,6 +102,13 @@ export default function Profile() {
 
         setProfilePic(data.profilePic || "");
 
+        setShowBio(data.showBio ?? true);
+        setShowProgram(data.showProgram ?? true);
+        setShowYear(data.showYear ?? true);
+        setShowCourses(data.showCourses ?? true);
+        setShowStudyVibes(data.showStudyVibes ?? true);
+        setShowEmail(data.showEmail ?? true);
+
       } catch (err) {
         console.error("Failed to load profile", err);
       } finally {
@@ -112,6 +127,12 @@ export default function Profile() {
     program?: string;
     year?: string;
     profilePic?: string;
+    showBio?: boolean;
+    showCourses?: boolean;
+    showStudyVibes?: boolean;
+    showProgram?: boolean;
+    showYear?: boolean;
+    showEmail?: boolean;
   } = {}) {
 
     try {
@@ -243,14 +264,14 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
           className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
           onClick={() => !editingBio && setEditingBio(true)}
         >
-          {/* DISPLAY MODE */}
+          {/* DISPLAY BIO */}
           {!editingBio && (
             <p className="text-slate-700 whitespace-pre-line">
               {bio || "No bio added yet."}
             </p>
           )}
 
-              {/* EDIT MODE */}
+              {/* EDIT BIO */}
               {editingBio && (
                 <div>
                   <textarea
@@ -292,6 +313,87 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
     </div>
   )}
 </div>
+
+                {/* PRIVACY SETTINGS CARD */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-3">Privacy Settings</h2>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Bio</span>
+                    <input
+                      type="checkbox"
+                      checked={showBio}
+                      onChange={(e) => setShowBio(e.target.checked)}
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Major</span>
+                    <input
+                      type="checkbox"
+                      checked={showProgram}
+                      onChange={(e) => setShowProgram(e.target.checked)}
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Year</span>
+                    <input
+                      type="checkbox"
+                      checked={showYear}
+                      onChange={(e) => setShowYear(e.target.checked)}
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Courses</span>
+                    <input
+                      type="checkbox"
+                      checked={showCourses}
+                      onChange={(e) => setShowCourses(e.target.checked)}
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Study Vibes</span>
+                    <input
+                      type="checkbox"
+                      checked={showStudyVibes}
+                      onChange={(e) => setShowStudyVibes(e.target.checked)}
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Email</span>
+                    <input
+                      type="checkbox"
+                      checked={showEmail}
+                      onChange={(e) => setShowEmail(e.target.checked)}
+                    />
+                  </label>
+
+                  <button
+                    onClick={() =>
+                      saveProfile({
+                        courses,
+                        studyVibes: vibes,
+                        bio,
+                        program,
+                        year,
+                        showBio,
+                        showProgram,
+                        showYear,
+                        showCourses,
+                        showStudyVibes,
+                        showEmail
+                      })
+                    }
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+                  >
+                    Save Privacy Settings
+                  </button>
+                </div>
+
           {/* INLINE EDITORS FOR PROGRAM + YEAR */}
           <div className="mt-4 space-y-4">
 

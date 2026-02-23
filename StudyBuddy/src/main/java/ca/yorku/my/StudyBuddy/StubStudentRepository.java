@@ -76,12 +76,29 @@ public class StubStudentRepository implements StudentRepository {
 
     // Updates the privacy settings of a student based on their choices
     @Override
-    public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
-        Student student = getStudent(userId);
-        if(student != null){
-        student.setPrivacySettings(privacySettings);
-        }
-    }
+public void updatePrivacySettings(String studentID, Map<String, Boolean> privacySettings) throws Exception {
+    Student student = getStudent(studentID);
+    if (student == null) return;
+
+    if (privacySettings.containsKey("showBio"))
+        student.setShowBio(privacySettings.get("showBio"));
+
+    if (privacySettings.containsKey("showProgram"))
+        student.setShowProgram(privacySettings.get("showProgram"));
+
+    if (privacySettings.containsKey("showYear"))
+        student.setShowYear(privacySettings.get("showYear"));
+
+    if (privacySettings.containsKey("showCourses"))
+        student.setShowCourses(privacySettings.get("showCourses"));
+
+    if (privacySettings.containsKey("showStudyVibes"))
+        student.setShowStudyVibes(privacySettings.get("showStudyVibes"));
+
+    if (privacySettings.containsKey("showEmail"))
+        student.setShowEmail(privacySettings.get("showEmail"));
+}
+    
 
     @Override
     public void updateProfilePic(String userId, String profilePic) throws Exception {

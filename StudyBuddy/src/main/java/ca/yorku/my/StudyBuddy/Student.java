@@ -18,7 +18,12 @@ public class Student {
     private String bio;         
     private String profilePic;  
     private String year;
-
+    private boolean showBio = true;
+    private boolean showCourses = true;
+    private boolean showStudyVibes = true;
+    private boolean showProgram = true;
+    private boolean showYear = true;
+    private boolean showEmail = true;
 	
 	private List<String> courses = new ArrayList<>();
     private List<String> studyVibes = new ArrayList<>();
@@ -93,4 +98,22 @@ public class Student {
 
     public String getYear() { return year; }
     public void setYear(String year) { this.year = year; }
+
+    public boolean isShowBio() { return showBio; }
+    public void setShowBio(boolean showBio) { this.showBio = showBio; }
+
+    public boolean isShowCourses() { return showCourses; }
+    public void setShowCourses(boolean showCourses) { this.showCourses = showCourses; }
+
+    public boolean isShowStudyVibes() { return showStudyVibes; }
+    public void setShowStudyVibes(boolean showStudyVibes) { this.showStudyVibes = showStudyVibes; }
+
+    public boolean isShowProgram() { return showProgram; }
+    public void setShowProgram(boolean showProgram) { this.showProgram = showProgram; }
+
+    public boolean isShowYear() { return showYear; }
+    public void setShowYear(boolean showYear) { this.showYear = showYear; }
+
+    public boolean isShowEmail() { return showEmail; }
+    public void setShowEmail(boolean showEmail) { this.showEmail = showEmail; }
 }
