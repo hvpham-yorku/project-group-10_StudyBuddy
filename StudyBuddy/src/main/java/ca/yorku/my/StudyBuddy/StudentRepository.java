@@ -29,4 +29,7 @@ public interface StudentRepository {
 
     // Updates the program of a student based on their input
     void updateProgram(String userId, String program) throws Exception;
+
+    // Updates the profile picture of a student based on their input
+    void updateProfilePic(String userId, String profilePic) throws Exception;
 }

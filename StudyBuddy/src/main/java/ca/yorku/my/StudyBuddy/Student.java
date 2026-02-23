@@ -50,6 +50,10 @@ public class Student {
         this.courses = new ArrayList<>();
         this.studyVibes = new ArrayList<>();
         this.privacySettings = new HashMap<>();
+        this.bio = "";
+        this.program = "";
+        this.year = "";
+        this.profilePic = "";
     }
 
 

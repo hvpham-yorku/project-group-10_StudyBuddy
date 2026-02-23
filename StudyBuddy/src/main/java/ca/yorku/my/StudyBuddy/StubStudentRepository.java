@@ -82,4 +82,12 @@ public class StubStudentRepository implements StudentRepository {
         student.setPrivacySettings(privacySettings);
         }
     }
+
+    @Override
+    public void updateProfilePic(String userId, String profilePic) throws Exception {
+        Student student = getStudent(userId);
+        if(student != null){
+            student.setProfilePic(profilePic);
+        }
+    }
 }

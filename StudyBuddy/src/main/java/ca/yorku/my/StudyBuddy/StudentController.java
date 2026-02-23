@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutionException;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT})
 
 // This class allows for the student information to be accessed and modified through API calls
 public class StudentController {
@@ -153,4 +153,10 @@ public class StudentController {
 		sessionLogService.addEventToSessionLog(student, eventId);
 		return true;
 	}
+
+	@PutMapping("/{studentID}/profile-picture")
+	public void updateProfilePicture(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
+    	String newUrl = body.get("profilePic");
+    	studentRepository.updateProfilePic(studentID, newUrl);
+}
 }

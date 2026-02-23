@@ -3,7 +3,7 @@
  * Renders the user's profile page and displays their information
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
@@ -42,6 +42,10 @@ export default function Profile() {
   const [tempProgram, setTempProgram] = useState("");
   const [tempYear, setTempYear] = useState("");
 
+  // PROFILE PIC
+  const [profilePic, setProfilePic] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
 
   const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
@@ -88,6 +92,8 @@ export default function Profile() {
         setYear(data.year || "");
         setTempYear(data.year || "");
 
+        setProfilePic(data.profilePic || "");
+
       } catch (err) {
         console.error("Failed to load profile", err);
       } finally {
@@ -105,6 +111,7 @@ export default function Profile() {
     bio?: string;
     program?: string;
     year?: string;
+    profilePic?: string;
   } = {}) {
 
     try {
@@ -117,6 +124,33 @@ export default function Profile() {
       console.error("Failed to save profile", err);
     }
   }
+
+function handleProfilePicClick() {
+  fileInputRef.current?.click();
+}
+
+async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // Read file 
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    const base64 = reader.result as string;
+
+    // Send to backend
+    await fetch(`http://localhost:8080/api/studentcontroller/${userId}/profile-picture`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePic: base64 })
+    });
+
+    // Update UI immediately
+    setProfilePic(base64);
+  };
+
+  reader.readAsDataURL(file);
+}
 
   if (loading) return <p className="p-6">Loading profile...</p>;
 
@@ -134,13 +168,20 @@ export default function Profile() {
         <div className="px-6 pb-6">
 
           {/* Avatar */}
-          <div className="relative -mt-12 mb-4 w-fit">
-            <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md overflow-hidden bg-blue-100">
-              <img src={currentUser.avatar} alt="profile" className="w-full h-full object-cover" />
-            </div>
-            <button className="absolute bottom-0 right-0 w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center shadow border-2 border-white hover:bg-orange-600 transition-colors">
-              <Camera size={13} className="text-white" />
-            </button>
+          <div className="relative w-24 h-24">
+            <img
+            src={profilePic || "/default-avatar.png"}
+            onClick={handleProfilePicClick}
+            className="w-24 h-24 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
+          />
+
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleProfilePicChange}
+              className="hidden"
+            />
           </div>
 
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -185,7 +226,7 @@ export default function Profile() {
 
               <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
             </div>
-
+             {/* Edit Profile Button */}
             <div className="flex gap-2">
               <button
                 onClick={() => setEditingBio(true)}
@@ -195,45 +236,62 @@ export default function Profile() {
                 <Edit2 size={14} />
                 Edit Profile
               </button>
-              {/* BIO EDITOR */}
-              {editingBio && (
-              <div className="mt-4">
-                <textarea
-                 value={tempBio}
-                 onChange={(e) => setTempBio(e.target.value)}
-                 className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
-                 rows={3}
-    />
-    <div className="flex gap-3 mt-2">
-      <button
-        onClick={async () => {
-          await saveProfile({
-            courses,
-            studyVibes: vibes,
-            bio: tempBio,
-            program,
-            year
-          });
-          setBio(tempBio);
-          setEditingBio(false);
-        }}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-      >
-        Save
-      </button>
-
-      <button
-        onClick={() => setEditingBio(false)}
-        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
             </div>
-          </div>
+          </div><br></br>
+                    <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2> 
+          {/* BIO CARD */} <div
+          className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
+          onClick={() => !editingBio && setEditingBio(true)}
+        >
+          {/* DISPLAY MODE */}
+          {!editingBio && (
+            <p className="text-slate-700 whitespace-pre-line">
+              {bio || "No bio added yet."}
+            </p>
+          )}
 
+              {/* EDIT MODE */}
+              {editingBio && (
+                <div>
+                  <textarea
+                    value={tempBio}
+                    onChange={(e) => setTempBio(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                  />
+
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={async () => {
+                        await saveProfile({
+                          courses,
+                          studyVibes: vibes,
+                          bio: tempBio,
+                          program,
+                          year,
+                          profilePic
+                        });
+                        setBio(tempBio);
+                        setEditingBio(false);
+                      }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save
+        </button>
+
+        <button
+          onClick={() => {
+            setTempBio(bio);
+            setEditingBio(false);
+          }}
+          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
+</div>
           {/* INLINE EDITORS FOR PROGRAM + YEAR */}
           <div className="mt-4 space-y-4">
 

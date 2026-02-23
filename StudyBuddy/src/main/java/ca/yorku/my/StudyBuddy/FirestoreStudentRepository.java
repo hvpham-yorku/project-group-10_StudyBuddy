@@ -68,4 +68,9 @@ public class FirestoreStudentRepository implements StudentRepository {
     public void updateProgram(String userId, String program) throws Exception {
         db.collection("students").document(userId).update("program", program).get();
     }
+
+    @Override
+    public void updateProfilePic(String userId, String profilePic) throws Exception {
+        db.collection("students").document(userId).update("profilePic", profilePic).get();
+}
 }

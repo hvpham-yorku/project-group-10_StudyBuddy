@@ -11,4 +11,5 @@ public record UpdateProfileRequest(
         String bio,
         String year,
         String program
+        
 ) {}
