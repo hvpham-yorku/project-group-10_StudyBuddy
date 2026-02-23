@@ -10,6 +10,6 @@ public record UpdateProfileRequest(
         Map<String, Boolean> privacySettings,
         String bio,
         String year,
-        String program
-        
+        String program,
+        String profilePic
 ) {}

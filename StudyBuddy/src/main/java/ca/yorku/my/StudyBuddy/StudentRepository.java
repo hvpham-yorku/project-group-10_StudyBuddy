@@ -6,7 +6,7 @@ import java.util.Map;
 // This interface creates methods that allow for information in student database
 public interface StudentRepository {
 
-    // Retrieves student by their ID, if they exist, otherwise throws an exception
+    // Retrieves student by their ID if they exist, otherwise throws an exception
     Student getStudent(String userId) throws Exception;
 
     // Saves a student to the database using their ID

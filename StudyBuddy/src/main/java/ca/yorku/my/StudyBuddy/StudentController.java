@@ -139,7 +139,7 @@ public class StudentController {
 	}
 	
 	
-	//Mark a student as having attended an event
+	// Mark a student as having attended an event 
 	@PostMapping("/getstudent/{studentId}/addeventtosessionlog/{eventId}")
 	public Boolean addEventToSessionLog(@PathVariable String studentId, @PathVariable String eventId) {
 		Student student = StubDatabase.STUDENTS.stream()
@@ -155,6 +155,7 @@ public class StudentController {
 		return true;
 	}
 
+	// This method allows for a student's profile picture to be updated in the database through an API call
 	@PutMapping("/{studentID}/profile-picture")
 	public void updateProfilePicture(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
     	String newUrl = body.get("profilePic");

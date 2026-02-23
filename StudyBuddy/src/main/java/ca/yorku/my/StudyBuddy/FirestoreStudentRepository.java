@@ -59,16 +59,19 @@ public class FirestoreStudentRepository implements StudentRepository {
         db.collection("students").document(userId).update("privacySettings", privacySettings).get();
     }
 
+    // Updates the profile picture of a student based on their input
     @Override
     public void updateYear(String userId, String year) throws Exception {
         db.collection("students").document(userId).update("year", year).get();
     }
 
+    // Updates the program of a student based on their input
     @Override
     public void updateProgram(String userId, String program) throws Exception {
         db.collection("students").document(userId).update("program", program).get();
     }
 
+    // Updates the profile picture of a student based on their input
     @Override
     public void updateProfilePic(String userId, String profilePic) throws Exception {
         db.collection("students").document(userId).update("profilePic", profilePic).get();
