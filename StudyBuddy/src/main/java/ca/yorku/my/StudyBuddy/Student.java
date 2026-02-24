@@ -119,9 +119,6 @@ public class Student {
     public String getYear() { return year; }
     public void setYear(String year) { this.year = year; }
 
-   public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
-
     public int getTotalStudyHours() { return totalStudyHours; }
     public void setTotalStudyHours(int totalStudyHours) { this.totalStudyHours = totalStudyHours; }
 

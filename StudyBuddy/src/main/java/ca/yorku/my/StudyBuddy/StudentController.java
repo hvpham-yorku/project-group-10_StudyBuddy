@@ -157,8 +157,8 @@ public class StudentController {
 
 	// This method allows for a student's profile picture to be updated in the database through an API call
 	@PutMapping("/{studentID}/profile-picture")
-	public void updateProfilePicture(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
+	public void updateAvatar(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
     	String newUrl = body.get("profilePic");
-    	studentRepository.updateProfilePic(studentID, newUrl);
+    	studentRepository.updateAvatar(studentID, newUrl);
 }
 }

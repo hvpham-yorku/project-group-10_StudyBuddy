@@ -11,5 +11,11 @@ public record UpdateProfileRequest(
         String bio,
         String year,
         String program,
-        String profilePic
+        String avatar,
+        String location,
+        boolean twoFAEnabled,
+        int autoTimeout,
+        boolean isOnline,
+        Map<String, Boolean> notifications
+
 ) {}

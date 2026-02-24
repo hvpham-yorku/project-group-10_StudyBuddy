@@ -73,7 +73,31 @@ public class FirestoreStudentRepository implements StudentRepository {
 
     // Updates the profile picture of a student based on their input
     @Override
-    public void updateProfilePic(String userId, String profilePic) throws Exception {
-        db.collection("students").document(userId).update("profilePic", profilePic).get();
-}
+    public void updateAvatar(String userId, String avatar) throws Exception {
+        db.collection("students").document(userId).update("avatar", avatar).get();
+    }   
+
+    // Updates the location of a student based on their input
+    @Override
+    public void updateLocation(String userId, String location) throws Exception {
+        db.collection("students").document(userId).update("location", location).get();
+    }
+
+    // Updates the two-factor authentication setting of a student based on their input
+    @Override
+    public void updateTwoFA(String userId, boolean twoFAEnabled) throws Exception {
+        db.collection("students").document(userId).update("twoFAEnabled", twoFAEnabled).get();
+    }
+
+    // Updates the auto timeout duration of a student based on their input
+    @Override
+    public void updateAutoTimeout(String userId, int autoTimeout) throws Exception {
+        db.collection("students").document(userId).update("autoTimeout", autoTimeout).get();
+    }
+
+    // Updates the online status of a student based on their input
+    @Override
+    public void updateOnlineStatus(String userId, boolean isOnline) throws Exception {
+        db.collection("students").document(userId).update("isOnline", isOnline).get();
+    }
 }
