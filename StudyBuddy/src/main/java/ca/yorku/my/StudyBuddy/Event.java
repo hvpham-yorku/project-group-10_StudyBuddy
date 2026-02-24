@@ -29,8 +29,7 @@ public class Event{
     }
 
     // Constructor for the Event class
- public Event(String hostId, String title, String course, String location, String description,
-             String startTime, String endTime, int maxCapacity) {
+ public Event(String hostId, String title, String course, String location, String description, String startTime, String endTime, int maxCapacity) {
     this.hostId = hostId;
     this.title = title;
     this.course = course;

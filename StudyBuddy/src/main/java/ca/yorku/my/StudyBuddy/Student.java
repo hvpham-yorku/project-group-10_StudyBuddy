@@ -59,10 +59,20 @@ public class Student {
         this.program = "";
         this.year = "";
         this.profilePic = "";
+        privacySettings.put("showBio", true);
+        privacySettings.put("showProgram", true);
+        privacySettings.put("showYear", true);
+        privacySettings.put("showEmail", true);
+        privacySettings.put("showCourses", true);
+        privacySettings.put("showStudyVibes", true);
+        privacySettings.put("showProfilePic", true);
+        privacySettings.put("showSessionHistory", true);
+        privacySettings.put("showLocation", true);
     }
 
 
-    // Getters and Setters
+
+    // Getters and Setters 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
 

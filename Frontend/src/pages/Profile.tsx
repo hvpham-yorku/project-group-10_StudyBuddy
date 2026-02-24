@@ -10,6 +10,7 @@ import {
   Mail, GraduationCap, MapPin, Star
 } from "lucide-react";
 import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "../data/mockData";
+import { set } from "date-fns";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -47,12 +48,17 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // PRIVACY SETTINGS
-  const [showBio, setShowBio] = useState(true);
-  const [showProgram, setShowProgram] = useState(true);
-  const [showYear, setShowYear] = useState(true);
-  const [showCourses, setShowCourses] = useState(true);
-  const [showStudyVibes, setShowStudyVibes] = useState(true);
-  const [showEmail, setShowEmail] = useState(true);
+  const [privacySettings, setPrivacySettings] = useState({
+    showBio: true,
+    showProgram: true,
+    showYear: true,
+    showEmail: true,
+    showCourses: true,
+    showStudyVibes: true,
+    showSessionHistory: true,
+    showLocation: true,
+    showProfilePic: true
+  });
 
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
 
@@ -71,6 +77,7 @@ export default function Profile() {
     setVibeInput("");
   };
 
+  // Preset options for study vibes
   const vibeColors: Record<string, string> = {
     "Quiet Focus": "bg-blue-50 text-blue-700 border-blue-200",
     "Group Discussion": "bg-orange-50 text-orange-700 border-orange-200",
@@ -102,12 +109,7 @@ export default function Profile() {
 
         setProfilePic(data.profilePic || "");
 
-        setShowBio(data.showBio ?? true);
-        setShowProgram(data.showProgram ?? true);
-        setShowYear(data.showYear ?? true);
-        setShowCourses(data.showCourses ?? true);
-        setShowStudyVibes(data.showStudyVibes ?? true);
-        setShowEmail(data.showEmail ?? true);
+        setPrivacySettings(data.privacySettings || {});
 
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -126,13 +128,7 @@ export default function Profile() {
     bio?: string;
     program?: string;
     year?: string;
-    profilePic?: string;
-    showBio?: boolean;
-    showCourses?: boolean;
-    showStudyVibes?: boolean;
-    showProgram?: boolean;
-    showYear?: boolean;
-    showEmail?: boolean;
+    privacySettings?: Record<string, boolean>;
   } = {}) {
 
     try {
@@ -188,7 +184,7 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         <div className="px-6 pb-6">
 
-          {/* Avatar */}
+          {/* Profile Picture */}
           <div className="relative w-24 h-24">
             <img
             src={profilePic || "/default-avatar.png"}
@@ -290,7 +286,7 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                           bio: tempBio,
                           program,
                           year,
-                          profilePic
+                          privacySettings
                         });
                         setBio(tempBio);
                         setEditingBio(false);
@@ -321,55 +317,86 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                   <label className="flex items-center justify-between py-2">
                     <span>Show Bio</span>
                     <input
-                      type="checkbox"
-                      checked={showBio}
-                      onChange={(e) => setShowBio(e.target.checked)}
-                    />
+                    type="checkbox"
+                    checked={privacySettings.showBio}
+                    onChange={(e) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        showBio: e.target.checked
+                      })
+                    }
+                  />
                   </label>
 
                   <label className="flex items-center justify-between py-2">
                     <span>Show Major</span>
                     <input
-                      type="checkbox"
-                      checked={showProgram}
-                      onChange={(e) => setShowProgram(e.target.checked)}
-                    />
+                    type="checkbox"
+                    checked={privacySettings.showProgram}
+                    onChange={(e) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        showProgram: e.target.checked
+                      })
+                    }
+/>
                   </label>
 
                   <label className="flex items-center justify-between py-2">
                     <span>Show Year</span>
                     <input
-                      type="checkbox"
-                      checked={showYear}
-                      onChange={(e) => setShowYear(e.target.checked)}
-                    />
+                    type="checkbox"
+                    checked={privacySettings.showYear}
+                    onChange={(e) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        showYear: e.target.checked
+                      })
+                    }
+                  />
                   </label>
 
                   <label className="flex items-center justify-between py-2">
                     <span>Show Courses</span>
                     <input
-                      type="checkbox"
-                      checked={showCourses}
-                      onChange={(e) => setShowCourses(e.target.checked)}
-                    />
+                    type="checkbox"
+                    checked={privacySettings.showCourses}
+                    onChange={(e) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        showCourses: e.target.checked
+                      })
+                    }
+                  />
                   </label>
 
                   <label className="flex items-center justify-between py-2">
                     <span>Show Study Vibes</span>
                     <input
-                      type="checkbox"
-                      checked={showStudyVibes}
-                      onChange={(e) => setShowStudyVibes(e.target.checked)}
-                    />
+                    type="checkbox"
+                    checked={privacySettings.showStudyVibes}
+                    onChange={(e) =>
+                      setPrivacySettings({
+                        ...privacySettings,
+                        showStudyVibes: e.target.checked
+                      })
+                    }
+                  />
                   </label>
 
                   <label className="flex items-center justify-between py-2">
                     <span>Show Email</span>
-                    <input
+                      <input
                       type="checkbox"
-                      checked={showEmail}
-                      onChange={(e) => setShowEmail(e.target.checked)}
+                      checked={privacySettings.showEmail}
+                      onChange={(e) =>
+                        setPrivacySettings({
+                          ...privacySettings,
+                          showEmail: e.target.checked
+                        })
+                      }
                     />
+                    
                   </label>
 
                   <button
@@ -380,12 +407,7 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                         bio,
                         program,
                         year,
-                        showBio,
-                        showProgram,
-                        showYear,
-                        showCourses,
-                        showStudyVibes,
-                        showEmail
+                        privacySettings
                       })
                     }
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
@@ -419,7 +441,8 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                         studyVibes: vibes,
                         bio,
                         program: tempProgram,
-                        year
+                        year,
+                        privacySettings
                       });
                       setProgram(tempProgram);                  
                       setEditingProgram(false);
@@ -476,7 +499,8 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                        studyVibes: vibes,
                        bio,
                        program,
-                       year: tempYear        
+                       year: tempYear,
+                       privacySettings       
                        });
                       setYear(tempYear);
                       setEditingYear(false);
@@ -565,7 +589,8 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
             studyVibes: vibes,
             bio, 
             program,
-            year
+            year,
+            privacySettings
       })
   }
   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
@@ -629,7 +654,8 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
            studyVibes: vibes,
            bio,
            program,
-           year
+           year,
+           privacySettings
        })
   }
   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
