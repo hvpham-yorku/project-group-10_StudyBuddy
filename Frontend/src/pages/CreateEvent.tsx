@@ -9,7 +9,7 @@ import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, BookOpen,
   FileText, Tag, ChevronDown, Check
 } from "lucide-react";
-import { campusLocations, courseOptions, studyVibeOptions } from "../data/mockData";
+import { campusLocations, courseOptions, studyVibeOptions, currentUser } from "../data/mockData";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -27,6 +27,10 @@ export default function CreateEvent() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+
+  // For handling API submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
   const toggleTag = (tag: string) => {
@@ -46,13 +50,54 @@ export default function CreateEvent() {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    setSubmitted(true);
-    setTimeout(() => navigate("/events"), 1500);
+
+    setIsSubmitting(true);
+    setApiError(null);
+
+    // Note that backend and frontend types are slightly different
+    const payload = {
+      title: form.title,
+      course: form.course,
+      host: currentUser.name, 
+      location: form.location,
+      date: form.date,
+      time: form.time,
+      duration: Number(form.duration),
+      description: form.description,
+      maxParticipants: Number(form.maxParticipants),
+      attendees: [currentUser.name], 
+      tags: form.tags,
+      status: "upcoming",
+      reviews: []
+    };
+
+    try {
+      const response = await fetch("http://localhost:8080/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setSubmitted(true);
+      setTimeout(() => navigate("/events"), 1500);
+      
+    } catch (err: any) {
+      console.error("Failed to create event:", err);
+      setApiError("Failed to create session. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
