@@ -1,5 +1,4 @@
 package ca.yorku.my.StudyBuddy.classes;
-import java.util.ArrayList;
 import java.util.List;
 
 // This class represents an event that students can create and join.
@@ -9,7 +8,7 @@ import java.util.List;
 public class Event {
 	private String id;
 	private String title;
-	private String courses;
+	private String course;
 	private String host;
 	private String location;
 	private String date;
@@ -17,12 +16,10 @@ public class Event {
 	private int duration;
 	private String description;
 	private int maxParticipants;
-	private String[] attendees;
-	private String[] tags;
+	private List<String> attendees;
+	private List<String> tags;
 	private String status;
-	
-	// Reviews need to be populated by the controller
-	private Reviews[] reviews;
+	private List<Review> reviews;
 	
 	// Required for deserialization purposes with Firebase.
 	public Event() {
@@ -30,11 +27,11 @@ public class Event {
 	}
 	
 	public Event(String id, String title, String courses, String host, String location, String date, String time,
-			int duration, String description, int maxParticipants, String[] attendees, String[] tags, String status,
-			Reviews[] reviews) {
+			int duration, String description, int maxParticipants, List<String> attendees, List<String> tags, String status,
+			List<Review> reviews) {
 		this.id = id;
 		this.title = title;
-		this.courses = courses;
+		this.course = courses;
 		this.host = host;
 		this.location = location;
 		this.date = date;
@@ -55,8 +52,8 @@ public class Event {
 	public String getTitle() {
 		return title;
 	}
-	public String getCourses() {
-		return courses;
+	public String getCourse() {
+		return course;
 	}
 	public String getHost() {
 		return host;
@@ -79,16 +76,16 @@ public class Event {
 	public int getMaxParticipants() {
 		return maxParticipants;
 	}
-	public String[] getAttendees() {
+	public List<String> getAttendees() {
 		return attendees;
 	}
-	public String[] getTags() {
+	public List<String> getTags() {
 		return tags;
 	}
 	public String getStatus() {
 		return status;
 	}
-	public Reviews[] getReviews() {
+	public List<Review> getReviews() {
 		return reviews;
 	}
 	
@@ -99,8 +96,8 @@ public class Event {
 	public void setTitle(String title) {
 		this.title = title;
 	}
-	public void setCourses(String courses) {
-		this.courses = courses;
+	public void setCourse(String courses) {
+		this.course = courses;
 	}
 	public void setHost(String host) {
 		this.host = host;
@@ -123,16 +120,16 @@ public class Event {
 	public void setMaxParticipants(int maxParticipants) {
 		this.maxParticipants = maxParticipants;
 	}
-	public void setAttendees(String[] attendees) {
+	public void setAttendees(List<String> attendees) {
 		this.attendees = attendees;
 	}
-	public void setTags(String[] tags) {
+	public void setTags(List<String> tags) {
 		this.tags = tags;
 	}
 	public void setStatus(String status) {
 		this.status = status;
 	}
-	public void setReviews(Reviews[] reviews) {
+	public void setReviews(List<Review> reviews) {
 		this.reviews = reviews;
 	}
 	

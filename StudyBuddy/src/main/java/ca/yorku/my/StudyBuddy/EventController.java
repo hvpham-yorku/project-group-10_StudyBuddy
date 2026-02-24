@@ -36,7 +36,7 @@ public class EventController {
         	Event newEvent = new Event(
         		eventDTO.id(),
         		eventDTO.title(),
-        		eventDTO.courses(),
+        		eventDTO.course(),
         		eventDTO.host(),
         		eventDTO.location(),
         		eventDTO.date(),
@@ -76,7 +76,7 @@ public class EventController {
                 EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(),
                 	event.getTitle(),
-                	event.getCourses(),
+                	event.getCourse(),
                 	event.getHost(),
                 	event.getLocation(),
                 	event.getDate(),

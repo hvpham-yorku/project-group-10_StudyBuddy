@@ -1,8 +1,7 @@
 package ca.yorku.my.StudyBuddy.dtos;
-
 import java.util.List;
 
-import ca.yorku.my.StudyBuddy.classes.Reviews;
+import ca.yorku.my.StudyBuddy.classes.Review;
 
 // These fields are required from the frontend.
 // None of this information is confidential except maybe
@@ -11,7 +10,7 @@ import ca.yorku.my.StudyBuddy.classes.Reviews;
 public record EventResponseDTO(
 	String id,
 	String title,
-	String courses,
+	String course,
 	String host,
 	String location,
 	String date,
@@ -19,8 +18,8 @@ public record EventResponseDTO(
 	int duration,
 	String description,
 	int maxParticipants,
-	String[] attendees,
-	String[] tags,
+	List<String> attendees,
+	List<String> tags,
 	String status,
-	Reviews[] reviews
+	List<Review> reviews
 ) {}

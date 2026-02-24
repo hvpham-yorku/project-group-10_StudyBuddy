@@ -19,9 +19,6 @@ import java.util.concurrent.ExecutionException;
 /**
  * This class is responsible interacting with the Firestore database to perform CRUD operations on event data.
  * 
- * 
- * 
- * 
  */
 
 @Service
@@ -75,7 +72,7 @@ public class EventService {
         }
 
         Event event = doc.toObject(Event.class);
-        if (event != null && event.getHost().equals(userId)) {
+        if (event != null && event.getHost() != null && event.getHost().equals(userId)) {
             docRef.delete().get();
             return true;
         }
