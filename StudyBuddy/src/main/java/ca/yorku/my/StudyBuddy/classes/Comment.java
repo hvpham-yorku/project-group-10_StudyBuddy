@@ -6,8 +6,11 @@ public class Comment {
 	private String text;
 	private String date;
 	
+	public Comment() {
+		
+	}
+	
 	public Comment(String id, String author, String text, String date) {
-		super();
 		this.id = id;
 		this.author = author;
 		this.text = text;
