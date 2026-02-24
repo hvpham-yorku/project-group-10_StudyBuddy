@@ -98,8 +98,8 @@ public class Student {
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
 
-    public String getProfilePic() { return profilePic; }
-    public void setProfilePic(String profilePic) { this.profilePic = profilePic; }
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -142,5 +142,8 @@ public class Student {
 
     public int getAutoTimeout() { return autoTimeout; }
     public void setAutoTimeout(int autoTimeout) { this.autoTimeout = autoTimeout;}
+
+    public Map<String, Boolean> getNotifications() { return notifications; }
+    public void setNotifications(Map<String, Boolean> notifications) { this.notifications = notifications; }
     
 }

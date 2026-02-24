@@ -31,5 +31,15 @@ public interface StudentRepository {
     void updateProgram(String userId, String program) throws Exception;
 
     // Updates the profile picture of a student based on their input
-    void updateProfilePic(String userId, String profilePic) throws Exception;
+    void updateAvatar(String userId, String avatar) throws Exception;
+
+    void updateLocation(String userId, String location) throws Exception;
+
+    void updateTwoFA(String userId, boolean twoFAEnabled) throws Exception;
+
+    void updateAutoTimeout(String userId, int autoTimeout) throws Exception;
+
+    void updateOnlineStatus(String userId, boolean isOnline) throws Exception;
+
+    void 
 }
