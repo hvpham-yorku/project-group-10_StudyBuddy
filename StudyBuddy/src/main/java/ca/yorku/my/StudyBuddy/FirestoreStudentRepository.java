@@ -100,4 +100,10 @@ public class FirestoreStudentRepository implements StudentRepository {
     public void updateOnlineStatus(String userId, boolean isOnline) throws Exception {
         db.collection("students").document(userId).update("isOnline", isOnline).get();
     }
+
+    // Updates the notifications settings of a student based on their input
+    @Override
+    public void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception {
+        db.collection("students").document(userId).update("notifications", notifications).get();
+    }
 }

@@ -1,8 +1,3 @@
-/* 
- * Profile.tsx
- * Renders the user's profile page and displays their information
- */
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,6 +6,7 @@ import {
 } from "lucide-react";
 import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "../data/mockData";
 import { set } from "date-fns";
+import { Avatar } from "@radix-ui/react-avatar";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -43,8 +39,15 @@ export default function Profile() {
   const [tempProgram, setTempProgram] = useState("");
   const [tempYear, setTempYear] = useState("");
 
-  // PROFILE PIC
-  const [profilePic, setProfilePic] = useState("");
+  // SECURITY + NOTIFICATIONS
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [autoTimeout, setAutoTimeout] = useState(0);
+  const [isOnline, setIsOnline] = useState(false);
+  const [location, setLocation] = useState("");
+  const [notifications, setNotifications] = useState<Record<string, boolean>>({});
+
+  // AVATAR
+  const [avatar, setAvatar] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // PRIVACY SETTINGS
@@ -57,7 +60,7 @@ export default function Profile() {
     showStudyVibes: true,
     showSessionHistory: true,
     showLocation: true,
-    showProfilePic: true
+    showAvatar: true
   });
 
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
@@ -107,7 +110,7 @@ export default function Profile() {
         setYear(data.year || "");
         setTempYear(data.year || "");
 
-        setProfilePic(data.profilePic || "");
+        setAvatar(data.avatar || "");
 
         setPrivacySettings(data.privacySettings || {});
 
@@ -128,7 +131,15 @@ export default function Profile() {
     bio?: string;
     program?: string;
     year?: string;
+    avatar?: string;
     privacySettings?: Record<string, boolean>;
+    notifications?: Record<string, boolean>;
+    location?: string;
+    isOnline?: boolean;
+    twoFAEnabled?: boolean;
+    autoTimeout?: number;
+
+
   } = {}) {
 
     try {
@@ -142,11 +153,11 @@ export default function Profile() {
     }
   }
 
-function handleProfilePicClick() {
+function handleAvatarClick() {
   fileInputRef.current?.click();
 }
 
-async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
+async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
   const file = e.target.files?.[0];
   if (!file) return;
 
@@ -159,11 +170,11 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
     await fetch(`http://localhost:8080/api/studentcontroller/${userId}/profile-picture`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profilePic: base64 })
+      body: JSON.stringify({ Avatar: base64 })
     });
 
     // Update UI immediately
-    setProfilePic(base64);
+    setAvatar(base64);
   };
 
   reader.readAsDataURL(file);
@@ -184,11 +195,11 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         <div className="px-6 pb-6">
 
-          {/* Profile Picture */}
+          {/* Avatar */}
           <div className="relative w-24 h-24">
             <img
-            src={profilePic || "/default-avatar.png"}
-            onClick={handleProfilePicClick}
+            src={avatar || "/default-avatar.png"}
+            onClick={handleAvatarClick}
             className="w-24 h-24 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
           />
 
@@ -196,7 +207,7 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
               type="file"
               accept="image/*"
               ref={fileInputRef}
-              onChange={handleProfilePicChange}
+              onChange={handleAvatarChange}
               className="hidden"
             />
           </div>
@@ -665,6 +676,148 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
 </button>
 
 </div>
+
+{/* LOCATION SECTION */}
+<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+  <h2 className="text-lg font-semibold text-slate-800 mb-3">Location</h2>
+
+  <input
+    value={location}
+    onChange={(e) => setLocation(e.target.value)}
+    placeholder="Enter your current study location..."
+    className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+  />
+
+  <button
+    onClick={() =>
+      saveProfile({
+        courses,
+        studyVibes: vibes,
+        bio,
+        program,
+        year,
+        privacySettings,
+        location,
+      })
+    }
+    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+  >
+    Save Location
+  </button>
+</div>
+
+{/* ONLINE STATUS */}
+<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+  <h2 className="text-lg font-semibold text-slate-800 mb-3">Online Status</h2>
+
+  <label className="flex items-center justify-between py-2">
+    <span>Show as Online</span>
+    <input
+      type="checkbox"
+      checked={isOnline}
+      onChange={(e) => setIsOnline(e.target.checked)}
+    />
+  </label>
+
+  <button
+    onClick={() =>
+      saveProfile({
+        courses,
+        studyVibes: vibes,
+        bio,
+        program,
+        year,
+        privacySettings,
+        isOnline,
+      })
+    }
+    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+  >
+    Save Online Status
+  </button>
+</div>
+
+{/* SECURITY SETTINGS */}
+<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+  <h2 className="text-lg font-semibold text-slate-800 mb-3">Security Settings</h2>
+
+  <label className="flex items-center justify-between py-2">
+    <span>Enable Two-Factor Authentication</span>
+    <input
+      type="checkbox"
+      checked={twoFAEnabled}
+      onChange={(e) => setTwoFAEnabled(e.target.checked)}
+    />
+  </label>
+
+  <label className="flex items-center justify-between py-2">
+    <span>Auto Timeout (minutes)</span>
+    <input
+      type="number"
+      value={autoTimeout}
+      onChange={(e) => setAutoTimeout(Number(e.target.value))}
+      className="border border-slate-300 rounded-lg px-3 py-1 w-24"
+    />
+  </label>
+
+  <button
+    onClick={() =>
+      saveProfile({
+        courses,
+        studyVibes: vibes,
+        bio,
+        program,
+        year,
+        privacySettings,
+        twoFAEnabled,
+        autoTimeout,
+      })
+    }
+    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+  >
+    Save Security Settings
+  </button>
+</div>
+
+{/* NOTIFICATION SETTINGS */}
+<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+  <h2 className="text-lg font-semibold text-slate-800 mb-3">Notifications</h2>
+
+  {Object.keys(notifications).map((key) => (
+    <label key={key} className="flex items-center justify-between py-2">
+      <span>{key}</span>
+      <input
+        type="checkbox"
+        checked={notifications[key]}
+        onChange={(e) =>
+          setNotifications({
+            ...notifications,
+            [key]: e.target.checked,
+          })
+        }
+      />
+    </label>
+  ))}
+
+  <button
+    onClick={() =>
+      saveProfile({
+        courses,
+        studyVibes: vibes,
+        bio,
+        program,
+        year,
+        privacySettings,
+        notifications,
+      })
+    }
+    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+  >
+    Save Notification Settings
+  </button>
+</div>
     </div>
+
+    
   );
 }

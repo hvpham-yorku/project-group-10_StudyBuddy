@@ -48,7 +48,22 @@ public class StudentController {
 	if (req.program() != null) {
 		studentRepository.updateProgram(studentID, req.program());
 	}
-	
+
+	if (req.avatar() != null) {
+		studentRepository.updateAvatar(studentID, req.avatar());
+	}
+
+	if (req.location() != null) {
+		studentRepository.updateLocation(studentID, req.location());
+	}
+
+	if (req.notifications() != null) {
+		studentRepository.updateNotifications(studentID, req.notifications());
+	}
+
+	studentRepository.updateTwoFA(studentID, req.twoFAEnabled());
+	studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
+	studentRepository.updateOnlineStatus(studentID, req.isOnline());
 }
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")
@@ -156,9 +171,9 @@ public class StudentController {
 	}
 
 	// This method allows for a student's profile picture to be updated in the database through an API call
-	@PutMapping("/{studentID}/profile-picture")
+	@PutMapping("/{studentID}/avatar")
 	public void updateAvatar(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
-    	String newUrl = body.get("profilePic");
+    	String newUrl = body.get("avatar");
     	studentRepository.updateAvatar(studentID, newUrl);
 }
 }
