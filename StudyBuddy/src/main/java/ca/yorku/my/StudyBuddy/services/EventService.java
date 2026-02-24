@@ -72,11 +72,13 @@ public class EventService {
         }
 
         Event event = doc.toObject(Event.class);
-        if (event != null && event.getHost() != null && event.getHost().equals(userId)) {
-            docRef.delete().get();
-            return true;
+        if (event == null) {
+        	return false;
+        } else if (!event.getHost().equals(userId)){  // TODO: People are able to forge payload -- should verify with JWT
+        	return false;
+        } else {
+        	docRef.delete().get();
+        	return true;
         }
-
-        return false;
     }
 }

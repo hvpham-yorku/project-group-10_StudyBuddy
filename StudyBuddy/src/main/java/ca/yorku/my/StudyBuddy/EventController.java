@@ -105,9 +105,12 @@ public class EventController {
             @PathVariable String eventId,
             @RequestParam String userId) {
         try {
+            System.out.println("Attempted to delete " + eventId + " as " + userId);
             boolean deleted = eventService.deleteEvent(eventId, userId);
             if (deleted) {
                 return ResponseEntity.noContent().build();
+            } else {
+            	System.out.println("Failed Deletion");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (ExecutionException | InterruptedException e) {
