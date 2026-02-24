@@ -255,6 +255,124 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
               </button>
             </div>
           </div><br></br>
+          {/* INLINE EDITORS FOR PROGRAM + YEAR */}
+          <div className="mt-4 space-y-4">
+
+            {/* PROGRAM EDITOR */}
+            <div>
+              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                <GraduationCap size={14} className="text-blue-500" />
+                <span className="font-medium">Major</span>
+              </div>
+
+              {editingProgram ? (
+                <div className="flex items-center gap-3">
+                  <input
+                    value={tempProgram}
+                    onChange={(e) => setTempProgram(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+
+                  <button
+                    onClick={async () => {
+                      await saveProfile({
+                        courses,
+                        studyVibes: vibes,
+                        bio,
+                        program: tempProgram,
+                        year,
+                        privacySettings
+                      });
+                      setProgram(tempProgram);                  
+                      setEditingProgram(false);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+                  >
+                    Save
+                  </button>
+
+                  <button
+                    onClick={() => setEditingProgram(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTempProgram(program);
+                    setEditingProgram(true);
+                  }}
+                  className="text-blue-600 text-sm underline hover:text-blue-700"
+                >
+                  Edit Major
+                </button>
+              )}
+            </div>
+
+            {/* YEAR EDITOR */}
+            <div>
+              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                <Star size={14} className="text-orange-400" />
+                <span className="font-medium">Year</span>
+              </div>
+
+              {editingYear ? (
+                <div className="flex items-center gap-3">
+                  <select
+                    value={tempYear}
+                    onChange={(e) => setTempYear(e.target.value)}
+                    className="border border-slate-300 rounded-lg px-3 py-2 w-40 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </select>
+
+                  <button
+                    onClick={async () => {
+                      await saveProfile({
+                       courses,
+                       studyVibes: vibes,
+                       bio,
+                       program,
+                       year: tempYear,
+                       privacySettings       
+                       });
+                      setYear(tempYear);
+                      setEditingYear(false);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+                  >
+                    Save
+                  </button>
+
+                  <button
+                    onClick={() => setEditingYear(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTempYear(year);
+                    setEditingYear(true);
+                  }}
+                  className="text-blue-600 text-sm underline hover:text-blue-700"
+                >
+                  Edit Year
+                </button>
+              )}
+            </div>
+
+          </div>
+
+        </div>
+      </div>
                     <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2> 
           {/* BIO CARD */} <div
           className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
@@ -416,124 +534,7 @@ async function handleProfilePicChange(e: React.ChangeEvent<HTMLInputElement>) {
                   </button>
                 </div>
 
-          {/* INLINE EDITORS FOR PROGRAM + YEAR */}
-          <div className="mt-4 space-y-4">
-
-            {/* PROGRAM EDITOR */}
-            <div>
-              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
-                <GraduationCap size={14} className="text-blue-500" />
-                <span className="font-medium">Major</span>
-              </div>
-
-              {editingProgram ? (
-                <div className="flex items-center gap-3">
-                  <input
-                    value={tempProgram}
-                    onChange={(e) => setTempProgram(e.target.value)}
-                    className="border border-slate-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-
-                  <button
-                    onClick={async () => {
-                      await saveProfile({
-                        courses,
-                        studyVibes: vibes,
-                        bio,
-                        program: tempProgram,
-                        year,
-                        privacySettings
-                      });
-                      setProgram(tempProgram);                  
-                      setEditingProgram(false);
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    onClick={() => setEditingProgram(false)}
-                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setTempProgram(program);
-                    setEditingProgram(true);
-                  }}
-                  className="text-blue-600 text-sm underline hover:text-blue-700"
-                >
-                  Edit Major
-                </button>
-              )}
-            </div>
-
-            {/* YEAR EDITOR */}
-            <div>
-              <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
-                <Star size={14} className="text-orange-400" />
-                <span className="font-medium">Year</span>
-              </div>
-
-              {editingYear ? (
-                <div className="flex items-center gap-3">
-                  <select
-                    value={tempYear}
-                    onChange={(e) => setTempYear(e.target.value)}
-                    className="border border-slate-300 rounded-lg px-3 py-2 w-40 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  >
-                    <option value="1st Year">1st Year</option>
-                    <option value="2nd Year">2nd Year</option>
-                    <option value="3rd Year">3rd Year</option>
-                    <option value="4th Year">4th Year</option>
-                  </select>
-
-                  <button
-                    onClick={async () => {
-                      await saveProfile({
-                       courses,
-                       studyVibes: vibes,
-                       bio,
-                       program,
-                       year: tempYear,
-                       privacySettings       
-                       });
-                      setYear(tempYear);
-                      setEditingYear(false);
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    onClick={() => setEditingYear(false)}
-                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setTempYear(year);
-                    setEditingYear(true);
-                  }}
-                  className="text-blue-600 text-sm underline hover:text-blue-700"
-                >
-                  Edit Year
-                </button>
-              )}
-            </div>
-
-          </div>
-
-        </div>
-      </div>
+          
 
       {/* COURSES SECTION */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">

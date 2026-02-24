@@ -16,19 +16,21 @@ public class Student {
     private String fullName;    
     private String program;     
     private String bio;         
-    private String profilePic;  
+    private String avatar;  
     private String year;
-    private boolean showBio = true;
-    private boolean showCourses = true;
-    private boolean showStudyVibes = true;
-    private boolean showProgram = true;
-    private boolean showYear = true;
-    private boolean showEmail = true;
+    private int totalStudyHours;
+    private int totalEventsAttended;
+    private boolean isOnline;
+    private String joinedDate;
+    private String location;
+    private boolean twoFAEnabled;
+    private int autoTimeout;
 	
 	private List<String> courses = new ArrayList<>();
     private List<String> studyVibes = new ArrayList<>();
     private Map<String, Boolean> privacySettings = new HashMap<>();
 	private List<String> attendedEventIds = new ArrayList<>();
+    private Map<String, Boolean> notifications = new HashMap<>();
 
     // 1. MUST HAVE: The empty constructor for Firebase/Spring automation
     public Student() {}
@@ -58,7 +60,7 @@ public class Student {
         this.bio = "";
         this.program = "";
         this.year = "";
-        this.profilePic = "";
+        this.avatar = "";
         privacySettings.put("showBio", true);
         privacySettings.put("showProgram", true);
         privacySettings.put("showYear", true);
@@ -68,6 +70,14 @@ public class Student {
         privacySettings.put("showProfilePic", true);
         privacySettings.put("showSessionHistory", true);
         privacySettings.put("showLocation", true);
+
+        notifications.put("chatMessages", true);
+        notifications.put("sessionUpdates", true);
+        notifications.put("connectionRequests", true);
+
+        twoFAEnabled = false;
+        autoTimeout = 15;
+        isOnline = false;
     }
 
 
@@ -109,21 +119,28 @@ public class Student {
     public String getYear() { return year; }
     public void setYear(String year) { this.year = year; }
 
-    public boolean isShowBio() { return showBio; }
-    public void setShowBio(boolean showBio) { this.showBio = showBio; }
+   public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 
-    public boolean isShowCourses() { return showCourses; }
-    public void setShowCourses(boolean showCourses) { this.showCourses = showCourses; }
+    public int getTotalStudyHours() { return totalStudyHours; }
+    public void setTotalStudyHours(int totalStudyHours) { this.totalStudyHours = totalStudyHours; }
 
-    public boolean isShowStudyVibes() { return showStudyVibes; }
-    public void setShowStudyVibes(boolean showStudyVibes) { this.showStudyVibes = showStudyVibes; }
+    public int getTotalEventsAttended() { return totalEventsAttended; }
+    public void setTotalEventsAttended(int totalEventsAttended) { this.totalEventsAttended = totalEventsAttended; }
 
-    public boolean isShowProgram() { return showProgram; }
-    public void setShowProgram(boolean showProgram) { this.showProgram = showProgram; }
+    public boolean isOnline() { return isOnline; }
+    public void setOnline(boolean isOnline) { this.isOnline = isOnline; }
 
-    public boolean isShowYear() { return showYear; }
-    public void setShowYear(boolean showYear) { this.showYear = showYear; }
+    public String getJoinedDate() { return joinedDate; }
+    public void setJoinedDate(String joinedDate) { this.joinedDate = joinedDate; }
 
-    public boolean isShowEmail() { return showEmail; }
-    public void setShowEmail(boolean showEmail) { this.showEmail = showEmail; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public boolean isTwoFAEnabled() { return twoFAEnabled; }
+    public void setTwoFAEnabled(boolean twoFAEnabled) { this.twoFAEnabled = twoFAEnabled; }
+
+    public int getAutoTimeout() { return autoTimeout; }
+    public void setAutoTimeout(int autoTimeout) { this.autoTimeout = autoTimeout;}
+    
 }
