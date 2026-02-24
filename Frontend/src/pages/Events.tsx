@@ -3,13 +3,13 @@
  * Page for browsing, searching, and filtering study sessions.
  */
 
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, CalendarDays, Clock, MapPin, Users,
   ChevronDown, Star
 } from "lucide-react";
-import { events, currentUser } from "../data/mockData";
+import { currentUser } from "../data/mockData";
 
 const vibeColors: Record<string, string> = {
   "Quiet Focus": "bg-blue-50 text-blue-700",
@@ -23,6 +23,11 @@ const vibeColors: Record<string, string> = {
 };
 
 export default function Events() {
+  // States for fetch methods
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("All");
@@ -41,6 +46,39 @@ export default function Events() {
     const matchStatus = filterStatus === "all" || ev.status === filterStatus;
     return matchSearch && matchCourse && matchStatus;
   });
+
+  // Fetch data from the API on mount
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/events");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Temporary fix: Map the string 'host' from backend to an object for the frontend
+        // TODO: Update backend to send host as an object through the Student class
+        const formattedData = data.map((ev: any) => ({
+          ...ev,
+          host: typeof ev.host === 'string' 
+            ? { id: "unknown_id", name: ev.host, avatar: null } 
+            : ev.host
+        }));
+
+        setEvents(formattedData);
+      } catch (err: any) {
+        console.error("Failed to fetch events:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
@@ -220,7 +258,7 @@ export default function Events() {
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1.5 mb-4">
-                  {ev.tags.map((tag) => (
+                  {ev.tags.map((tag: string) => (
                     <span key={tag} className={`text-xs px-2 py-0.5 rounded-full ${vibeColors[tag] || "bg-slate-100 text-slate-600"}`}>
                       {tag}
                     </span>
