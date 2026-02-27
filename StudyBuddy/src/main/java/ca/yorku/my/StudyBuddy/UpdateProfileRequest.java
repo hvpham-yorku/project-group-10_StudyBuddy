@@ -13,9 +13,9 @@ public record UpdateProfileRequest(
         String program,
         String avatar,
         String location,
-        boolean twoFAEnabled,
+        Boolean twoFAEnabled,
         int autoTimeout,
-        boolean isOnline,
+        Boolean isOnline,
         Map<String, Boolean> notifications
 
 ) {}

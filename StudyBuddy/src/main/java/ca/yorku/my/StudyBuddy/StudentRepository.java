@@ -36,14 +36,14 @@ public interface StudentRepository {
     // Updates the location of a student based on their input
     void updateLocation(String userId, String location) throws Exception;
 
-    // Updates the online status of a student based on their input
-    void updateTwoFA(String userId, boolean twoFAEnabled) throws Exception;
+    // Updates the two-factor authentication setting of a student based on their input
+    void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception;
 
     // Updates the auto timeout duration of a student based on their input
     void updateAutoTimeout(String userId, int autoTimeout) throws Exception;
 
-    // Updates the two-factor authentication setting of a student based on their input
-    void updateOnlineStatus(String userId, boolean isOnline) throws Exception;
+    // Updates the online status of a student based on their input
+    void updateOnlineStatus(String userId, Boolean isOnline) throws Exception;
 
     // Updates the notifications settings of a student based on their input
     void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception;

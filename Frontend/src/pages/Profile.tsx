@@ -39,6 +39,10 @@ export default function Profile() {
   const [tempProgram, setTempProgram] = useState("");
   const [tempYear, setTempYear] = useState("");
 
+  // EMAIL
+  const [email, setEmail] = useState(currentUser.email);
+
+
   // SECURITY + NOTIFICATIONS
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [autoTimeout, setAutoTimeout] = useState(0);
@@ -61,6 +65,13 @@ export default function Profile() {
     showSessionHistory: true,
     showLocation: true,
     showAvatar: true
+  });
+
+  // NOTIFICATION SETTINGS
+  const [notificationSettings, setNotificationSettings] = useState({
+    chatMessages: true,
+    sessionUpdates: true,
+    connectionRequests: true,
   });
 
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
@@ -106,6 +117,7 @@ export default function Profile() {
 
         setProgram(data.program || "");
         setTempProgram(data.program || "");
+        setEmail(data.email || "");
 
         setYear(data.year || "");
         setTempYear(data.year || "");
@@ -136,6 +148,7 @@ export default function Profile() {
     studyVibes?: string[];
     bio?: string;
     program?: string;
+    email?: string;
     year?: string;
     avatar?: string;
     privacySettings?: Record<string, boolean>;
@@ -154,6 +167,7 @@ export default function Profile() {
     bio,
     program,
     year,
+    email,
     avatar,
     privacySettings,
     notifications,
@@ -569,7 +583,9 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                         bio,
                         program,
                         year,
-                        privacySettings
+                        email,
+                        privacySettings,
+                        location
                       })
                     }
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"

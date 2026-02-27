@@ -4,7 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StubDatabase {
-	
-	public static ArrayList<Student> STUDENTS = new ArrayList<>(List.of(new Student("123", "John", "Doe")));
+    public static final ArrayList<Student> STUDENTS = new ArrayList<>();
 
+    static {
+        Student s = new Student("123", "John", "Doe");
+
+		s.setEmail("sean@yorku.ca");
+		s.setIsOnline(true);
+		s.setLocation("Steacie");
+		s.setJoinedDate("2024-01-01");
+    
+	    STUDENTS.add(s);
+
+	}
 }

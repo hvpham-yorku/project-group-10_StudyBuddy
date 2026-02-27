@@ -85,7 +85,7 @@ public class FirestoreStudentRepository implements StudentRepository {
 
     // Updates the two-factor authentication setting of a student based on their input
     @Override
-    public void updateTwoFA(String userId, boolean twoFAEnabled) throws Exception {
+    public void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception {
         db.collection("students").document(userId).update("twoFAEnabled", twoFAEnabled).get();
     }
 
@@ -97,7 +97,7 @@ public class FirestoreStudentRepository implements StudentRepository {
 
     // Updates the online status of a student based on their input
     @Override
-    public void updateOnlineStatus(String userId, boolean isOnline) throws Exception {
+    public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
         db.collection("students").document(userId).update("isOnline", isOnline).get();
     }
 

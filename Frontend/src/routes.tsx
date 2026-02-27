@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import ProfileViewer from "./pages/ProfileViewer";
 import Events from "./pages/Events";
 import CreateEvent from "./pages/CreateEvent";
 import Chat from "./pages/Chat";
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
       {
         path: "/profile",
         element: <Profile />,
+      },
+      {
+        path: "/profile/:id",
+        element: <ProfileViewer />,
       },
       {
         path: "/events",

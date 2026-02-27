@@ -61,10 +61,19 @@ public class StudentController {
 		studentRepository.updateNotifications(studentID, req.notifications());
 	}
 
-	studentRepository.updateTwoFA(studentID, req.twoFAEnabled());
-	studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
-	studentRepository.updateOnlineStatus(studentID, req.isOnline());
+	if(req.twoFAEnabled() != null) {
+		studentRepository.updateTwoFAEnabled(studentID, req.twoFAEnabled());
+	}
+
+	if(req.autoTimeout() != 0) {
+		studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
+	}
+
+	if(req.isOnline() != null) {
+		studentRepository.updateOnlineStatus(studentID, req.isOnline());
 }
+	}
+
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")
 	public ArrayList<Student> getAllStudents() {

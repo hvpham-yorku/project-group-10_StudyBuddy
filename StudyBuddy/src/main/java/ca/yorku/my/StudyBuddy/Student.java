@@ -20,7 +20,7 @@ public class Student {
     private String year;
     private int totalStudyHours;
     private int totalEventsAttended;
-    private boolean isOnline;
+    private Boolean isOnline;
     private String joinedDate;
     private String location;
     private boolean twoFAEnabled;
@@ -75,9 +75,9 @@ public class Student {
         notifications.put("sessionUpdates", true);
         notifications.put("connectionRequests", true);
 
-        twoFAEnabled = false;
+        twoFAEnabled = true;
         autoTimeout = 15;
-        isOnline = false;
+        isOnline = true;
     }
 
 
@@ -125,8 +125,8 @@ public class Student {
     public int getTotalEventsAttended() { return totalEventsAttended; }
     public void setTotalEventsAttended(int totalEventsAttended) { this.totalEventsAttended = totalEventsAttended; }
 
-    public boolean isOnline() { return isOnline; }
-    public void setOnline(boolean isOnline) { this.isOnline = isOnline; }
+    public Boolean getIsOnline() { return isOnline; }
+    public void setIsOnline(Boolean isOnline) { this.isOnline = isOnline; }
 
     public String getJoinedDate() { return joinedDate; }
     public void setJoinedDate(String joinedDate) { this.joinedDate = joinedDate; }
