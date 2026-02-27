@@ -203,10 +203,10 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const base64 = reader.result as string;
 
     // Send to backend
-    await fetch(`http://localhost:8080/api/studentcontroller/${userId}/profile-picture`, {
+    await fetch(`http://localhost:8080/api/studentcontroller/${userId}/avatar`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ Avatar: base64 })
+      body: JSON.stringify({ avatar: base64 })
     });
 
     // Update UI immediately
@@ -575,6 +575,21 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                     
                   </label>
 
+                  <label className="flex items-center justify-between py-2">
+                    <span>Show Location</span>
+                      <input
+                      type="checkbox"
+                      checked={privacySettings.showLocation}
+                      onChange={(e) =>
+                        setPrivacySettings({
+                          ...privacySettings,
+                          showLocation: e.target.checked
+                        })
+                      }
+                    />
+                    
+                  </label>
+
                   <button
                     onClick={() =>
                       saveProfile({
@@ -832,31 +847,30 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
   <h2 className="text-lg font-semibold text-slate-800 mb-3">Notifications</h2>
 
-  {Object.keys(notifications).map((key) => (
-    <label key={key} className="flex items-center justify-between py-2">
-      <span>{key}</span>
-      <input
-        type="checkbox"
-        checked={notifications[key]}
-        onChange={(e) =>
-          setNotifications({
-            ...notifications,
-            [key]: e.target.checked,
-          })
-        }
-      />
-    </label>
-  ))}
+  <div className="space-y-3">
+    {Object.entries(notifications).map(([key, value]) => (
+      <label key={key} className="flex items-center gap-3 text-slate-700">
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) =>
+            setNotifications((prev: any) => ({
+              ...prev,
+              [key]: e.target.checked,
+            }))
+          }
+          className="w-4 h-4"
+        />
+        <span className="capitalize">
+          {key.replace(/([A-Z])/g, " $1")}
+        </span>
+      </label>
+    ))}
+  </div>
 
   <button
     onClick={() =>
       saveProfile({
-        courses,
-        studyVibes: vibes,
-        bio,
-        program,
-        year,
-        privacySettings,
         notifications,
       })
     }
@@ -865,8 +879,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     Save Notification Settings
   </button>
 </div>
-    </div>
-
+</div>
     
   );
 }

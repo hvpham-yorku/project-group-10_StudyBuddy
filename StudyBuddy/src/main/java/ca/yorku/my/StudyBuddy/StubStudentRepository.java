@@ -96,14 +96,14 @@ public class StubStudentRepository implements StudentRepository {
 
     // Updates the online status of a student based on their input
     @Override
-    public void updateOnlineStatus(String userId, boolean isOnline) throws Exception {
+    public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
         Student student = getStudent(userId);
         student.setIsOnline(isOnline);
     }
 
     // Updates the two-factor authentication setting of a student based on their input
     @Override
-    public void updateTwoFAEnabled(String userId, boolean twoFAEnabled) throws Exception {
+    public void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception {
         Student student = getStudent(userId);
         student.setTwoFAEnabled(twoFAEnabled);
     }
