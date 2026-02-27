@@ -114,6 +114,12 @@ export default function Profile() {
 
         setPrivacySettings(data.privacySettings || {});
 
+        setLocation(data.location || "");
+        setIsOnline(data.isOnline ?? false);
+        setTwoFAEnabled(data.twoFAEnabled ?? false);
+        setAutoTimeout(data.autoTimeout ?? 0);
+        setNotifications(data.notifications || {});
+
       } catch (err) {
         console.error("Failed to load profile", err);
       } finally {
@@ -142,11 +148,27 @@ export default function Profile() {
 
   } = {}) {
 
+  const fullPayload = {
+    courses,
+    studyVibes: vibes,
+    bio,
+    program,
+    year,
+    avatar,
+    privacySettings,
+    notifications,
+    location,
+    isOnline,
+    twoFAEnabled,
+    autoTimeout,
+    ...payload
+  };
+
     try {
       await fetch(`http://localhost:8080/api/studentcontroller/profile/update/${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(fullPayload)
       });
     } catch (err) {
       console.error("Failed to save profile", err);
@@ -221,9 +243,20 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                   {currentUser.name}
                 </h1>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-green-600">Online</span>
-                </div>
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    isOnline ? "bg-green-500" : "bg-slate-400"
+                  }`}
+                ></div>
+
+                <span
+                  className={`text-xs ${
+                    isOnline ? "text-green-600" : "text-slate-500"
+                  }`}
+                >
+                  {isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
               </div>
 
               {/* Program + Year + Email */}
