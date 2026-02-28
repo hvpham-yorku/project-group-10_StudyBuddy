@@ -3,6 +3,7 @@ package ca.yorku.my.StudyBuddy;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -13,14 +14,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 @Service
 public class ChatService {
 
-    private final Map<String, Chat> chatStore = new ConcurrentHashMap<>();
-    private final Map<String, List<Message>> messageStore = new ConcurrentHashMap<>();
+    private final ChatDAO chatDAO;
+    private final MessageDAO messageDAO;
+
+    @Autowired
+    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO) {
+        this.chatDAO = chatDAO;
+        this.messageDAO = messageDAO;
+    }
 
     public String extractActorId(String authorizationHeader) {
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
@@ -47,13 +53,9 @@ public class ChatService {
             throw new ForbiddenException("Actor must be one of the direct chat participants");
         }
 
-        for (Chat existing : chatStore.values()) {
-            if (existing.getType() == ChatType.DIRECT &&
-                    existing.getParticipantIds().contains(request.getUserA()) &&
-                    existing.getParticipantIds().contains(request.getUserB()) &&
-                    existing.getParticipantIds().size() == 2) {
-                return existing;
-            }
+        Chat existing = chatDAO.findDirectByParticipants(request.getUserA(), request.getUserB()).orElse(null);
+        if (existing != null) {
+            return existing;
         }
 
         List<String> participants = List.of(request.getUserA(), request.getUserB());
@@ -67,9 +69,7 @@ public class ChatService {
         chat.setParticipantIds(new ArrayList<>(participants));
         chat.setChatName("Direct Chat");
 
-        chatStore.put(chatId, chat);
-        messageStore.putIfAbsent(chatId, new ArrayList<>());
-        return chat;
+        return chatDAO.create(chat);
     }
 
     public Chat createEventChat(String actorId, String eventId, CreateEventChatRequest request)
@@ -77,19 +77,44 @@ public class ChatService {
         if (isBlank(eventId)) {
             throw new ValidationException("eventId is required");
         }
-        ensureEventExists(eventId);
+
+        Event event = getEventById(eventId);
+
+        Set<String> eligibleParticipants = new HashSet<>();
+        if (event.getParticipantIds() != null) {
+            eligibleParticipants.addAll(event.getParticipantIds());
+        }
+        if (!isBlank(event.getHostId())) {
+            eligibleParticipants.add(event.getHostId());
+        }
+
+        if (!eligibleParticipants.contains(actorId)) {
+            throw new ForbiddenException("Actor must be an event participant");
+        }
+
+        Chat existing = chatDAO.findByRelatedIdAndType(eventId, ChatType.EVENT).orElse(null);
+        if (existing != null) {
+            return existing;
+        }
 
         String chatId = "event_" + eventId;
-        if (chatStore.containsKey(chatId)) {
-            return chatStore.get(chatId);
-        }
 
         List<String> participants = new ArrayList<>();
         if (request != null && request.getParticipantIds() != null) {
             participants.addAll(request.getParticipantIds());
         }
+        if (participants.isEmpty()) {
+            participants.addAll(eligibleParticipants);
+        }
+
         if (!participants.contains(actorId)) {
             participants.add(actorId);
+        }
+
+        for (String participant : participants) {
+            if (!eligibleParticipants.contains(participant)) {
+                throw new ValidationException("All participants must belong to the event");
+            }
         }
 
         Chat chat = new Chat();
@@ -99,13 +124,11 @@ public class ChatService {
         chat.setParticipantIds(participants);
         chat.setChatName(request != null && !isBlank(request.getChatName()) ? request.getChatName() : "Event Chat");
 
-        chatStore.put(chatId, chat);
-        messageStore.putIfAbsent(chatId, new ArrayList<>());
-        return chat;
+        return chatDAO.create(chat);
     }
 
     public MessageResponseDTO sendMessage(String actorId, String chatId, SendMessageDTO request) {
-        Chat chat = chatStore.get(chatId);
+        Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
             throw new NotFoundException("Chat not found");
         }
@@ -115,27 +138,32 @@ public class ChatService {
         if (request == null || isBlank(request.getContent()) || request.getType() == null) {
             throw new ValidationException("Message content and type are required");
         }
+        if (request.getType() != MessageType.TEXT) {
+            throw new ValidationException("Only TEXT messages are supported in Session 2");
+        }
         if (!isBlank(request.getChatId()) && !chatId.equals(request.getChatId())) {
             throw new ValidationException("Path chatId must match payload chatId");
         }
 
+        long nowEpochMillis = Instant.now().toEpochMilli();
         Message message = new Message();
-        message.setMessageId(UUID.randomUUID().toString());
         message.setChatId(chatId);
         message.setSenderId(actorId);
         message.setSenderName(actorId);
         message.setContent(request.getContent().trim());
         message.setType(request.getType());
-        message.setTimestamp(Instant.now().toString());
+        message.setTimestamp(Instant.ofEpochMilli(nowEpochMillis).toString());
+        message.setTimestampEpochMillis(nowEpochMillis);
 
-        messageStore.computeIfAbsent(chatId, ignored -> new ArrayList<>()).add(message);
-        chat.setLastMessage(new LastMessagePreview(actorId, message.getContent(), message.getType(), message.getTimestamp()));
+        Message savedMessage = messageDAO.create(chatId, message);
+        chat.setLastMessage(new LastMessagePreview(actorId, savedMessage.getContent(), savedMessage.getType(), savedMessage.getTimestamp()));
+        chatDAO.save(chat);
 
-        return toMessageResponse(message, actorId);
+        return toMessageResponse(savedMessage, actorId);
     }
 
     public PagedMessagesResponse getChatMessages(String actorId, String chatId, int limit, String before) {
-        Chat chat = chatStore.get(chatId);
+        Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
             throw new NotFoundException("Chat not found");
         }
@@ -146,20 +174,9 @@ public class ChatService {
             throw new ValidationException("limit must be between 1 and 100");
         }
 
-        List<Message> all = new ArrayList<>(messageStore.getOrDefault(chatId, new ArrayList<>()));
-        all.sort(Comparator.comparing(Message::getTimestamp).reversed());
-
-        int startIndex = 0;
-        if (!isBlank(before)) {
-            int index = indexOfMessageId(all, before);
-            if (index < 0) {
-                throw new ValidationException("before cursor does not exist in this chat");
-            }
-            startIndex = index + 1;
-        }
-
-        int endIndex = Math.min(startIndex + limit, all.size());
-        List<Message> page = all.subList(startIndex, endIndex);
+        List<Message> fetched = messageDAO.listMessages(chatId, limit + 1, before);
+        boolean hasMore = fetched.size() > limit;
+        List<Message> page = hasMore ? fetched.subList(0, limit) : fetched;
 
         PagedMessagesResponse response = new PagedMessagesResponse();
         List<MessageResponseDTO> dtoList = new ArrayList<>();
@@ -168,7 +185,7 @@ public class ChatService {
         }
 
         response.setMessages(dtoList);
-        response.setHasMore(endIndex < all.size());
+        response.setHasMore(hasMore);
         response.setNextCursor(dtoList.isEmpty() ? null : dtoList.get(dtoList.size() - 1).getMessageId());
         return response;
     }
@@ -206,12 +223,19 @@ public class ChatService {
         return new ArrayList<>(student.getAttendedEventIds());
     }
 
-    protected void ensureEventExists(String eventId) throws ExecutionException, InterruptedException {
+    protected Event getEventById(String eventId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentSnapshot doc = db.collection("events").document(eventId).get().get();
         if (!doc.exists()) {
             throw new NotFoundException("Event not found");
         }
+
+        Event event = doc.toObject(Event.class);
+        if (event == null) {
+            throw new NotFoundException("Event not found");
+        }
+        event.setEventId(doc.getId());
+        return event;
     }
 
     private MessageResponseDTO toMessageResponse(Message message, String actorId) {
@@ -225,15 +249,6 @@ public class ChatService {
         dto.setTimestamp(message.getTimestamp());
         dto.setMine(actorId.equals(message.getSenderId()));
         return dto;
-    }
-
-    private int indexOfMessageId(List<Message> messages, String messageId) {
-        for (int index = 0; index < messages.size(); index++) {
-            if (messageId.equals(messages.get(index).getMessageId())) {
-                return index;
-            }
-        }
-        return -1;
     }
 
     private boolean isBlank(String value) {

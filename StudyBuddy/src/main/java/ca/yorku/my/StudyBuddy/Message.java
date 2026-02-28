@@ -7,6 +7,7 @@ public class Message {
     private String senderName;
     private String content;
     private String timestamp;
+    private long timestampEpochMillis;
     private MessageType type;
 
     public Message() {
@@ -58,6 +59,14 @@ public class Message {
 
     public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public long getTimestampEpochMillis() {
+        return timestampEpochMillis;
+    }
+
+    public void setTimestampEpochMillis(long timestampEpochMillis) {
+        this.timestampEpochMillis = timestampEpochMillis;
     }
 
     public MessageType getType() {
