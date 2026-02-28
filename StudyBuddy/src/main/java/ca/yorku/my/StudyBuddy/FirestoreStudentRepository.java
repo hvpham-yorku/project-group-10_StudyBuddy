@@ -38,7 +38,7 @@ public class FirestoreStudentRepository implements StudentRepository {
     // Updates the courses a student is currently enrolled in
     @Override
     public void updateCourses(String userId, List<String> courses) throws Exception {
-        db.collection("students").document(userId).update("enrolledCourses", courses).get();
+        db.collection("students").document(userId).update("courses", courses).get();
     }
 
     // Updates the study vibe a student inputs in their profile

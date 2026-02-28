@@ -1,7 +1,6 @@
 package ca.yorku.my.StudyBuddy;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class StubDatabase {
     public static final ArrayList<Student> STUDENTS = new ArrayList<>();

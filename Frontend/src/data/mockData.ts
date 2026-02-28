@@ -4,7 +4,7 @@ export const currentUser = {
   id: "u1",
   name: "Alex Johnson",
   email: "alex.johnson@my.yorku.ca",
-  major: "Computer Science (EECS)",
+  program: "Computer Science (EECS)",
   year: "3rd Year",
   bio: "Passionate about algorithms and coffee. Always down for a good study session! 🎓",
   avatar: "https://images.unsplash.com/photo-1758611971095-87f590f8c4ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMG1hbiUyMHN0dWRlbnQlMjBzdHVkeWluZyUyMGRlc2t8ZW58MXx8fHwxNzcxNDY4ODEyfDA&ixlib=rb-4.1.0&q=80&w=1080",

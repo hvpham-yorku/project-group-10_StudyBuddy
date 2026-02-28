@@ -11,8 +11,11 @@ import { Avatar } from "@radix-ui/react-avatar";
 export default function Profile() {
   const navigate = useNavigate();
 
-  const userId = "123"; // replace with real user ID
+  const userId = "ppbjTefl4zHlRRgvx4kq"; // replace with real user ID
   const [loading, setLoading] = useState(true);
+
+  // STUDENT DATA
+  const [student, setStudent] = useState<any>(null);
 
   // BIO
   const [editingBio, setEditingBio] = useState(false);
@@ -40,7 +43,7 @@ export default function Profile() {
   const [tempYear, setTempYear] = useState("");
 
   // EMAIL
-  const [email, setEmail] = useState(currentUser.email);
+  const [email, setEmail] = useState("");
 
 
   // SECURITY + NOTIFICATIONS
@@ -48,7 +51,6 @@ export default function Profile() {
   const [autoTimeout, setAutoTimeout] = useState(0);
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState("");
-  const [notifications, setNotifications] = useState<Record<string, boolean>>({});
 
   // AVATAR
   const [avatar, setAvatar] = useState("");
@@ -68,7 +70,7 @@ export default function Profile() {
   });
 
   // NOTIFICATION SETTINGS
-  const [notificationSettings, setNotificationSettings] = useState({
+  const [notifications, setNotifications] = useState({
     chatMessages: true,
     sessionUpdates: true,
     connectionRequests: true,
@@ -109,7 +111,7 @@ export default function Profile() {
       try {
         const res = await fetch(`http://localhost:8080/api/studentcontroller/${userId}`);
         const data = await res.json();
-
+        setStudent(data);
         setBio(data.bio || "");
         setTempBio(data.bio || "");
         setCourses(data.courses || []);
@@ -118,7 +120,7 @@ export default function Profile() {
         setProgram(data.program || "");
         setTempProgram(data.program || "");
         setEmail(data.email || "");
-
+        console.log("data.notifications:", data.notifications);
         setYear(data.year || "");
         setTempYear(data.year || "");
 
@@ -130,7 +132,17 @@ export default function Profile() {
         setIsOnline(data.isOnline ?? false);
         setTwoFAEnabled(data.twoFAEnabled ?? false);
         setAutoTimeout(data.autoTimeout ?? 0);
-        setNotifications(data.notifications || {});
+      
+        const defaultNotifications = {
+          chatMessages: false,
+          sessionUpdates: false,
+          connectionRequests: false,
+};
+
+        setNotifications(
+          data.notifications &&
+          typeof data.notifications === "object" &&
+          Object.keys(data.notifications).length > 0 ? data.notifications: defaultNotifications);
 
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -254,7 +266,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
               {/* Name + Status */}
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-slate-900" style={{ fontSize: "1.35rem", fontWeight: 700 }}>
-                  {currentUser.name}
+                  {student?.name}
                 </h1>
                 <div className="flex items-center gap-1">
                 <div
@@ -290,13 +302,13 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
                 <span className="flex items-center gap-1.5">
                   <Mail size={14} className="text-slate-400" />
-                  {currentUser.email}
+                  {student?.email}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-500">
                 <MapPin size={14} className="text-slate-400" />
-                <span>{currentUser.location}</span>
+                <span>{location}</span>
               </div>
 
               <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
@@ -431,7 +443,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         </div>
       </div>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2> 
+          <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2> 
           {/* BIO CARD */} <div
           className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
           onClick={() => !editingBio && setEditingBio(true)}

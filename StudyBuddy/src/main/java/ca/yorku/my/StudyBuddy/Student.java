@@ -54,6 +54,7 @@ public class Student {
         this.userId = userId;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.fullName = firstName + " " + lastName;
         this.courses = new ArrayList<>();
         this.studyVibes = new ArrayList<>();
         this.privacySettings = new HashMap<>();
