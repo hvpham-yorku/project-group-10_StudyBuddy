@@ -15,6 +15,8 @@ import TwoFA from "./pages/TwoFA";
 import NotFound from "./pages/NotFound";
 import EventDetails from "./pages/EventDetails";
 import Layout from "./pages/Layout";
+import { RootLayout } from "./layouts/RootLayout";
+import Inactive from "./pages/Inactive";
 
 export const router = createBrowserRouter([
   // --- Public Routes (No Sidebar) ---
@@ -30,12 +32,13 @@ export const router = createBrowserRouter([
     path: "/2fa",
     element: <TwoFA />,
   },
-  {
-    path: "/*",
-    element: <NotFound />,
-  },
+  
 
   // --- App Routes (With Sidebar) ---
+  {
+    element: <RootLayout />,
+    children: [
+  
   {
     element: <Layout />, // This wraps all children below
     children: [
@@ -84,5 +87,14 @@ export const router = createBrowserRouter([
         element: <Settings />,
       },
     ],
+  },
+],
+  },
+  {
+    path: "/inactive", element: <Inactive /> 
+  },
+  {
+    path: "/*",
+    element: <NotFound />,
   },
 ]);
