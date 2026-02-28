@@ -74,6 +74,7 @@ public class StudentController {
 }
 	}
 
+	
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")
 	public ArrayList<Student> getAllStudents() {

@@ -1,9 +1,12 @@
 package ca.yorku.my.StudyBuddy;
 
+import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -21,13 +24,22 @@ public class FirestoreStudentRepository implements StudentRepository {
     // Retrieves a student from Firestore using ID, if they exist, otherwise throws an exception
     @Override
     public Student getStudent(String userId) throws Exception {
-        DocumentSnapshot doc = db.collection("students").document(userId).get().get();
-        if (doc.exists()) {
-            return doc.toObject(Student.class);
-        } else {
-            throw new Exception("Student not found");
-        }
+    DocumentReference docRef = db.collection("students").document(userId);
+    DocumentSnapshot doc = docRef.get().get();
+
+    if (!doc.exists()) {
+        Student newStudent = new Student();
+        newStudent.setUserId(userId);
+        newStudent.setJoinedDate(
+            LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        );
+
+        docRef.set(newStudent);
+        return newStudent;
     }
+
+    return doc.toObject(Student.class);
+}
     
     // Saves a student to Firestore database using student ID
     @Override

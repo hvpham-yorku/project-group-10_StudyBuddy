@@ -25,7 +25,7 @@ public class Student {
     private String location;
     private boolean twoFAEnabled;
     private int autoTimeout;
-	
+    
 	private List<String> courses = new ArrayList<>();
     private List<String> studyVibes = new ArrayList<>();
     private Map<String, Boolean> privacySettings = new HashMap<>();

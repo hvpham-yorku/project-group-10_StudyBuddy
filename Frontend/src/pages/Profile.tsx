@@ -16,6 +16,7 @@ export default function Profile() {
 
   // STUDENT DATA
   const [student, setStudent] = useState<any>(null);
+  const [joinedDate, setJoinedDate] = useState("");
 
   // BIO
   const [editingBio, setEditingBio] = useState(false);
@@ -116,22 +117,19 @@ export default function Profile() {
         setTempBio(data.bio || "");
         setCourses(data.courses || []);
         setVibes(data.studyVibes || []);
-
         setProgram(data.program || "");
         setTempProgram(data.program || "");
         setEmail(data.email || "");
         console.log("data.notifications:", data.notifications);
         setYear(data.year || "");
         setTempYear(data.year || "");
-
         setAvatar(data.avatar || "");
-
         setPrivacySettings(data.privacySettings || {});
-
         setLocation(data.location || "");
         setIsOnline(data.isOnline ?? false);
         setTwoFAEnabled(data.twoFAEnabled ?? false);
         setAutoTimeout(data.autoTimeout ?? 0);
+        setJoinedDate(data.joinedDate || "");
       
         const defaultNotifications = {
           chatMessages: false,
@@ -169,7 +167,6 @@ export default function Profile() {
     isOnline?: boolean;
     twoFAEnabled?: boolean;
     autoTimeout?: number;
-
 
   } = {}) {
 
