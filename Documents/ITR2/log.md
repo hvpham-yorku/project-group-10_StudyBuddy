@@ -52,6 +52,34 @@ We held a planning session for the current iteration of StudyBuddy, focusing on 
   * [ ] Integrate and prepare the MVP demo for the end of the iteration (Assignee: Team).
 
 
+**Date:** Feb 28, 2026 (40 min)  
+**Members:** Bhavya Trivedi, Omar, Sean, Aqsa Malik  
+
+### Summary
+We held a check-in meeting to review our progress on Iteration 2 features, troubleshoot technical blockers, and prepare for our upcoming submission. This was to complement our regular chat progress updates which happen every other day. We confirmed that the Firebase database is online and accessible to the team. Development updates focused on map integration challenges, chat database connections, and user profile data retrieval. We also emphasized the requirement for unit tests and began planning our project presentation, scheduling a dedicated working session for Sunday.
+
+### Key Decisions
+* **Database & Architecture:** Firebase is online; user profile data will be stored in Firestore and queried via user IDs. Architecture documentation has been updated to reflect these data flows.
+* **Feature Logic:** Direct messaging functionality is actively being debugged. Group chats will strictly enforce the rule requiring users to have completed a study session before gaining access. 
+* **Development Standards:** The team agreed to prioritize regular, incremental commits to avoid integration issues and mandated that unit tests must be written for the current iteration.
+* **Presentation Planning:** We will pivot some focus toward the e-class submission, with a dedicated presentation prep meeting scheduled for tomorrow (Sunday). 
+
+### Task Assignment
+* **Bhavya:**
+  * [ ] Follow up on Firebase database access to ensure the whole team is unblocked.
+  * [ ] Finalize chat functionality, including fixing the DM bug and enforcing the completed-session rule for group chats.
+* **Omar & Sean:**
+  * [ ] Coordinate with Yash on integrating frontend authentication features and profile page data retrieval.
+* **Aqsa:**
+  * [ ] Continue map implementation, specifically tackling Google Maps integration for moving and pin-dropping. 
+* **Yash:**
+  * [ ] Update the authentication code to align with the new Firestore structure.
+* **Vaughn:**
+  * [ ] Continue assigned detailed user stories regarding events functionality.  
+* **Team:**
+  * [ ] Write required unit tests for all assigned features.
+  * [ ] Practice and prepare for the final Deliverable 1 Submission.
+
 ## Rationale of Changes on Plan and Big Design Decisions
 
 
