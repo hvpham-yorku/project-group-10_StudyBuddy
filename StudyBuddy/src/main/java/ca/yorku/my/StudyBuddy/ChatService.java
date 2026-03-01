@@ -6,6 +6,8 @@ import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -134,31 +136,80 @@ public class ChatService {
         if (!chat.getParticipantIds().contains(actorId)) {
             throw new ForbiddenException("Actor is not a participant in this chat");
         }
-        if (request == null || isBlank(request.getContent()) || request.getType() == null) {
-            throw new ValidationException("Message content and type are required");
-        }
-        if (request.getType() != MessageType.TEXT) {
-            throw new ValidationException("Only TEXT messages are supported in Session 2");
+        if (request == null || request.getType() == null) {
+            throw new ValidationException("Message type is required");
         }
         if (!isBlank(request.getChatId()) && !chatId.equals(request.getChatId())) {
             throw new ValidationException("Path chatId must match payload chatId");
         }
+
+        String normalizedContent = normalizeAndValidateMessagePayload(request);
 
         long nowEpochMillis = Instant.now().toEpochMilli();
         Message message = new Message();
         message.setChatId(chatId);
         message.setSenderId(actorId);
         message.setSenderName(actorId);
-        message.setContent(request.getContent().trim());
+        message.setContent(normalizedContent);
         message.setType(request.getType());
+        message.setFile(request.getType() == MessageType.FILE ? request.getFile() : null);
         message.setTimestamp(Instant.ofEpochMilli(nowEpochMillis).toString());
         message.setTimestampEpochMillis(nowEpochMillis);
 
         Message savedMessage = messageDAO.create(chatId, message);
-        chat.setLastMessage(new LastMessagePreview(actorId, savedMessage.getContent(), savedMessage.getType(), savedMessage.getTimestamp()));
+        String previewContent = savedMessage.getContent();
+        if (savedMessage.getType() == MessageType.FILE && savedMessage.getFile() != null && !isBlank(savedMessage.getFile().getFileName())) {
+            previewContent = "[FILE] " + savedMessage.getFile().getFileName();
+        }
+        chat.setLastMessage(new LastMessagePreview(actorId, previewContent, savedMessage.getType(), savedMessage.getTimestamp()));
         chatDAO.save(chat);
 
         return toMessageResponse(savedMessage, actorId);
+    }
+
+    private String normalizeAndValidateMessagePayload(SendMessageDTO request) {
+        if (request.getType() == MessageType.TEXT) {
+            if (isBlank(request.getContent())) {
+                throw new ValidationException("TEXT message content is required");
+            }
+            return request.getContent().trim();
+        }
+
+        if (request.getType() == MessageType.LINK) {
+            if (isBlank(request.getContent())) {
+                throw new ValidationException("LINK message content is required");
+            }
+            String link = request.getContent().trim();
+            if (!isValidHttpUrl(link)) {
+                throw new ValidationException("LINK content must be a valid http(s) URL");
+            }
+            return link;
+        }
+
+        if (request.getType() == MessageType.FILE) {
+            if (request.getFile() == null) {
+                throw new ValidationException("FILE metadata is required");
+            }
+            if (isBlank(request.getFile().getFileName())) {
+                throw new ValidationException("FILE fileName is required");
+            }
+            if (request.getFile().getFileSizeBytes() == null || request.getFile().getFileSizeBytes() <= 0) {
+                throw new ValidationException("FILE fileSizeBytes must be greater than 0");
+            }
+            return isBlank(request.getContent()) ? "" : request.getContent().trim();
+        }
+
+        throw new ValidationException("Unsupported message type");
+    }
+
+    private boolean isValidHttpUrl(String value) {
+        try {
+            URI uri = new URI(value);
+            String scheme = uri.getScheme();
+            return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) && !isBlank(uri.getHost());
+        } catch (URISyntaxException exception) {
+            return false;
+        }
     }
 
     public PagedMessagesResponse getChatMessages(String actorId, String chatId, int limit, String before) {
@@ -286,6 +337,7 @@ public class ChatService {
         dto.setSenderName(message.getSenderName());
         dto.setContent(message.getContent());
         dto.setType(message.getType());
+        dto.setFile(message.getFile());
         dto.setTimestamp(message.getTimestamp());
         dto.setMine(actorId.equals(message.getSenderId()));
         return dto;

@@ -8,6 +8,7 @@ public class MessageResponseDTO {
     private String content;
     private String timestamp;
     private MessageType type;
+    private FileAttachmentDTO file;
     private boolean isMine;
 
     public MessageResponseDTO() {
@@ -67,6 +68,14 @@ public class MessageResponseDTO {
 
     public void setType(MessageType type) {
         this.type = type;
+    }
+
+    public FileAttachmentDTO getFile() {
+        return file;
+    }
+
+    public void setFile(FileAttachmentDTO file) {
+        this.file = file;
     }
 
     public boolean isMine() {

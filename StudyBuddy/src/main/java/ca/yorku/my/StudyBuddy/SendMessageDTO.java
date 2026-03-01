@@ -4,6 +4,7 @@ public class SendMessageDTO {
     private String chatId;
     private String content;
     private MessageType type;
+    private FileAttachmentDTO file;
 
     public SendMessageDTO() {
     }
@@ -30,5 +31,13 @@ public class SendMessageDTO {
 
     public void setType(MessageType type) {
         this.type = type;
+    }
+
+    public FileAttachmentDTO getFile() {
+        return file;
+    }
+
+    public void setFile(FileAttachmentDTO file) {
+        this.file = file;
     }
 }

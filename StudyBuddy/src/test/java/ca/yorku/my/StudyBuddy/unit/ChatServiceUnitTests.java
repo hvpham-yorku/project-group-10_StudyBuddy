@@ -170,7 +170,7 @@ class ChatServiceUnitTests {
     }
 
     @Test
-    void sendMessageRejectsNonTextForSession2() {
+    void sendMessageAcceptsValidLink() {
         ChatService service = newService();
         CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
         chatRequest.setUserA("u1");
@@ -181,6 +181,73 @@ class ChatServiceUnitTests {
         messageRequest.setChatId("u1_u2");
         messageRequest.setContent("https://example.com");
         messageRequest.setType(MessageType.LINK);
+
+        MessageResponseDTO sent = service.sendMessage("u1", "u1_u2", messageRequest);
+
+        assertEquals(MessageType.LINK, sent.getType());
+        assertEquals("https://example.com", sent.getContent());
+    }
+
+    @Test
+    void sendMessageRejectsInvalidLinkFormat() {
+        ChatService service = newService();
+        CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+        chatRequest.setUserA("u1");
+        chatRequest.setUserB("u2");
+        service.createDirectChat("u1", chatRequest);
+
+        SendMessageDTO messageRequest = new SendMessageDTO();
+        messageRequest.setChatId("u1_u2");
+        messageRequest.setContent("not-a-valid-link");
+        messageRequest.setType(MessageType.LINK);
+
+        assertThrows(ValidationException.class,
+                () -> service.sendMessage("u1", "u1_u2", messageRequest));
+    }
+
+    @Test
+    void sendMessageAcceptsFilePlaceholderMetadata() {
+        ChatService service = newService();
+        CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+        chatRequest.setUserA("u1");
+        chatRequest.setUserB("u2");
+        service.createDirectChat("u1", chatRequest);
+
+        SendMessageDTO messageRequest = new SendMessageDTO();
+        messageRequest.setChatId("u1_u2");
+        messageRequest.setContent("lecture notes");
+        messageRequest.setType(MessageType.FILE);
+
+        FileAttachmentDTO file = new FileAttachmentDTO();
+        file.setFileName("notes.pdf");
+        file.setFileSizeBytes(2048L);
+        file.setMimeType("application/pdf");
+        file.setStoragePath("placeholder://notes.pdf");
+        messageRequest.setFile(file);
+
+        MessageResponseDTO sent = service.sendMessage("u1", "u1_u2", messageRequest);
+
+        assertEquals(MessageType.FILE, sent.getType());
+        assertNotNull(sent.getFile());
+        assertEquals("notes.pdf", sent.getFile().getFileName());
+        assertEquals(2048L, sent.getFile().getFileSizeBytes());
+    }
+
+    @Test
+    void sendMessageRejectsFileWithoutRequiredMetadata() {
+        ChatService service = newService();
+        CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+        chatRequest.setUserA("u1");
+        chatRequest.setUserB("u2");
+        service.createDirectChat("u1", chatRequest);
+
+        SendMessageDTO messageRequest = new SendMessageDTO();
+        messageRequest.setChatId("u1_u2");
+        messageRequest.setType(MessageType.FILE);
+        FileAttachmentDTO file = new FileAttachmentDTO();
+        file.setFileName("");
+        file.setFileSizeBytes(0L);
+        messageRequest.setFile(file);
 
         assertThrows(ValidationException.class,
                 () -> service.sendMessage("u1", "u1_u2", messageRequest));

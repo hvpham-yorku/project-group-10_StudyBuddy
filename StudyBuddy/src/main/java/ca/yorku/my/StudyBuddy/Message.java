@@ -9,6 +9,7 @@ public class Message {
     private String timestamp;
     private long timestampEpochMillis;
     private MessageType type;
+    private FileAttachmentDTO file;
 
     public Message() {
     }
@@ -75,5 +76,13 @@ public class Message {
 
     public void setType(MessageType type) {
         this.type = type;
+    }
+
+    public FileAttachmentDTO getFile() {
+        return file;
+    }
+
+    public void setFile(FileAttachmentDTO file) {
+        this.file = file;
     }
 }

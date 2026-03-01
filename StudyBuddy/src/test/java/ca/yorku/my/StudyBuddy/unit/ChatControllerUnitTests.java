@@ -114,6 +114,25 @@ class ChatControllerUnitTests {
                 .andExpect(jsonPath("$.error").exists());
     }
 
+    @Test
+    void sendInvalidLinkMessageReturns422() throws Exception {
+        when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
+        when(chatService.sendMessage(eq("u1"), eq("u1_u2"), any(SendMessageDTO.class)))
+                .thenThrow(new ValidationException("LINK content must be a valid http(s) URL"));
+
+        SendMessageDTO request = new SendMessageDTO();
+        request.setChatId("u1_u2");
+        request.setContent("bad-link");
+        request.setType(MessageType.LINK);
+
+        mockMvc.perform(post("/api/chats/u1_u2/messages")
+                        .header("Authorization", "Bearer u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
         @Test
         void sendFriendRequestReturns201() throws Exception {
                 when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
