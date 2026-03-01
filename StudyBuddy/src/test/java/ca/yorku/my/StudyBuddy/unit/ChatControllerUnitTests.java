@@ -113,4 +113,45 @@ class ChatControllerUnitTests {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").exists());
     }
+
+        @Test
+        void sendFriendRequestReturns201() throws Exception {
+                when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
+
+                FriendRequest response = new FriendRequest();
+                response.setRequestId("fr_u1_u2");
+                response.setSenderId("u1");
+                response.setReceiverId("u2");
+                response.setStatus(FriendRequestStatus.PENDING);
+                response.setCreatedAt("2026-03-01T00:00:00Z");
+
+                when(chatService.sendFriendRequest(eq("u1"), any(SendFriendRequestDTO.class))).thenReturn(response);
+
+                SendFriendRequestDTO request = new SendFriendRequestDTO();
+                request.setTargetUserId("u2");
+
+                mockMvc.perform(post("/api/chats/friend-requests")
+                                                .header("Authorization", "Bearer u1")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.requestId").value("fr_u1_u2"));
+        }
+
+        @Test
+        void sendFriendRequestWithoutSharedSessionReturns403() throws Exception {
+                when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
+                when(chatService.sendFriendRequest(eq("u1"), any(SendFriendRequestDTO.class)))
+                                .thenThrow(new ForbiddenException("Users are eligible only after a completed shared session"));
+
+                SendFriendRequestDTO request = new SendFriendRequestDTO();
+                request.setTargetUserId("u2");
+
+                mockMvc.perform(post("/api/chats/friend-requests")
+                                                .header("Authorization", "Bearer u1")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").exists());
+        }
 }

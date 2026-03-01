@@ -8,12 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -21,11 +18,13 @@ public class ChatService {
 
     private final ChatDAO chatDAO;
     private final MessageDAO messageDAO;
+    private final FriendRequestDAO friendRequestDAO;
 
     @Autowired
-    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO) {
+    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO) {
         this.chatDAO = chatDAO;
         this.messageDAO = messageDAO;
+        this.friendRequestDAO = friendRequestDAO;
     }
 
     public String extractActorId(String authorizationHeader) {
@@ -209,6 +208,39 @@ public class ChatService {
         return false;
     }
 
+    public FriendRequest sendFriendRequest(String actorId, SendFriendRequestDTO request)
+            throws ExecutionException, InterruptedException {
+        if (request == null || isBlank(request.getTargetUserId())) {
+            throw new ValidationException("targetUserId is required");
+        }
+
+        String targetUserId = request.getTargetUserId().trim();
+        if (actorId.equals(targetUserId)) {
+            throw new ValidationException("Cannot send a friend request to yourself");
+        }
+
+        ensureUserExists(actorId);
+        ensureUserExists(targetUserId);
+
+        if (!hasCompletedSharedSession(actorId, targetUserId)) {
+            throw new ForbiddenException("Users are eligible only after a completed shared session");
+        }
+
+        FriendRequest existing = friendRequestDAO.findPendingBetween(actorId, targetUserId).orElse(null);
+        if (existing != null) {
+            throw new ValidationException("A pending friend request already exists between these users");
+        }
+
+        FriendRequest friendRequest = new FriendRequest();
+        friendRequest.setRequestId("fr_" + actorId + "_" + targetUserId);
+        friendRequest.setSenderId(actorId);
+        friendRequest.setReceiverId(targetUserId);
+        friendRequest.setStatus(FriendRequestStatus.PENDING);
+        friendRequest.setCreatedAt(Instant.now().toString());
+
+        return friendRequestDAO.create(friendRequest);
+    }
+
     protected List<String> getAttendedEventIds(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentSnapshot doc = db.collection("users").document(userId).get().get();
@@ -236,6 +268,14 @@ public class ChatService {
         }
         event.setEventId(doc.getId());
         return event;
+    }
+
+    protected void ensureUserExists(String userId) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        DocumentSnapshot doc = db.collection("users").document(userId).get().get();
+        if (!doc.exists()) {
+            throw new NotFoundException("User not found");
+        }
     }
 
     private MessageResponseDTO toMessageResponse(Message message, String actorId) {

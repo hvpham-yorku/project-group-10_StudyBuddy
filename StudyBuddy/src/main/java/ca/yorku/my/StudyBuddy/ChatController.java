@@ -81,6 +81,29 @@ public class ChatController {
         }
     }
 
+    @PostMapping("/friend-requests")
+    public ResponseEntity<?> sendFriendRequest(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody SendFriendRequestDTO request) {
+        try {
+            String actorId = chatService.extractActorId(authorizationHeader);
+            FriendRequest response = chatService.sendFriendRequest(actorId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (UnauthorizedException ex) {
+            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        } catch (ForbiddenException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
+        } catch (NotFoundException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ValidationException ex) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        } catch (ExecutionException | InterruptedException ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send friend request");
+        } catch (Exception ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+        }
+    }
+
     @GetMapping("/{chatId}/messages")
     public ResponseEntity<?> getMessages(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,

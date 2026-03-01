@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ChatServiceUnitTests {
 
     private ChatService newService() {
-        return new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO());
+        return new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
     }
 
     @Test
@@ -125,7 +125,7 @@ class ChatServiceUnitTests {
 
     @Test
     void hasCompletedSharedSessionReturnsTrueWhenUsersShareAttendedEvent() throws Exception {
-        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO());
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
         service.setAttended("u1", List.of("e1", "e2"));
         service.setAttended("u2", List.of("e3", "e2"));
 
@@ -136,7 +136,7 @@ class ChatServiceUnitTests {
 
     @Test
     void hasCompletedSharedSessionReturnsFalseWhenNoOverlap() throws Exception {
-        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO());
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
         service.setAttended("u1", List.of("e1"));
         service.setAttended("u2", List.of("e2"));
 
@@ -147,7 +147,7 @@ class ChatServiceUnitTests {
 
     @Test
     void createEventChatChecksEventExistsViaServiceBoundary() {
-        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO());
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
         service.setExistingEvents(Set.of("event-1"));
         service.setEventParticipants("event-1", Set.of("u1", "u2"));
 
@@ -158,7 +158,7 @@ class ChatServiceUnitTests {
 
     @Test
     void createEventChatRejectsParticipantOutsideEvent() {
-        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO());
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
         service.setExistingEvents(Set.of("event-1"));
         service.setEventParticipants("event-1", Set.of("u1", "u2"));
 
@@ -184,6 +184,36 @@ class ChatServiceUnitTests {
 
         assertThrows(ValidationException.class,
                 () -> service.sendMessage("u1", "u1_u2", messageRequest));
+    }
+
+    @Test
+    void sendFriendRequestRejectsWithoutSharedCompletedSession() {
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
+        service.setAttended("u1", List.of("e1"));
+        service.setAttended("u2", List.of("e2"));
+
+        SendFriendRequestDTO request = new SendFriendRequestDTO();
+        request.setTargetUserId("u2");
+
+        assertThrows(ForbiddenException.class,
+                () -> service.sendFriendRequest("u1", request));
+    }
+
+    @Test
+    void sendFriendRequestCreatesPendingWhenSharedSessionExists() throws Exception {
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
+        service.setAttended("u1", List.of("e1", "e2"));
+        service.setAttended("u2", List.of("e2"));
+
+        SendFriendRequestDTO request = new SendFriendRequestDTO();
+        request.setTargetUserId("u2");
+
+        FriendRequest created = service.sendFriendRequest("u1", request);
+
+        assertEquals("u1", created.getSenderId());
+        assertEquals("u2", created.getReceiverId());
+        assertEquals(FriendRequestStatus.PENDING, created.getStatus());
+        assertNotNull(created.getCreatedAt());
     }
 
     @Test
@@ -216,9 +246,13 @@ class ChatServiceUnitTests {
         private final Map<String, List<String>> attendedByUser = new HashMap<>();
         private Set<String> existingEvents = new HashSet<>();
         private final Map<String, Set<String>> participantsByEvent = new HashMap<>();
+        private final Set<String> existingUsers = new HashSet<>();
 
-        TestableChatService(ChatDAO chatDAO, MessageDAO messageDAO) {
-            super(chatDAO, messageDAO);
+        TestableChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO) {
+            super(chatDAO, messageDAO, friendRequestDAO);
+            existingUsers.add("u1");
+            existingUsers.add("u2");
+            existingUsers.add("u3");
         }
 
         void setAttended(String userId, List<String> eventIds) {
@@ -249,6 +283,13 @@ class ChatServiceUnitTests {
             event.setHostId("u1");
             event.setParticipantIds(new ArrayList<>(participantsByEvent.getOrDefault(eventId, Set.of("u1"))));
             return event;
+        }
+
+        @Override
+        protected void ensureUserExists(String userId) {
+            if (!existingUsers.contains(userId)) {
+                throw new NotFoundException("User not found");
+            }
         }
     }
 
@@ -342,6 +383,26 @@ class ChatServiceUnitTests {
 
             int endIndex = Math.min(startIndex + limit, all.size());
             return new ArrayList<>(all.subList(startIndex, endIndex));
+        }
+    }
+
+    private static class InMemoryFriendRequestDAO implements FriendRequestDAO {
+        private final Map<String, FriendRequest> storage = new HashMap<>();
+
+        @Override
+        public FriendRequest create(FriendRequest request) {
+            storage.put(request.getRequestId(), request);
+            return request;
+        }
+
+        @Override
+        public Optional<FriendRequest> findPendingBetween(String userA, String userB) {
+            return storage.values().stream()
+                    .filter(request -> request.getStatus() == FriendRequestStatus.PENDING)
+                    .filter(request ->
+                            (request.getSenderId().equals(userA) && request.getReceiverId().equals(userB)) ||
+                                    (request.getSenderId().equals(userB) && request.getReceiverId().equals(userA)))
+                    .findFirst();
         }
     }
 }
