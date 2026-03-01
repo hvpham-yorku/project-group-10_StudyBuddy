@@ -51,7 +51,7 @@ export default function Events() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/events");
+        const response = await fetch("/api/events");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -89,6 +89,28 @@ export default function Events() {
       prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
     );
   };
+
+  const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
+  e.stopPropagation(); // Prevents navigating to the event details page
+  console.log(eventId);
+  if (!window.confirm("Are you sure you want to cancel this event?")) return;
+
+  try {
+    const response = await fetch(
+      `/api/events/${eventId}?userId=${currentUser.name}`,
+      { method: "DELETE" }
+    );
+
+    if (response.ok) {
+      setEvents((prev) => prev.filter((ev) => ev.id !== eventId));
+    } else {
+      console.error("Failed to delete event:", response.status);
+      alert("Something went wrong trying to delete the event.");
+    }
+  } catch (err) {
+    console.error("Error deleting event:", err);
+  }
+};
 
   const isMyEvent = (ev: typeof events[0]) => ev.host.id === currentUser.id;
   const isJoined = (id: string) => joinedEvents.includes(id);
@@ -285,11 +307,7 @@ export default function Events() {
                       {/* Delete User's Own Event  */}
                       {ev.host.name == currentUser.name &&(
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          console.log(ev.host)
-                          console.log(currentUser)
-                        }}
+                        onClick={(e) => handleDeleteEvent(ev.id, e)}
                         className="px-4 py-1.5 rounded-lg text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 bg-red-400 text-white transition-colors"
                         style={{ fontWeight: 600 }}
                       >
