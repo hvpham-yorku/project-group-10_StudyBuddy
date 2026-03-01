@@ -61,4 +61,21 @@ class StudentControllerTests {
 
         verify(studentRepository).updateAvatar("123", "url");
     }
+
+    @Test
+    void updateStudyVibes_callsRepository() throws Exception {
+        studentController.updateStudyVibes("123", List.of("Quiet", "Lo-fi"));
+
+        verify(studentRepository).updateStudyVibes("123", List.of("Quiet", "Lo-fi"));
+    }
+
+    @Test
+    void updatePrivacySettings_callsRepository() throws Exception {
+        Map<String, Boolean> settings = Map.of("showBio", true, "showCourses", false);
+
+        studentController.updatePrivacySettings("123", settings);
+
+        verify(studentRepository).updatePrivacySettings("123", settings);
+}
+
 }
