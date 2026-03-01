@@ -3,9 +3,9 @@ import { useInactivityTimer } from "../hooks/useInactivityTimer";
 
 export function RootLayout() {
   // TEMP: hardcode a timeout until real auth is ready
-  const autoTimeout = 0.2; // minutes
+  const autoTimeout = 5; // minutes
 
-  useInactivityTimer(autoTimeout);
+  useInactivityTimer(autoTimeout); 
 
   return <Outlet />;
 }

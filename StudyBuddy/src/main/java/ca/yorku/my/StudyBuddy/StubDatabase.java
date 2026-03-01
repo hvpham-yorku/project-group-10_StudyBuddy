@@ -3,7 +3,7 @@ package ca.yorku.my.StudyBuddy;
 import java.util.ArrayList;
 
 public class StubDatabase {
-    public static final ArrayList<Student> STUDENTS = new ArrayList<>();
+    public static ArrayList<Student> STUDENTS = new ArrayList<>();
 
     static {
         Student s = new Student("123", "John", "Doe");
