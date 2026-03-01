@@ -3,7 +3,7 @@
  * Page for browsing, searching, and filtering study sessions.
  */
 
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, CalendarDays, Clock, MapPin, Users,
@@ -56,13 +56,13 @@ export default function Events() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        
+
         // Temporary fix: Map the string 'host' from backend to an object for the frontend
         // TODO: Update backend to send host as an object through the Student class
         const formattedData = data.map((ev: any) => ({
           ...ev,
-          host: typeof ev.host === 'string' 
-            ? { id: "unknown_id", name: ev.host, avatar: null } 
+          host: typeof ev.host === 'string'
+            ? { id: "unknown_id", name: ev.host, avatar: null }
             : ev.host
         }));
 
@@ -78,7 +78,7 @@ export default function Events() {
     fetchEvents();
   }, []);
 
-  
+
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
@@ -172,9 +172,8 @@ export default function Events() {
           <button
             key={s}
             onClick={() => setFilterStatus(s)}
-            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors ${
-              filterStatus === s ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors ${filterStatus === s ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
             style={{ fontWeight: filterStatus === s ? 600 : 400 }}
           >
             {s}
@@ -280,18 +279,36 @@ export default function Events() {
                     <span className="text-xs text-slate-500">by <span style={{ fontWeight: 600 }} className="text-slate-700">{ev.host.name}</span></span>
                   </div>
 
-                  {ev.status === "upcoming" && !isMyEvent(ev) && (
-                    <button
-                      onClick={(e) => handleJoin(ev.id, e)}
-                      className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${
-                        isJoined(ev.id)
+                  {ev.status === "upcoming" && (
+                    <div className="flex items-center gap-2">
+
+                      {/* Delete User's Own Event  */}
+                      {ev.host.name == currentUser.name &&(
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log(ev.host)
+                          console.log(currentUser)
+                        }}
+                        className="px-4 py-1.5 rounded-lg text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 bg-red-400 text-white transition-colors"
+                        style={{ fontWeight: 600 }}
+                      >
+                        Cancel My Event
+                      </button>
+                      )}
+
+                      {/* Join an event */}
+                      <button
+                        onClick={(e) => handleJoin(ev.id, e)}
+                        className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
                           ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
                           : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
-                      style={{ fontWeight: 600 }}
-                    >
-                      {isJoined(ev.id) ? "Cancel" : "Join"}
-                    </button>
+                          }`}
+                        style={{ fontWeight: 600 }}
+                      >
+                        {isJoined(ev.id) ? "Cancel" : "Join"}
+                      </button>
+                    </div>
                   )}
                   {isMyEvent(ev) && ev.status === "upcoming" && (
                     <button
@@ -312,10 +329,10 @@ export default function Events() {
                     </button>
                   )}
                 </div>
-              </div>
-            </div>
-          ))}
         </div>
+      </div>
+    ))}
+</div>
       )}
     </div>
   );
