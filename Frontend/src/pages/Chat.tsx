@@ -59,6 +59,8 @@ export default function Chat() {
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isSendingFriendRequest, setIsSendingFriendRequest] = useState(false);
+  const [friendRequestNotice, setFriendRequestNotice] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [showAttach, setShowAttach] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -323,6 +325,49 @@ export default function Chat() {
     }
   };
 
+  const sendFriendRequest = async () => {
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat || chat.type !== "direct" || isSendingFriendRequest) {
+      return;
+    }
+
+    const target = chat.members.find((member) => member.id !== currentUser.id);
+    if (!target) {
+      setChatError("Could not determine target user for friend request");
+      return;
+    }
+
+    setIsSendingFriendRequest(true);
+    setChatError(null);
+    setFriendRequestNotice(null);
+    try {
+      const response = await fetch(apiUrl("/api/chats/friend-requests"), {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ targetUserId: target.id }),
+      });
+
+      if (!response.ok) {
+        let details = "Failed to send friend request";
+        try {
+          const errorPayload = await response.json();
+          if (errorPayload?.error) {
+            details = errorPayload.error;
+          }
+        } catch {
+          // ignore parse errors and keep default message
+        }
+        throw new Error(details);
+      }
+
+      setFriendRequestNotice(`Friend request sent to ${target.name}`);
+    } catch (error: any) {
+      setChatError(error?.message || "Failed to send friend request");
+    } finally {
+      setIsSendingFriendRequest(false);
+    }
+  };
+
   const formatTime = (ts: string) => {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -459,6 +504,15 @@ export default function Chat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {selectedChat.type === "direct" && (
+                <button
+                  onClick={() => void sendFriendRequest()}
+                  disabled={isSendingFriendRequest}
+                  className="h-8 px-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                >
+                  {isSendingFriendRequest ? "Sending..." : "Send Friend Request"}
+                </button>
+              )}
               {selectedChat.type === "group" && (
                 <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
                   <Users size={16} className="text-slate-500" />
@@ -590,6 +644,11 @@ export default function Chat() {
 
           {/* Message Input */}
           <div className="bg-white border-t border-slate-200 px-4 py-3 shrink-0">
+            {friendRequestNotice && (
+              <div className="mb-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                {friendRequestNotice}
+              </div>
+            )}
             {chatError && (
               <div className="mb-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
                 {chatError}
