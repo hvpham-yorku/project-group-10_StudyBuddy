@@ -77,6 +77,21 @@ public class EventController {
         }
     }
     
+ // TODO: Make DTO
+    @PostMapping("/leave")
+    public ResponseEntity<String> leaveEvent(@RequestBody Map<String, String> payload) {
+        try {
+        	// 1. Initiate the service
+    		eventService.leaveEvent(payload.get("userId"), payload.get("eventId"));
+        	
+        	// 2. Print it back to user to indicate success
+        	return ResponseEntity.status(HttpStatus.CREATED).body("Left Event!");
+        } catch (Exception e) {
+        	e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     @GetMapping("/{eventId}")
     public ResponseEntity<EventResponseDTO> getEvent(@PathVariable String eventId) {
     	try {
