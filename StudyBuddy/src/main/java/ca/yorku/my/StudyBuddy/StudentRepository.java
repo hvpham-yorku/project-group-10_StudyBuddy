@@ -48,4 +48,7 @@ public interface StudentRepository {
 
     // Updates the notifications settings of a student based on their input
     void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception;
+
+    // Updates events that the user attended
+	void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception;
 }

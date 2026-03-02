@@ -120,4 +120,10 @@ public class StudentService implements StudentRepository {
     public void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception {
         db.collection("students").document(userId).update("notifications", notifications).get();
     }
+    
+ // Updates the notifications settings of a student based on their input
+    @Override
+    public void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception {
+        db.collection("students").document(userId).update("attendedEventIds", attendedEventIds).get();
+    }
 }

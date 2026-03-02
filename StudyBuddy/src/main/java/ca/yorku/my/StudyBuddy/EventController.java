@@ -12,6 +12,7 @@ import ca.yorku.my.StudyBuddy.services.EventService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 // This class is responsible for handling HTTP requests related to events.
@@ -61,7 +62,21 @@ public class EventController {
         }
     }
     
-    // TODO: Add DTO
+    // TODO: Make DTO
+    @PostMapping("/join")
+    public ResponseEntity<String> joinEvent(@RequestBody Map<String, String> payload) {
+        try {
+        	// 1. Initiate the service
+    		eventService.joinEvent(payload.get("userId"), payload.get("eventId"));
+        	
+        	// 2. Print it back to user to indicate success
+        	return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+        } catch (Exception e) {
+        	e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     @GetMapping("/{eventId}")
     public ResponseEntity<EventResponseDTO> getEvent(@PathVariable String eventId) {
     	try {
@@ -147,4 +162,5 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+    
 }

@@ -116,5 +116,11 @@ public class StubStudentRepository implements StudentRepository {
         Student student = getStudent(userId);
         student.setAutoTimeout(autoTimeout);
     }
+
+	@Override
+	public void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
     
 }

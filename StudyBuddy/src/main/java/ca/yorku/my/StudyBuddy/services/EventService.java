@@ -99,7 +99,97 @@ public class EventService {
     }
     
     // Join event
-    public boolean joinEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
+    public boolean joinEvent(String currentUserId, String eventId) throws Exception, ExecutionException, InterruptedException {
+		StudentService ss = new StudentService();
+		Student s;
+		try {
+			s = ss.getStudent(currentUserId);
+		} catch (Exception e) {
+			return false;
+		}
+		
+    	Event e = getEventById(eventId);
+        	
+        // Check if user and event exist
+    	if (s == null) {
+    		throw new Exception("Student does not exist!");
+    	} else if (e == null) {
+    		throw new Exception("Event does not exist!");
+    	}
+    	else {
+    		// Update student to show that they attended this event
+    		List<String> newAttendedEventIds = s.getAttendedEventIds();
+    		newAttendedEventIds.add(e.getId());
+    		ss.updateAttendedEventIDs(currentUserId, newAttendedEventIds);
+    		
+    		// Update the event to show that student went to it
+    		updateAttendees(eventId, currentUserId);
+    		
+    		return true;
+    	}
+    }
+    
+    public boolean updateAttendees(String eventId, String studentId) throws Exception {
+    	
+    	StudentService ss = new StudentService();
+    	Student s;
+    	try {
+    		s = ss.getStudent(studentId);
+    	} catch (Exception e) {
+    		return false;
+    	}
+    	
+    	Event e = this.getEventById(eventId);
+    	if (e == null) return false;
+    	else {
+    		List<String> newAttendees = e.getAttendees();
+    		if (newAttendees == null) {
+    			newAttendees = new ArrayList<String>();
+    		}
+    		newAttendees.add(studentId);
+    		
+    		Firestore db = FirestoreClient.getFirestore();
+        	db.collection("events").document(eventId).update("attendees", newAttendees).get();
+        	
+    		
+    		
+    	}
+    	
+    	return true;
+    }
+    
+    // Leave event
+    public boolean leaveEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
+    	try {
+			StudentService ss = new StudentService();
+	    	Student s = ss.getStudent(currentUserId);
+	    	Event e = getEventById(eventId);
+        	
+        // Check if user and event exist
+    	if (s != null && e!= null) {
+    		// Update student attended events
+    		List<String> newList = s.getAttendedEventIds();
+    		int eventIndex = newList.indexOf(eventId);
+    		
+    		if (eventIndex != -1) {
+    			newList.remove(eventIndex);
+    			s.setAttendedEventIds(newList);
+    		}
+    		
+    		// Update event students
+    		List<String> newAttendees = e.getAttendees();
+    		int attendeeIndex = newAttendees.indexOf(eventId);
+    		
+    		if (attendeeIndex != -1) {
+    			newAttendees.remove(attendeeIndex);
+    			e.setAttendees(newAttendees);
+    		}
+    		
+    		e.setAttendees(newAttendees);
+    	}
+    	} catch (Exception error) {
+    		return false;
+    	}
     	
     	return true;
     }
