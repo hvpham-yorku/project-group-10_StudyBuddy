@@ -1,81 +1,123 @@
 package ca.yorku.my.StudyBuddy.services;
+import ca.yorku.my.StudyBuddy.StudentRepository;
+import ca.yorku.my.StudyBuddy.classes.*;
 
-import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.QueryDocumentSnapshot;
-import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
-import ca.yorku.my.StudyBuddy.classes.Student;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
+@Service 
+@Profile("firestore")
 
-/**  This class manages the session logs of students. It updates the user's session  
-*    when an event is created or joined. It includes information such as duration and location
-*/
-@Service
-public class StudentService {
+// This class allows information from the Firestore database to be accessed and modified
+public class StudentService implements StudentRepository {
 
-    private static final String COLLECTION = "students";
+    private Firestore db = FirestoreClient.getFirestore();
 
-    /**
-     * Retrieves student by a specific ID
-     */
-    public Student getStudentById(String studentId) throws ExecutionException, InterruptedException {
+    // Retrieves a student from Firestore using ID, if they exist, otherwise throws an exception
+    @Override
+    public Student getStudent(String userId) throws Exception {
+    DocumentReference docRef = db.collection("students").document(userId);
+    DocumentSnapshot doc = docRef.get().get();
 
-        Firestore db = FirestoreClient.getFirestore();
+    if (!doc.exists()) {
+        Student newStudent = new Student();
+        newStudent.setUserId(userId);
+        newStudent.setJoinedDate(
+            LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        );
 
-        DocumentSnapshot doc = db.collection(COLLECTION).document(studentId).get().get();
-        
-        if (doc.exists()) {
-        	return doc.toObject(Student.class);
-        } else {
-        	return null;
-        }
+        docRef.set(newStudent);
+        return newStudent;
     }
+
+    return doc.toObject(Student.class);
+}
     
-    /**
-     * Get all students
-     */
-    public List<Student> getAllStudents() throws ExecutionException, InterruptedException {
-    	Firestore db = FirestoreClient.getFirestore();
-    	
-    	ApiFuture<QuerySnapshot> future = db.collection(COLLECTION).get();
-    	List<QueryDocumentSnapshot> documents = future.get().getDocuments();
-    	
-    	List<Student> students = new ArrayList<>();
-    	for (QueryDocumentSnapshot doc : documents) {
-    		Student student = doc.toObject(Student.class);
-    		student.setUserId(doc.getId());
-    		students.add(student);
-    	}
-    	
-    	return students;
+    // Saves a student to Firestore database using student ID
+    @Override
+    public void saveStudent(Student student) throws Exception {
+        db.collection("students").document(student.getUserId()).set(student).get();
     }
-    
-    /**
-     * Create a student
-     */
-    public Student createStudent(Student student) throws ExecutionException, InterruptedException {
-    	
-    	Firestore db = FirestoreClient.getFirestore();
-    	
-    	ApiFuture<DocumentReference> future = db.collection(COLLECTION).add(student);
-    	DocumentReference docRef = future.get();
-    	student.setUserId(docRef.getId());
-    	docRef.set(student).get();
-    	return student;
+
+    // Updates the courses a student is currently enrolled in
+    @Override
+    public void updateCourses(String userId, List<String> courses) throws Exception {
+        db.collection("students").document(userId).update("courses", courses).get();
+    }
+
+    // Updates the study vibe a student inputs in their profile
+    @Override
+    public void updateStudyVibes(String userId, List<String> studyVibes) throws Exception {
+        db.collection("students").document(userId).update("studyVibes", studyVibes).get();
+    }
+
+    // Updates the bio of a student based on their input
+    @Override
+    public void updateBio(String userId, String bio) throws Exception {
+    db.collection("students").document(userId).update("bio", bio).get();
+}
+
+    // Updates the privacy settings of a student based on their choices
+    @Override
+    public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
+        db.collection("students").document(userId).update("privacySettings", privacySettings).get();
+    }
+
+    // Updates the profile picture of a student based on their input
+    @Override
+    public void updateYear(String userId, String year) throws Exception {
+        db.collection("students").document(userId).update("year", year).get();
+    }
+
+    // Updates the program of a student based on their input
+    @Override
+    public void updateProgram(String userId, String program) throws Exception {
+        db.collection("students").document(userId).update("program", program).get();
+    }
+
+    // Updates the profile picture of a student based on their input
+    @Override
+    public void updateAvatar(String userId, String avatar) throws Exception {
+        db.collection("students").document(userId).update("avatar", avatar).get();
+    }   
+
+    // Updates the location of a student based on their input
+    @Override
+    public void updateLocation(String userId, String location) throws Exception {
+        db.collection("students").document(userId).update("location", location).get();
+    }
+
+    // Updates the two-factor authentication setting of a student based on their input
+    @Override
+    public void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception {
+        db.collection("students").document(userId).update("twoFAEnabled", twoFAEnabled).get();
+    }
+
+    // Updates the auto timeout duration of a student based on their input
+    @Override
+    public void updateAutoTimeout(String userId, int autoTimeout) throws Exception {
+        db.collection("students").document(userId).update("autoTimeout", autoTimeout).get();
+    }
+
+    // Updates the online status of a student based on their input
+    @Override
+    public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
+        db.collection("students").document(userId).update("isOnline", isOnline).get();
+    }
+
+    // Updates the notifications settings of a student based on their input
+    @Override
+    public void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception {
+        db.collection("students").document(userId).update("notifications", notifications).get();
     }
 }

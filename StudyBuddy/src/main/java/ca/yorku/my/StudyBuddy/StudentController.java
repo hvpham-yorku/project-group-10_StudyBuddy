@@ -1,110 +1,197 @@
 package ca.yorku.my.StudyBuddy;
+import ca.yorku.my.StudyBuddy.services.StudentService;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.classes.Event;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.dtos.StudentDTO;
-import ca.yorku.my.StudyBuddy.services.StudentService;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.*;
 
 @RestController 
-@RequestMapping("/api/students")
-@CrossOrigin(origins = "*")
-public class StudentController {
-	
-	@Autowired
-	private StudentService studentService;
-	
-	@GetMapping("/{studentId}")
-	public ResponseEntity<StudentDTO> getStudentById(@PathVariable String studentId) {
-		try {
-			Student student = studentService.getStudentById(studentId);
-			StudentDTO studentDTO = new StudentDTO(
-					student.getUserId(),
-					student.getEmail(),
-					student.getFullName(),
-					student.getFirstName(),
-					student.getLastName(),
-					student.getProgram(),
-					student.getBio(),
-					student.getProfilePic(),
-					student.getCourses(),
-					student.getAttendedEventIds()
-					);
-			
-			return ResponseEntity.ok(studentDTO);
-			
-		} catch (Exception e) {
-			System.out.println("Error occured during firebase conncetion");
-			return null;
-		}
-	}
-	
-	@GetMapping
-	public ResponseEntity<List<StudentDTO>> getAllStudents() {
-		try {
-			// 1. Get raw Students from Firestore
-			List<Student> students = studentService.getAllStudents();
-			
-			// 2. Empty list to hold formatted DTOs
-			List<StudentDTO> studentDTOs = new ArrayList<>();
-			
-			// 3. Loop through each student
-			for (Student student : students) {
-				StudentDTO studentDTO = new StudentDTO(
-						student.getUserId(),
-						student.getEmail(),
-						student.getFullName(),
-						student.getFirstName(),
-						student.getLastName(),
-						student.getProgram(),
-						student.getBio(),
-						student.getProfilePic(),
-						student.getCourses(),
-						student.getAttendedEventIds()
-						);
-				studentDTOs.add(studentDTO);
-			}
-			
-			return ResponseEntity.ok(studentDTOs);
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-		}
-	}
-	
-	@PostMapping
-    public ResponseEntity<StudentDTO> createStudent(@RequestBody StudentDTO studentDTO) {
-        try {
-        	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
-        	Student student = new Student(
-        		"", // Let this be filled out by Firebase
-        		studentDTO.email(),
-        		studentDTO.displayName(),
-        		studentDTO.firstName(),
-        		studentDTO.lastName(),
-        		studentDTO.program(),
-        		studentDTO.bio(),
-        		studentDTO.profilePic(),
-        		studentDTO.courses(),
-        		studentDTO.attendedEventIds()
-        			);
-        	
-        	// 2. Store the event in firebase + generated the id
-        	studentService.createStudent(student);
-        		
-        	// 3. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body(studentDTO);
+@RequestMapping("/api/studentcontroller")
+@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT})
 
-        } catch (ExecutionException | InterruptedException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+// This class allows for the student information to be accessed and modified through API calls
+public class StudentController {
+
+	// This allows for the student repository to be used in this class, whether it is the stub or Firestore version
+	@Autowired
+	private StudentRepository studentRepository;
+
+	// This allows for the session log service to be used in this class
+	// @Autowired
+	// private StudentService studentService;
 	
+	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database
+	@PostMapping("/profile/update/{studentID}")
+	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequest req) throws Exception {
+    if (req.courses() != null) {
+        studentRepository.updateCourses(studentID, req.courses());
+    }
+
+    if (req.studyVibes() != null) {
+        studentRepository.updateStudyVibes(studentID, req.studyVibes());
+    }
+
+    if (req.privacySettings() != null) {
+        studentRepository.updatePrivacySettings(studentID, req.privacySettings());
+    }
+
+    if (req.bio() != null) {
+        studentRepository.updateBio(studentID, req.bio());
+    }
+
+	if (req.year() != null) {
+		studentRepository.updateYear(studentID, req.year());
+	}
+
+	if (req.program() != null) {
+		studentRepository.updateProgram(studentID, req.program());
+	}
+
+	if (req.avatar() != null) {
+		studentRepository.updateAvatar(studentID, req.avatar());
+	}
+
+	if (req.location() != null) {
+		studentRepository.updateLocation(studentID, req.location());
+	}
+
+	if (req.notifications() != null) {
+		studentRepository.updateNotifications(studentID, req.notifications());
+	}
+
+	if(req.twoFAEnabled() != null) {
+		studentRepository.updateTwoFAEnabled(studentID, req.twoFAEnabled());
+	}
+
+	if(req.autoTimeout() != 0) {
+		studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
+	}
+
+	if(req.isOnline() != null) {
+		studentRepository.updateOnlineStatus(studentID, req.isOnline());
+}
+	}
+
+	
+	// This method allows for all students in the database to be retrieved through an API call
+	@GetMapping("/getstudents")
+	public ArrayList<Student> getAllStudents() {
+		return StubDatabase.STUDENTS;
+	}
+	
+	// This method allows for a student to be retrieved from the database through an API call using their ID
+	@GetMapping("/{studentID}")
+	public Student getStudent(@PathVariable String studentID) throws Exception {
+		return studentRepository.getStudent(studentID);
+	}
+
+	// This method allows for a student to be saved to the database through an API call
+	@PostMapping("/save")
+	public void saveStudent(@RequestBody Student student) throws Exception {
+		studentRepository.saveStudent(student);
+	}
+
+	// This method allows for a student's courses to be updated in the database through an API call
+	@PutMapping("/{studentID}/courses")
+	public void updateCourses(@PathVariable String studentID, @RequestBody List<String> courses) throws Exception {
+		studentRepository.updateCourses(studentID, courses);
+	}
+
+	// This method allows for a student's study vibe to be updated in the database through an API call
+	@PutMapping("/{studentID}/study-vibes")
+	public void updateStudyVibes(@PathVariable String studentID, @RequestBody List<String> studyVibes) throws Exception {
+		studentRepository.updateStudyVibes(studentID, studyVibes);
+	}
+	
+	// This method allows for a student's privacy settings to be updated in the database through an API call
+	@PutMapping("/{studentID}/privacy-settings")
+	public void updatePrivacySettings(@PathVariable String studentID, @RequestBody Map<String, Boolean> privacySettings) throws Exception {
+		studentRepository.updatePrivacySettings(studentID, privacySettings);
+	}
+
+	
+	// Get a student's session log (all events they have attended)
+	// TODO: Modify this
+	@GetMapping("/getstudent/{studentId}/sessionlog")
+	public List<Event> getStudentSessionLog(@PathVariable String studentId) throws ExecutionException, InterruptedException {
+		// Find student by ID from StubDatabase
+		Student student = StubDatabase.STUDENTS.stream()
+			.filter(s -> s.getUserId().equals(studentId))
+			.findFirst()
+			.orElse(null);
+		
+		if (student == null) {
+			return new ArrayList<>();
+		}
+		return null;
+	}
+	
+	
+	// Get total study time (in minutes) for a student
+	// TODO: Return number of students (depends on student schemas)
+	@GetMapping("/getstudent/{studentId}/totalstudytime")
+	public long getTotalStudyTime(@PathVariable String studentId) throws ExecutionException, InterruptedException {
+		Student student = StubDatabase.STUDENTS.stream()
+			.filter(s -> s.getUserId().equals(studentId))
+			.findFirst()
+			.orElse(null);
+		
+		if (student == null) {
+			return 0;
+		}
+		return 0;
+	}
+	
+	
+	// Get student's session log filtered by course code
+	// TODO: Return the student's session log
+	@GetMapping("/getstudent/{studentId}/sessionlog/course/{courseCode}")
+	public List<Event> getSessionLogByCourse(@PathVariable String studentId, @PathVariable String courseCode) 
+			throws ExecutionException, InterruptedException {
+		Student student = StubDatabase.STUDENTS.stream()
+			.filter(s -> s.getUserId().equals(studentId))
+			.findFirst()
+			.orElse(null);
+		
+		if (student == null) {
+			return new ArrayList<>();
+		}
+		return null;
+		
+		// List<Event> sessionLog = sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
+		// return sessionLogService.filterSessionLogByCourse(sessionLog, courseCode);
+	}
+	
+	
+	// Mark a student as having attended an event 
+	// TODO: Return the events that the student went to
+	@PostMapping("/getstudent/{studentId}/addeventtosessionlog/{eventId}")
+	public Boolean addEventToSessionLog(@PathVariable String studentId, @PathVariable String eventId) {
+		Student student = StubDatabase.STUDENTS.stream()
+			.filter(s -> s.getUserId().equals(studentId))
+			.findFirst()
+			.orElse(null);
+		
+		if (student == null) {
+			return false;
+		}
+		return null;
+		
+		//sessionLogService.addEventToSessionLog(student, eventId);
+		//return true;
+	}
+
+	// This method allows for a student's profile picture to be updated in the database through an API call
+	@PutMapping("/{studentID}/avatar")
+	public void updateAvatar(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
+    	String newUrl = body.get("avatar");
+    	studentRepository.updateAvatar(studentID, newUrl);
+}
 }
