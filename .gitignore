@@ -38,3 +38,5 @@ package-lock.json
 
 ### Firebase ###
 **/serviceAccountKey.json
+
+Frontend/.env.local
