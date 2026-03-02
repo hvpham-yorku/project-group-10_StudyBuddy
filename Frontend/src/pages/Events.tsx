@@ -308,7 +308,7 @@ export default function Events() {
                       {ev.host.name == currentUser.name &&(
                       <button
                         onClick={(e) => handleDeleteEvent(ev.id, e)}
-                        className="px-4 py-1.5 rounded-lg text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 bg-red-400 text-white transition-colors"
+                        className="px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200 hover:bg-red-400 bg-red-500 text-white transition-colors"
                         style={{ fontWeight: 600 }}
                       >
                         Cancel My Event
@@ -316,6 +316,7 @@ export default function Events() {
                       )}
 
                       {/* Join an event */}
+                      {ev.host.name != currentUser.name && (
                       <button
                         onClick={(e) => handleJoin(ev.id, e)}
                         className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
@@ -326,6 +327,7 @@ export default function Events() {
                       >
                         {isJoined(ev.id) ? "Cancel" : "Join"}
                       </button>
+                      )}
                     </div>
                   )}
                   {isMyEvent(ev) && ev.status === "upcoming" && (
