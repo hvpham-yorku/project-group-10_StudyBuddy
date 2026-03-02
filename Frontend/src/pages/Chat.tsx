@@ -11,6 +11,15 @@ import {
 } from "lucide-react";
 import { chats, currentUser } from "../data/mockData";
 
+type UiMessageType = "text" | "link" | "file";
+
+type UiAttachment = {
+  name: string;
+  sizeBytes: number;
+  mimeType?: string;
+  storagePath?: string;
+};
+
 function OnlineDot({ status }: { status: "online" | "offline" | "idle" }) {
   const colors = { online: "bg-green-500", offline: "bg-slate-300", idle: "bg-yellow-400" };
   return <div className={`w-2.5 h-2.5 rounded-full border-2 border-white ${colors[status]}`}></div>;
@@ -66,6 +75,7 @@ export default function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedChat = localChats.find((c) => c.id === selectedChatId)!;
 
@@ -128,6 +138,17 @@ export default function Chat() {
 
   const mapMessageToUi = (chat: typeof chats[0], apiMessage: any) => {
     const sender = chat.members.find((member) => member.id === apiMessage.senderId) as any;
+    const rawType = String(apiMessage.type || "TEXT").toUpperCase();
+    const uiType: UiMessageType = rawType === "FILE" ? "file" : rawType === "LINK" ? "link" : "text";
+    const fileMeta = apiMessage.file
+      ? {
+          name: apiMessage.file.fileName,
+          sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
+          mimeType: apiMessage.file.mimeType,
+          storagePath: apiMessage.file.storagePath,
+        }
+      : undefined;
+
     return {
       id: apiMessage.messageId,
       senderId: apiMessage.senderId,
@@ -135,7 +156,8 @@ export default function Chat() {
       senderAvatar: sender?.avatar || null,
       text: apiMessage.content,
       timestamp: apiMessage.timestamp,
-      type: "text" as const,
+      type: uiType,
+      attachment: fileMeta,
     };
   };
 
@@ -323,6 +345,172 @@ export default function Chat() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const isValidHttpUrl = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  const toAttachmentHref = (storagePath?: string, attachmentName?: string) => {
+    if (!storagePath) return undefined;
+    const hasDownloadName = attachmentName && attachmentName.trim().length > 0;
+    const suffix = hasDownloadName
+      ? `${storagePath.includes("?") ? "&" : "?"}downloadName=${encodeURIComponent(attachmentName!)}`
+      : "";
+
+    if (/^https?:\/\//i.test(storagePath)) {
+      return `${storagePath}${suffix}`;
+    }
+    return apiUrl(`${storagePath}${suffix}`);
+  };
+
+  const sendLinkMessage = async () => {
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat || isSending) return;
+
+    const link = messageInput.trim();
+    if (!link) {
+      setChatError("Enter a URL to send as a link");
+      return;
+    }
+    if (!isValidHttpUrl(link)) {
+      setChatError("Please enter a valid http(s) URL");
+      return;
+    }
+
+    setIsSending(true);
+    setChatError(null);
+    try {
+      const backendChatId = await ensureBackendChat(chat);
+      const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ chatId: backendChatId, content: link, type: "LINK" }),
+      });
+
+      if (!response.ok) {
+        let details = "Failed to send link";
+        try {
+          const errorPayload = await response.json();
+          if (errorPayload?.error) details = errorPayload.error;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(details);
+      }
+
+      const apiMessage = await response.json();
+      const newMsg = mapMessageToUi(chat, apiMessage);
+
+      setLocalChats((prev) =>
+        prev.map((existing) =>
+          existing.id === selectedChatId
+            ? {
+                ...existing,
+                messages: [...existing.messages, newMsg],
+                lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
+              }
+            : existing
+        )
+      );
+      setMessageInput("");
+      setShowAttach(false);
+    } catch (error: any) {
+      setChatError(error?.message || "Failed to send link");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const uploadAndSendFileMessage = async (selectedFile: File) => {
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat || isSending) return;
+
+    setIsSending(true);
+    setChatError(null);
+    try {
+      const backendChatId = await ensureBackendChat(chat);
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const uploadResponse = await fetch(apiUrl("/api/uploads"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${currentUser.id}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        if (uploadResponse.status === 413) {
+          throw new Error("File is too large (max 20MB)");
+        }
+        let details = "Failed to upload file";
+        try {
+          const errorPayload = await uploadResponse.json();
+          if (errorPayload?.error) details = errorPayload.error;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(details);
+      }
+
+      const uploadedMeta = await uploadResponse.json();
+
+      const messageResponse = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          chatId: backendChatId,
+          content: selectedFile.name,
+          type: "FILE",
+          file: uploadedMeta,
+        }),
+      });
+
+      if (!messageResponse.ok) {
+        let details = "Failed to send file message";
+        try {
+          const errorPayload = await messageResponse.json();
+          if (errorPayload?.error) details = errorPayload.error;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(details);
+      }
+
+      const apiMessage = await messageResponse.json();
+      const newMsg = mapMessageToUi(chat, apiMessage);
+
+      setLocalChats((prev) =>
+        prev.map((existing) =>
+          existing.id === selectedChatId
+            ? {
+                ...existing,
+                messages: [...existing.messages, newMsg],
+                lastMessage: { sender: "You", text: `[FILE] ${selectedFile.name}`, timestamp: newMsg.timestamp, read: true },
+              }
+            : existing
+        )
+      );
+      setShowAttach(false);
+    } catch (error: any) {
+      setChatError(error?.message || "Failed to upload/send file");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const onChooseFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+    await uploadAndSendFileMessage(selectedFile);
+    event.target.value = "";
   };
 
   const sendFriendRequest = async () => {
@@ -598,10 +786,30 @@ export default function Chat() {
                             <File size={16} className={isMe ? "text-blue-200" : "text-orange-500"} />
                           </div>
                           <div>
-                            <p className="text-xs" style={{ fontWeight: 600 }}>{(msg as any).attachment?.name}</p>
-                            <p className={`text-xs ${isMe ? "text-blue-200" : "text-slate-400"}`}>{(msg as any).attachment?.size}</p>
+                            <a
+                              href={toAttachmentHref((msg as any).attachment?.storagePath, (msg as any).attachment?.name)}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={(msg as any).attachment?.name || msg.text}
+                              className={`text-xs underline ${isMe ? "text-white" : "text-blue-700"}`}
+                              style={{ fontWeight: 600 }}
+                            >
+                              {(msg as any).attachment?.name || msg.text}
+                            </a>
+                            <p className={`text-xs ${isMe ? "text-blue-200" : "text-slate-400"}`}>
+                              {(msg as any).attachment?.sizeBytes ? `${Math.ceil((msg as any).attachment.sizeBytes / 1024)} KB` : "Attachment"}
+                            </p>
                           </div>
                         </>
+                      ) : msg.type === "link" ? (
+                        <a
+                          href={msg.text}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={isMe ? "underline text-white" : "underline text-blue-700"}
+                        >
+                          {msg.text}
+                        </a>
                       ) : (
                         msg.text
                       )}
@@ -622,20 +830,27 @@ export default function Chat() {
           {/* Attachment Options */}
           {showAttach && (
             <div className="bg-white border-t border-slate-200 px-4 py-3 flex gap-3">
-              {[
-                { icon: File, label: "File", color: "bg-orange-50 text-orange-500" },
-                { icon: ImageIcon, label: "Image", color: "bg-green-50 text-green-500" },
-                { icon: LinkIcon, label: "Link", color: "bg-blue-50 text-blue-500" },
-              ].map(({ icon: Icon, label, color }) => (
-                <button
-                  key={label}
-                  className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity ${color.split(" ")[0]}`}
-                  onClick={() => setShowAttach(false)}
-                >
-                  <Icon size={18} className={color.split(" ")[1]} />
-                  <span className="text-xs text-slate-500">{label}</span>
-                </button>
-              ))}
+              <button
+                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-orange-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <File size={18} className="text-orange-500" />
+                <span className="text-xs text-slate-500">File</span>
+              </button>
+              <button
+                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-green-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon size={18} className="text-green-500" />
+                <span className="text-xs text-slate-500">Image</span>
+              </button>
+              <button
+                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-blue-50"
+                onClick={() => void sendLinkMessage()}
+              >
+                <LinkIcon size={18} className="text-blue-500" />
+                <span className="text-xs text-slate-500">Send Link</span>
+              </button>
               <button onClick={() => setShowAttach(false)} className="ml-auto">
                 <X size={16} className="text-slate-400" />
               </button>
@@ -655,6 +870,12 @@ export default function Chat() {
               </div>
             )}
             <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(event) => void onChooseFile(event)}
+            />
             <button
               onClick={() => setShowAttach(!showAttach)}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showAttach ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}

@@ -38,3 +38,6 @@ package-lock.json
 
 ### Firebase ###
 **/serviceAccountKey.json
+
+### Local Uploads ###
+StudyBuddy/uploads/
