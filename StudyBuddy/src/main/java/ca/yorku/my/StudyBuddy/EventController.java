@@ -1,5 +1,6 @@
 package ca.yorku.my.StudyBuddy;
 
+import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,35 @@ public class EventController {
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+    
+    // TODO: Add DTO
+    @GetMapping("/{eventId}")
+    public ResponseEntity<EventResponseDTO> getEvent(@PathVariable String eventId) {
+    	try {
+    		Event event = eventService.getEventById(eventId);
+    		
+    		EventResponseDTO dto = new EventResponseDTO(
+                	event.getId(),
+                	event.getTitle(),
+                	event.getCourse(),
+                	event.getHost(),
+                	event.getLocation(),
+                	event.getDate(),
+                	event.getTime(),
+                	event.getDuration(),
+                	event.getDescription(),
+                	event.getMaxParticipants(),
+                	event.getAttendees(),
+                	event.getTags(),
+                	event.getStatus(),
+                	event.getReviews()
+                );
+    		
+    		return ResponseEntity.ok(dto);
+    	} catch (ExecutionException | InterruptedException e) {
+    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    	}
     }
 
     // This mapping endpoint allows clients to retrieve a list of all events by sending a GET request. It returns the list of events if successful, or an error status if there was an issue.

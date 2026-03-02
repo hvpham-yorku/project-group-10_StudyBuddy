@@ -9,9 +9,12 @@ import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Student;
 
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -43,7 +46,6 @@ public class EventService {
     }
 
     // Retrieves all events from Firestore.
-
     public List<Event> getAllEvents() throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -59,8 +61,22 @@ public class EventService {
 
         return events;
     }
+    
+    public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
+    	Firestore db = FirestoreClient.getFirestore();
+    	
+    	DocumentReference docRef = db.collection("events").document(eventId);
+    	DocumentSnapshot doc = docRef.get().get();
+    	
+    	if (doc.exists()) {
+            Event newEvent = doc.toObject(Event.class);
+            newEvent.setId(eventId);
+            return newEvent;
+    	}
+           return null;
+    }
 
-// Deletes the specified event if the user is the host. Returns true if deletion was successful, false otherwise.
+    // Deletes the specified event if the user is the host. Returns true if deletion was successful, false otherwise.
     public boolean deleteEvent(String eventId, String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -81,4 +97,11 @@ public class EventService {
         	return true;
         }
     }
+    
+    // Join event
+    public boolean joinEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
+    	
+    	return true;
+    }
+    
 }
