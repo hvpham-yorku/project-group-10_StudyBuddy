@@ -1,6 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 import ca.yorku.my.StudyBuddy.services.StudentService;
 import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
 import ca.yorku.my.StudyBuddy.classes.Event;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ public class StudentController {
 	
 	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database
 	@PostMapping("/profile/update/{studentID}")
-	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequest req) throws Exception {
+	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequestDTO req) throws Exception {
     if (req.courses() != null) {
         studentRepository.updateCourses(studentID, req.courses());
     }

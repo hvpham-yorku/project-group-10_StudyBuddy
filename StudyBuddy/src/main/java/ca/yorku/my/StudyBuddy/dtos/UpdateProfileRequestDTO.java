@@ -1,10 +1,10 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.dtos;
 
 import java.util.List;
 import java.util.Map;
 
 // This record allows the StudentController to receive updates to any field in the Student profile through an API call, based on what fields are included in the request
-public record UpdateProfileRequest(
+public record UpdateProfileRequestDTO(
         List<String> courses,
         List<String> studyVibes,
         Map<String, Boolean> privacySettings,
