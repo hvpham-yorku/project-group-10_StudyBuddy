@@ -277,7 +277,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
               {/* Name + Status */}
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-slate-900" style={{ fontSize: "1.35rem", fontWeight: 700 }}>
-                  {student?.name}
+                  {student?.fullName}
                 </h1>
                 <div className="flex items-center gap-1">
                   <div

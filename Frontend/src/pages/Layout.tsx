@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import {
   LayoutDashboard, User, CalendarDays, MapPin, MessageSquare,
   Users, Settings, Bell, BookOpen, LogOut, ChevronLeft, ChevronRight,
   X
 } from "lucide-react";
-import { currentUser, notifications } from "../data/mockData";
+import { notifications } from "../data/mockData";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -23,9 +23,33 @@ export default function Layout() {
   const navigate = useNavigate();
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const [student, setStudent] = useState<any>(null);
+
   const handleLogout = () => {
+    localStorage.removeItem("studyBuddyToken");
     navigate("/");
   };
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const token = localStorage.getItem("studyBuddyToken");
+        if (!token) return;
+        
+        const res = await fetch("http://localhost:8080/api/studentcontroller/profile", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setStudent(data);
+        }
+      } catch (err) {
+        console.error("Failed to load user for layout", err);
+      }
+    }
+    fetchUser();
+  }, []);
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
@@ -37,6 +61,10 @@ export default function Layout() {
     if (type === "chat") return <MessageSquare size={14} className="text-orange-500" />;
     return <CalendarDays size={14} className="text-blue-600" />;
   };
+
+  if (!student) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -91,12 +119,12 @@ export default function Layout() {
         {/* User & Logout */}
         <div className={`border-t border-blue-800 px-3 py-3 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
           <div className="w-8 h-8 rounded-full bg-blue-600 shrink-0 overflow-hidden">
-            <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+            <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-white truncate" style={{ fontWeight: 600 }}>{currentUser.name}</p>
-              <p className="text-xs text-blue-300 truncate">{currentUser.major}</p>
+              <p className="text-xs text-white truncate" style={{ fontWeight: 600 }}>{student.fullName}</p>
+              <p className="text-xs text-blue-300 truncate">{student.program}</p>
             </div>
           )}
           {!collapsed && (
@@ -122,7 +150,7 @@ export default function Layout() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <span className="text-sm text-slate-500">
-              {currentUser.isOnline ? `Online · ${currentUser.location}` : "Offline"}
+              {student.isOnline ? `Online · ${student.location}` : "Offline"}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -170,7 +198,7 @@ export default function Layout() {
             </div>
 
             <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-blue-600">
-              <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+              <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
             </div>
           </div>
         </header>
