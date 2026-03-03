@@ -3,11 +3,12 @@
  * This component acts as the main for the user once they login.
  */
 
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, Clock, Users, MapPin, Plus, ArrowRight, BookOpen, Star, TrendingUp } from "lucide-react";
 
 // TODO: Make sure to replace hardcoded values with actual calls to springboot backend.
-import { currentUser, events, connections, sessionHistory, notifications } from "../data/mockData";
+import { currentUser, connections, sessionHistory, notifications } from "../data/mockData";
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -24,6 +25,42 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
 }
 
 export default function Dashboard() {
+
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data from the API on mount
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("/api/events");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Temporary fix: Map the string 'host' from backend to an object for the frontend
+        // TODO: Update backend to send host as an object through the Student class
+        const formattedData = data.map((ev: any) => ({
+          ...ev,
+          host: typeof ev.host === 'string'
+            ? { id: "unknown_id", name: ev.host, avatar: null }
+            : ev.host
+        }));
+
+        setEvents(formattedData);
+      } catch (err: any) {
+        console.error("Failed to fetch events:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
   const navigate = useNavigate();
   const upcomingEvents = events.filter((e) => e.status === "upcoming").slice(0, 3);
   const recentSessions = sessionHistory.slice(0, 3);
