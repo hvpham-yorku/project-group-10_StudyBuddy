@@ -1,5 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +16,9 @@ public class AuthController {
     private AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody Student student, @RequestParam String password) {
+    public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         try {
-            String firebaseUid = authService.registerUser(student, password);
+            String firebaseUid = authService.registerUser(body.get("email"), body.get("password"));
             return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());

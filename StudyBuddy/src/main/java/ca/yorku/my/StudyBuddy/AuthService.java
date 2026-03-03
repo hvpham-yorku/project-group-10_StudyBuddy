@@ -17,8 +17,7 @@ public class AuthService {
      * Registers a new student, saves their profile to NoSQL, 
      * and sends a verification email.
      */
-    public String registerUser(Student student, String password) throws Exception {
-        String email = student.getEmail().toLowerCase();
+    public String registerUser(String email, String password) throws Exception {
 
         // 1. UNIVERSITY GUARD: Restrict registration to YorkU domains
         if (!email.endsWith("@yorku.ca") && !email.endsWith("@my.yorku.ca")) {
@@ -29,7 +28,7 @@ public class AuthService {
         UserRecord.CreateRequest request = new UserRecord.CreateRequest()
             .setEmail(email)
             .setPassword(password)
-            .setDisplayName(student.getFullName());
+            .setDisplayName("DELETE ME");
 
         UserRecord userRecord = FirebaseAuth.getInstance().createUser(request);
 
@@ -45,14 +44,14 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email format for ID generation.");
 }
 
-student.setUserId(generatedId);
-
-Firestore db = FirestoreClient.getFirestore();
-// The error below should now vanish because you've proven generatedId isn't null
-db.collection("users").document(generatedId).set(student);
-
-        return userRecord.getUid();
-    }
+		//student.setUserId(generatedId);
+		
+		//Firestore db = FirestoreClient.getFirestore();
+		// The error below should now vanish because you've proven generatedId isn't null
+		//db.collection("users").document(generatedId).set(student);
+		
+        	return userRecord.getUid();
+    	}
 
     /**
      * Validates credentials and checks if the student has verified their email.
