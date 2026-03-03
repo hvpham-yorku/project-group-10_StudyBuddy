@@ -12,46 +12,11 @@ export default function TwoFA() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleCheckVerification = async () => {
-    if (registeredEmail === "your email") {
-      setError("No email found. Please go back to the registration page.");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      // Attempt to log the user in using the email they just registered with
-      const response = await fetch(`http://localhost:8080/api/auth/login?email=${encodeURIComponent(registeredEmail)}`, {
-        method: "POST",
-      });
-
-      if (response.ok) {
-
-        // Status 200: The backend confirmed they are verified and gave a token!
-        // TODO: Add this to response headers instead
-        const data = await response.text();
-        console.log("Login Success:", data); 
-        
-        // TODO: Save the session token to localStorage/context here if needed
-        
-        // Route them to the main app!
-        navigate("/dashboard"); 
-      } else if (response.status === 403) {
-
-        // Status 403: AuthController caught the "Not Verified" exception
-        setError("We checked, but your email isn't verified yet. Please check your inbox (and spam folder) and click the link.");
-      } else {
-        const errorText = await response.text();
-        setError(errorText || "An unexpected error occurred. Please try again.");
-      }
-    } catch (err) {
-      setError("Could not connect to the server. Please ensure your backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleCheckVerification = () => {
+  // We don't have the password here to generate a token, 
+  // so we route them back to the login page to sign in!
+  navigate("/", { replace: true });
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
@@ -105,12 +70,11 @@ export default function TwoFA() {
 
           <button
             onClick={handleCheckVerification}
-            disabled={loading}
             className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-70 mb-4"
             style={{ fontWeight: 600 }}
           >
             <MailCheck size={18} />
-            {loading ? "Checking status..." : "I have clicked the link"}
+            {"Take me back to Login"}
           </button>
 
           <div className="pt-4 border-t border-slate-100">
