@@ -19,22 +19,46 @@ export default function Login() {
     return e.endsWith("@my.yorku.ca") || e.endsWith("@yorku.ca");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (!validateDomain(email)) {
       setError("Only @my.yorku.ca or @yorku.ca email addresses are allowed.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
+
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      // 1. Send both email and password in the body
+      const response = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email, password: password }),
+      });
+
+      if (response.ok) {
+        // Status 200: Verified and logged in!
+        const data = await response.text();
+
+        // Save the token so the Auth Guard lets us into the dashboard
+        localStorage.setItem("studyBuddyToken", data);
+        navigate("/dashboard");
+
+      } else if (response.status === 403) {
+        // Status 403: Backend says email is not verified. Send them to 2FA!
+        navigate("/2fa", { state: { email: email } });
+      } else {
+        setError("Invalid credentials or user not found.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server.");
+    } finally {
       setLoading(false);
-      navigate("/2fa");
-    }, 1000);
+    }
   };
 
   return (

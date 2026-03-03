@@ -54,17 +54,52 @@ export default function Register() {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const e2 = validate();
-    setErrors(e2);
-    if (Object.keys(e2).length > 0) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigate("/2fa");
-    }, 1000);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // 1. Run existing frontend validation
+  const validationErrors = validate();
+  setErrors(validationErrors);
+  if (Object.keys(validationErrors).length > 0) return;
+
+  setLoading(true);
+
+  try {
+    // 2. Build the payload
+    const payload = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+      major: form.major,
+      year: form.year
+    };
+
+    // 3. Send the POST request to Springboot Server
+    const response = await fetch("http://localhost:8080/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // 4.Handle errors
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Registration failed. Please try again.");
+    }
+
+    // Proceed to the 2FA page to tell them to check their inbox.
+    navigate("/2fa", { state: { email: form.email } });
+
+  } catch (err: any) {
+    // Catch any network or backend errors and display them
+    setErrors({ ...validationErrors, serverError: err.message });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">

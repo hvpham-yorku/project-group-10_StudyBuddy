@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import React from 'react';
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -18,6 +18,15 @@ import Layout from "./pages/Layout";
 import { RootLayout } from "./layouts/RootLayout";
 import Inactive from "./pages/Inactive";
 
+// This component checks for a token. If it's missing, it kicks the user to Login.
+const ProtectedRoute = () => {
+  const token = localStorage.getItem("studyBuddyToken");
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+  return <Outlet />;
+};
+
 export const router = createBrowserRouter([
   // --- Public Routes (No Sidebar) ---
   {
@@ -36,59 +45,61 @@ export const router = createBrowserRouter([
 
   // --- App Routes (With Sidebar) ---
   {
-    element: <RootLayout />,
+    element: <ProtectedRoute />, // This wraps all protected routes
     children: [
-  
-  {
-    element: <Layout />, // This wraps all children below
-    children: [
-      {
-        path: "/dashboard",
-        element: <Dashboard />,
-      },
-      {
-        path: "/profile",
-        element: <Profile />,
-      },
-      {
-        path: "/profile/:id",
-        element: <ProfileViewer />,
-      },
-      {
-        path: "/events",
-        element: <Events />,
-      },
-      {
-        path: "/events/create",
-        element: <CreateEvent />,
-      },
-      {
-        path: "/events/:id",
-        element: <EventDetails />,
-      },
-      {
-        path: "map",
-        element: <MapView />,
-      },
-      {
-        path: "chat",
-        element: <Chat />,
-      },
-      {
-        path: "chat/:id",
-        element: <Chat />,
-      },
-      {
-        path: "network",
-        element: <Network />,
-      },
-      {
-        path: "settings",
-        element: <Settings />,
-      },
-    ],
-  },
-],
+    {
+      element: <RootLayout />,
+      children: [
+    {
+      element: <Layout />, // This wraps all children below
+      children: [
+        {
+          path: "/dashboard",
+          element: <Dashboard />,
+        },
+        {
+          path: "/profile",
+          element: <Profile />,
+        },
+        {
+          path: "/profile/:id",
+          element: <ProfileViewer />,
+        },
+        {
+          path: "/events",
+          element: <Events />,
+        },
+        {
+          path: "/events/create",
+          element: <CreateEvent />,
+        },
+        {
+          path: "/events/:id",
+          element: <EventDetails />,
+        },
+        {
+          path: "map",
+          element: <MapView />,
+        },
+        {
+          path: "chat",
+          element: <Chat />,
+        },
+        {
+          path: "chat/:id",
+          element: <Chat />,
+        },
+        {
+          path: "network",
+          element: <Network />,
+        },
+        {
+          path: "settings",
+          element: <Settings />,
+        },
+      ],
+    }],
+  }],
   },
   {
     path: "/inactive", element: <Inactive /> 
