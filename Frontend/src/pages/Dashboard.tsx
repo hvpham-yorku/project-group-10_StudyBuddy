@@ -46,7 +46,7 @@ export default function Dashboard() {
             <h1 className="text-white" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
               {currentUser.name}
             </h1>
-            <p className="text-blue-200 text-sm mt-1">{currentUser.major} · {currentUser.year}</p>
+            <p className="text-blue-200 text-sm mt-1">{currentUser.program} · {currentUser.year}</p>
             <div className="flex items-center gap-2 mt-3">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
               <span className="text-blue-100 text-xs">{currentUser.location}</span>

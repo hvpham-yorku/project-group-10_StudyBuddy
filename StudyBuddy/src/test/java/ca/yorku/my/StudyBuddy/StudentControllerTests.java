@@ -76,6 +76,61 @@ class StudentControllerTests {
         studentController.updatePrivacySettings("123", settings);
 
         verify(studentRepository).updatePrivacySettings("123", settings);
-}
+    }
 
+    @Test
+    void getStudent_returnsNullWhenNotFound() throws Exception {
+        when(studentRepository.getStudent("999")).thenReturn(null);
+
+        Student result = studentController.getStudent("999");
+
+        assert result == null;
+    }
+
+    @Test
+    void updateCourses_allowsEmptyList() throws Exception {
+        studentController.updateCourses("123", List.of());
+
+        verify(studentRepository).updateCourses("123", List.of());
+    }
+
+    @Test
+    void updateAvatar_ignoresMissingAvatarKey() throws Exception {
+        studentController.updateAvatar("123", Map.of("wrongKey", "value"));
+
+        verify(studentRepository).updateAvatar("123", null);
+    }
+
+    @Test
+    void updateStudyVibes_handlesNullList() throws Exception {
+        studentController.updateStudyVibes("123", null);
+
+        verify(studentRepository).updateStudyVibes("123", null);
+    }
+
+    @Test
+    void updatePrivacySettings_allowsEmptyMap() throws Exception {
+        studentController.updatePrivacySettings("123", Map.of());
+
+        verify(studentRepository).updatePrivacySettings("123", Map.of());
+    }
+
+    @Test
+    void getStudent_handlesWhitespaceId() throws Exception {
+        when(studentRepository.getStudent("   ")).thenReturn(null);
+
+        Student result = studentController.getStudent("   ");
+
+        assert result == null;
+    }
+
+    @Test
+    void updateCourses_doesNotMutateInputList() throws Exception {
+        List<String> courses = List.of("EECS 2311");
+
+        studentController.updateCourses("123", courses);
+
+        assert courses.size() == 1;
+        verify(studentRepository).updateCourses("123", courses);
+    }
 }

@@ -11,7 +11,7 @@ import { Avatar } from "@radix-ui/react-avatar";
 export default function Profile() {
   const navigate = useNavigate();
 
-  const userId = "ppbjTefl4zHlRRgvx4kq"; // replace with real user ID
+  const userId = "ppbjTefl4zHlRRgvx4kq"; // replace with real user ID, this is specific to one specific user in firestore
   const [loading, setLoading] = useState(true);
 
   // STUDENT DATA

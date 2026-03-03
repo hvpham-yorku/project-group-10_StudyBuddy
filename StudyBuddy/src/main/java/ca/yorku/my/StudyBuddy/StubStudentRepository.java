@@ -1,10 +1,10 @@
 package ca.yorku.my.StudyBuddy;
 
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
 @Service
 @Profile("stub")
@@ -114,5 +114,4 @@ public class StubStudentRepository implements StudentRepository {
         Student student = getStudent(userId);
         student.setAutoTimeout(autoTimeout);
     }
-    
 }

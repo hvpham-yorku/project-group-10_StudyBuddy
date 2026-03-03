@@ -83,14 +83,28 @@ public class Student {
 
 
 
-    // Getters and Setters 
+    // Getters and Setters for fields
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getFullName() { return fullName; }
+    public String getFullName() {
+    String fn = firstName == null ? "" : firstName.trim();
+    String ln = lastName == null ? "" : lastName.trim();
+
+    if (fn.isEmpty() && ln.isEmpty()) {
+        return "";
+    }
+    if (fn.isEmpty()) {
+        return ln;
+    }
+    if (ln.isEmpty()) {
+        return fn;
+    }
+    return fn + " " + ln;
+    }
     public void setFullName(String fullName) { this.fullName = fullName; }
 
     public String getProgram() { return program; }
@@ -109,7 +123,9 @@ public class Student {
     public void setLastName(String lastName) { this.lastName = lastName; }
     
     public List<String> getCourses() { return courses; }
-    public void setCourses(List<String> courses) { this.courses = courses; }
+    public void setCourses(List<String> courses) {
+    this.courses = (courses == null) ? new ArrayList<>() : courses;
+    }
 
     public List<String> getStudyVibes() { return studyVibes; }
     public void setStudyVibes(List<String> studyVibes) { this.studyVibes = studyVibes; }
