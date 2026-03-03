@@ -125,7 +125,7 @@ export default function Chat() {
       }
 
       const backendEvents = await response.json();
-      const availableGroupChats = (backendEvents || [])
+      const availableGroupChatsRaw = (backendEvents || [])
         .filter((event: any) => {
           const participants = Array.isArray(event?.participantIds) ? event.participantIds : [];
           const hostId = event?.hostId;
@@ -155,11 +155,24 @@ export default function Chat() {
           } as any;
         });
 
-      if (availableGroupChats.length > 0) {
-        setLocalChats([...directChats, ...availableGroupChats]);
-      } else {
-        setLocalChats(chats);
+      const uniqueByGroupName = new Map<string, any>();
+      for (const groupChat of availableGroupChatsRaw) {
+        const normalizedName = String(groupChat.name || "").trim().toLowerCase();
+        if (!uniqueByGroupName.has(normalizedName)) {
+          uniqueByGroupName.set(normalizedName, groupChat);
+        }
       }
+      const availableGroupChats = Array.from(uniqueByGroupName.values());
+
+      const fallbackGroupChats = chats.filter((chat) => chat.type === "group");
+      const backendGroupNames = new Set(
+        availableGroupChats.map((chat: any) => String(chat.name || "").trim().toLowerCase())
+      );
+      const missingFallbackGroups = fallbackGroupChats.filter(
+        (chat: any) => !backendGroupNames.has(String(chat.name || "").trim().toLowerCase())
+      );
+
+      setLocalChats([...directChats, ...availableGroupChats, ...missingFallbackGroups]);
     } catch {
       setLocalChats(chats);
     }
@@ -192,6 +205,110 @@ export default function Chat() {
       type: uiType,
       attachment: fileMeta,
     };
+  };
+
+  const isBackendBackedChat = (chat: typeof chats[0]) => {
+    return true;
+  };
+
+  const resolveBackendEventIdForGroup = async (chat: typeof chats[0]): Promise<string> => {
+    if (chat.isLiveEvent && chat.eventId) {
+      return chat.eventId;
+    }
+
+    const storageKey = `studybuddy.backendEventId.${chat.id}`;
+    if (typeof window !== "undefined") {
+      const cachedEventId = window.sessionStorage.getItem(storageKey);
+      if (cachedEventId) {
+        return cachedEventId;
+      }
+    }
+
+    const eventsResponse = await fetch(apiUrl("/api/events"));
+    if (!eventsResponse.ok) {
+      throw new Error("Could not fetch backend events for group chat");
+    }
+
+    const backendEvents = await eventsResponse.json();
+    const normalizedChatName = String(chat.name || "").trim().toLowerCase();
+    const matchingEvent = (backendEvents || []).find((event: any) => {
+      const eventLabel = String(event?.title || event?.course || "").trim().toLowerCase();
+      return eventLabel.length > 0 && eventLabel === normalizedChatName;
+    });
+
+    if (matchingEvent?.eventId) {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(storageKey, matchingEvent.eventId);
+      }
+      return matchingEvent.eventId;
+    }
+
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    const participantIds = [...new Set((chat.members || []).map((member: any) => member.id).filter(Boolean))];
+
+    const createResponse = await fetch(apiUrl("/api/events"), {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        hostId: activeUser.id,
+        title: chat.name,
+        course: chat.name,
+        location: "TBD",
+        description: "Auto-created backend event for legacy group chat",
+        startTime: now.toISOString(),
+        endTime: oneHourLater.toISOString(),
+        maxCapacity: Math.max(10, participantIds.length || 1),
+        participantIds,
+      }),
+    });
+
+    if (!createResponse.ok) {
+      let details = "Failed to create backend event for group chat";
+      try {
+        const errorPayload = await createResponse.json();
+        if (errorPayload?.error) {
+          details = errorPayload.error;
+        }
+      } catch {
+        // ignore parse errors
+      }
+      throw new Error(details);
+    }
+
+    const createdEvent = await createResponse.json();
+    const backendEventId = createdEvent?.eventId;
+    if (!backendEventId) {
+      throw new Error("Backend event creation did not return eventId");
+    }
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(storageKey, backendEventId);
+    }
+    return backendEventId;
+  };
+
+  const appendLocalMessage = (
+    chatId: string,
+    nextMessage: any,
+    lastMessageText: string
+  ) => {
+    setLocalChats((prev) =>
+      prev.map((existing) =>
+        existing.id === chatId
+          ? {
+              ...existing,
+              messages: [...existing.messages, nextMessage],
+              lastMessage: {
+                sender: "You",
+                text: lastMessageText,
+                timestamp: nextMessage.timestamp,
+                read: true,
+              },
+            }
+          : existing
+      )
+    );
   };
 
   const ensureBackendChat = async (chat: typeof chats[0]): Promise<string> => {
@@ -227,7 +344,7 @@ export default function Chat() {
       const data = await response.json();
       chatId = data.chatId;
     } else {
-      const backendEventId = chat.eventId;
+      const backendEventId = await resolveBackendEventIdForGroup(chat);
       if (!backendEventId) {
         throw new Error("Could not resolve backend eventId for this group chat");
       }

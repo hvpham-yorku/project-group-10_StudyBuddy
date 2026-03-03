@@ -25,8 +25,8 @@ Choose your preferred deployment method below:
 2. **Configure Firebase Firestore (Required)**
    - Get your Firebase service account key (Firestore credentials) from [Firebase Console](https://console.firebase.google.com)
    - Create a Firebase project and Firestore database if you haven't already
-   - Download the service account key JSON file
-   - Place it as `StudyBuddy/src/main/resources/serviceAccountKey.json`
+   - Export the full JSON as environment variable `FIREBASE_CREDENTIALS` before running Docker
+   - Optional fallback (local only): place the JSON file as `StudyBuddy/src/main/resources/serviceAccountKey.json`
 
 3. **Build and Run**
    ```bash
@@ -61,9 +61,19 @@ cd project-group-10_StudyBuddy
 3. Create a Firestore database in your project
 4. Navigate to **Project Settings** → **Service Accounts**
 5. Click **"Generate New Private Key"** to download the service account JSON file
-6. Save the downloaded file as: `StudyBuddy/src/main/resources/serviceAccountKey.json`
+6. Set environment variable `FIREBASE_CREDENTIALS` to the full JSON content before starting backend
 
-This JSON file contains your Firestore database credentials and is required for the app to authenticate with Firestore.
+Linux/Mac example:
+```bash
+export FIREBASE_CREDENTIALS="$(cat path/to/serviceAccountKey.json)"
+```
+
+Windows PowerShell example:
+```powershell
+$env:FIREBASE_CREDENTIALS = Get-Content -Raw "path/to/serviceAccountKey.json"
+```
+
+Optional local fallback: save the file to `StudyBuddy/src/main/resources/serviceAccountKey.json`.
 
 #### Step 3: Start the Backend (Terminal 1)
 
@@ -143,13 +153,14 @@ For detailed API documentation, see [StudyBuddy/BACKEND_SETUP.md](StudyBuddy/BAC
 ## Important Notes
 
 ### Firebase Firestore Configuration
-**Firebase Firestore is required** to run this application. The `serviceAccountKey.json` file contains your Firestore database credentials and is essential for authentication and event storage.
+**Firebase Firestore is required** to run this application. Primary credential source is the `FIREBASE_CREDENTIALS` environment variable.
 
 **Setup:**
 - Create a Firebase project with Firestore database at [Firebase Console](https://console.firebase.google.com)
 - Download the service account key from **Project Settings** → **Service Accounts** → **Generate New Private Key**
-- Place the key file in: `StudyBuddy/src/main/resources/serviceAccountKey.json`
-- Do not commit this file to version control (already in `.gitignore`)
+- Set `FIREBASE_CREDENTIALS` to the JSON contents before running backend
+- Optional fallback: place key file in `StudyBuddy/src/main/resources/serviceAccountKey.json`
+- Do not commit credential files to version control (already in `.gitignore`)
 
 ### Email Service
 The app uses Gmail SMTP for email notifications. Email credentials are configured in `StudyBuddy/src/main/resources/application.properties`
@@ -191,9 +202,9 @@ taskkill /PID <PID> /F
 ```
 
 ### Firebase Key Error
-- Ensure `serviceAccountKey.json` exists in `StudyBuddy/src/main/resources/`
-- Verify the JSON file is valid (use a JSON validator)
-- Ensure you have the correct Firebase project selected
+- Ensure `FIREBASE_CREDENTIALS` is exported in the same terminal/session that starts backend
+- If using fallback file, ensure `serviceAccountKey.json` exists in `StudyBuddy/src/main/resources/`
+- Verify the JSON is valid and from the correct Firebase project
 
 ### Node Modules Issues
 ```bash

@@ -38,6 +38,8 @@ package-lock.json
 
 ### Firebase ###
 **/serviceAccountKey.json
+studybuddy-8b52d-firebase-adminsdk-fbsvc-97f384833c.json
+*firebase-adminsdk*.json
 
 ### Local Uploads ###
 StudyBuddy/uploads/
