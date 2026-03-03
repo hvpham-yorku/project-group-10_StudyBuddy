@@ -10,12 +10,18 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @Repository
+/**
+ * This class is a firestore-backed persistence for chat messages.
+ */
 public class FirestoreMessageDAO implements MessageDAO {
 
     private static final String CHATS_COLLECTION = "chats";
     private static final String MESSAGES_SUBCOLLECTION = "messages";
 
     @Override
+    /**
+     * Creates a new message document and stores generated document id on the model.
+     */
     public Message create(String chatId, Message message) {
         if (isBlank(chatId) || message == null) {
             throw new ValidationException("chatId and message are required");
@@ -38,6 +44,9 @@ public class FirestoreMessageDAO implements MessageDAO {
     }
 
     @Override
+    /**
+     * Saves a message by id, delegating to create when id is missing.
+     */
     public Message save(String chatId, Message message) {
         if (message == null || isBlank(message.getMessageId())) {
             return create(chatId, message);
@@ -58,6 +67,9 @@ public class FirestoreMessageDAO implements MessageDAO {
     }
 
     @Override
+    /**
+     * Finds one message by chat id + message id.
+     */
     public Optional<Message> findById(String chatId, String messageId) {
         if (isBlank(chatId) || isBlank(messageId)) {
             return Optional.empty();
@@ -88,6 +100,12 @@ public class FirestoreMessageDAO implements MessageDAO {
     }
 
     @Override
+    /**
+     * Lists messages in descending chronological order.
+     *
+     * When beforeCursor is provided, results start strictly after that message
+     * in the same sort order (cursor-based page scrolling).
+     */
     public List<Message> listMessages(String chatId, int limit, String beforeCursor) {
         if (isBlank(chatId)) {
             return new ArrayList<>();
@@ -137,6 +155,9 @@ public class FirestoreMessageDAO implements MessageDAO {
         }
     }
 
+    /**
+     * Utility blank check used for request validation paths.
+     */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }

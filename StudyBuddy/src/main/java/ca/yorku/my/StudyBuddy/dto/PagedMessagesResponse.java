@@ -3,6 +3,9 @@ package ca.yorku.my.StudyBuddy;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class is a cursor-based page wrapper for chat message history endpoints.
+ */
 public class PagedMessagesResponse {
     private List<MessageResponseDTO> messages = new ArrayList<>();
     private String nextCursor;

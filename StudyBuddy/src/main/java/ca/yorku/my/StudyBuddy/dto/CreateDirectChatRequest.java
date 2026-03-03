@@ -1,5 +1,8 @@
 package ca.yorku.my.StudyBuddy;
 
+/**
+ * Request payload for creating or resolving a direct chat between two users.
+ */
 public class CreateDirectChatRequest {
     private String userA;
     private String userB;

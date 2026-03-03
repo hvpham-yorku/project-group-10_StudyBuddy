@@ -15,6 +15,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/uploads")
 @CrossOrigin(origins = "*")
+/**
+ * This class handles all the upload and download of chat attachments.
+ */
 public class UploadController {
 
     @Autowired
@@ -23,6 +26,9 @@ public class UploadController {
     @Autowired
     private UploadService uploadService;
 
+    /**
+     * Stores an uploaded attachment and returns metadata required for chat messages.
+     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadAttachment(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -40,6 +46,9 @@ public class UploadController {
         }
     }
 
+    /**
+     * Downloads a previously stored attachment for a specific actor scope.
+     */
     @GetMapping("/files/{actorId}/{fileName:.+}")
     public ResponseEntity<?> downloadAttachment(
             @PathVariable String actorId,
@@ -64,6 +73,9 @@ public class UploadController {
         }
     }
 
+    /**
+     * Returns the shared JSON error shape used by upload endpoints.
+     */
     private ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }

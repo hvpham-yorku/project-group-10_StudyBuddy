@@ -8,11 +8,20 @@ import org.springframework.http.ResponseEntity;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:5173")
+/**
+ * This class handles authentication-related HTTP endpoints that is used by the frontend.
+ *
+ * This controller delegates business logic to AuthService and converts
+ * service outcomes into user-facing HTTP responses.
+ */
 public class AuthController {
 
     @Autowired
     private AuthService authService;
 
+    /**
+     * Registers a new student account and triggers an email verification flow.
+     */
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody Student student, @RequestParam String password) {
         try {
@@ -23,7 +32,9 @@ public class AuthController {
         }
     }
 
-    // New: Password Reset Feature
+    /**
+     * This method generates a password reset link for an existing account email.
+     */
     @PostMapping("/reset-password")
 public ResponseEntity<String> resetPassword(@RequestParam(required = false) String email) {
     // 1. Check if the frontend actually sent an email
@@ -41,6 +52,9 @@ public ResponseEntity<String> resetPassword(@RequestParam(required = false) Stri
     }
 }
 
+/**
+ * Logs a user in by validating account state and returning a session token.
+ */
 @PostMapping("/login")
 public ResponseEntity<String> login(@RequestParam String email) {
     try {

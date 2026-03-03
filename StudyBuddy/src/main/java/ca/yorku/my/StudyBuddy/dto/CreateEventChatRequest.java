@@ -3,6 +3,9 @@ package ca.yorku.my.StudyBuddy;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Request payload for creating or resolving an event-scoped chat.
+ */
 public class CreateEventChatRequest {
     private String chatName;
     private List<String> participantIds = new ArrayList<>();

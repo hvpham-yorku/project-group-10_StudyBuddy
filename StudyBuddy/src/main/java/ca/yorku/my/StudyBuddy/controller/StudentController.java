@@ -12,11 +12,18 @@ import java.util.*;
 @RestController 
 @RequestMapping("/api/studentcontroller")
 @CrossOrigin(origins = "*")
+/**
+ * This class provides student-centric endpoints connected to an in-memory stub list
+ * and session-log derived calculations.
+ */
 public class StudentController {
 	
 	@Autowired
 	private SessionLogService sessionLogService;
 	
+	/**
+	 * Returns all students currently available in the stub data store.
+	 */
 	@GetMapping("/getstudents")
 	public ArrayList<Student> getAllStudents() {
 		return StubDatabase.STUDENTS;

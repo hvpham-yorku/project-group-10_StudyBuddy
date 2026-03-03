@@ -1,5 +1,8 @@
 package ca.yorku.my.StudyBuddy;
 
+/**
+ * This class contains a data transfer object metadata describing an uploaded chat attachment.
+ */
 public class FileAttachmentDTO {
     private String fileName;
     private Long fileSizeBytes;

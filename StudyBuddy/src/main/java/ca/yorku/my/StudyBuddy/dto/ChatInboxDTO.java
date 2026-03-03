@@ -1,5 +1,8 @@
 package ca.yorku.my.StudyBuddy;
 
+/**
+ * Lightweight chat list item used for inbox-style views.
+ */
 public class ChatInboxDTO {
     private String chatId;
     private String chatName;
@@ -29,6 +32,9 @@ public class ChatInboxDTO {
         return lastMessagePreview;
     }
 
+    /**
+     * Stores a short preview string (not full message history).
+     */
     public void setLastMessagePreview(String lastMessagePreview) {
         this.lastMessagePreview = lastMessagePreview;
     }

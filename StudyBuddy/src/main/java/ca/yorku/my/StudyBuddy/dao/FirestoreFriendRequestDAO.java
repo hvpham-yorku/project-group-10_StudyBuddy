@@ -13,11 +13,17 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @Repository
+/**
+ * This is a class containing Firestore-backed storage for friend request records.
+ */
 public class FirestoreFriendRequestDAO implements FriendRequestDAO {
 
     private static final String COLLECTION = "friendRequests";
 
     @Override
+    /**
+     * Persists a friend request document by request id.
+     */
     public FriendRequest create(FriendRequest request) {
         if (request == null) {
             throw new ValidationException("friend request is required");
@@ -37,6 +43,9 @@ public class FirestoreFriendRequestDAO implements FriendRequestDAO {
     }
 
     @Override
+    /**
+     * Searches for an existing pending request in both sender/receiver directions.
+     */
     public Optional<FriendRequest> findPendingBetween(String userA, String userB) {
         if (isBlank(userA) || isBlank(userB)) {
             return Optional.empty();
@@ -70,6 +79,9 @@ public class FirestoreFriendRequestDAO implements FriendRequestDAO {
         }
     }
 
+    /**
+     * Maps the first Firestore document in a result set into a FriendRequest object.
+     */
     private Optional<FriendRequest> mapFirst(List<QueryDocumentSnapshot> documents) {
         if (documents == null || documents.isEmpty()) {
             return Optional.empty();
@@ -83,6 +95,9 @@ public class FirestoreFriendRequestDAO implements FriendRequestDAO {
         return Optional.of(request);
     }
 
+    /**
+     * Utility blank check used for validation guards.
+     */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }

@@ -11,11 +11,18 @@ import java.util.concurrent.ExecutionException;
 @RestController
 @RequestMapping("/api/chats")
 @CrossOrigin(origins = "*")
+/**
+ * This class exposes chat APIs for direct/event conversations, message delivery,
+ * friend-request flow, and live typing status indicator.
+ */
 public class ChatController {
 
     @Autowired
     private ChatService chatService;
 
+    /**
+     * Creates or returns a direct chat between two participants.
+     */
     @PostMapping("/direct")
     public ResponseEntity<?> createDirectChat(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -35,6 +42,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Creates or returns an event chat linked to the given event id.
+     */
     @PostMapping("/event/{eventId}")
     public ResponseEntity<?> createEventChat(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -59,6 +69,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Sends a new message to an existing chat.
+     */
     @PostMapping("/{chatId}/messages")
     public ResponseEntity<?> sendMessage(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -81,6 +94,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Submits a friend request from the authenticated actor.
+     */
     @PostMapping("/friend-requests")
     public ResponseEntity<?> sendFriendRequest(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -104,6 +120,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Fetches paged messages for a chat using an optional cursor.
+     */
     @GetMapping("/{chatId}/messages")
     public ResponseEntity<?> getMessages(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -127,6 +146,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Updates whether the authenticated actor is currently typing.
+     */
     @PutMapping("/{chatId}/typing")
     public ResponseEntity<?> updateTypingStatus(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -149,6 +171,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Returns active typing users for the current chat.
+     */
     @GetMapping("/{chatId}/typing")
     public ResponseEntity<?> getTypingStatus(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -170,6 +195,9 @@ public class ChatController {
         }
     }
 
+    /**
+     * Produces a consistent error payload shape for chat endpoints.
+     */
     private ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }

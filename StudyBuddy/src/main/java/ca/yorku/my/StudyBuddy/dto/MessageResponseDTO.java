@@ -2,6 +2,9 @@ package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.model.MessageType;
 
+/**
+ * This class contains logic for when response payload is returned after sending/fetching chat messages.
+ */
 public class MessageResponseDTO {
     private String messageId;
     private String chatId;

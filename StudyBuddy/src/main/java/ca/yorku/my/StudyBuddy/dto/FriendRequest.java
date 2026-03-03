@@ -2,6 +2,9 @@ package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.model.FriendRequestStatus;
 
+/**
+ * Friend request record shared between API/service/DAO layers.
+ */
 public class FriendRequest {
     private String requestId;
     private String senderId;

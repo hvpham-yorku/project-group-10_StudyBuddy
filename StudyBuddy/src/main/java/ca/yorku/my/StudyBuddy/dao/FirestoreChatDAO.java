@@ -12,16 +12,25 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 @Repository
+/**
+ * This class contains Firestore-backed ChatDAO implementation.
+ */
 public class FirestoreChatDAO implements ChatDAO {
 
     private static final String CHATS_COLLECTION = "chats";
 
     @Override
+    /**
+     * Delegates create semantics to save for a simple upsert flow.
+     */
     public Chat create(Chat chat) {
         return save(chat);
     }
 
     @Override
+    /**
+     * Stores the chat document under its chatId.
+     */
     public Chat save(Chat chat) {
         if (chat == null || isBlank(chat.getChatId())) {
             throw new ValidationException("chatId is required");
@@ -39,6 +48,9 @@ public class FirestoreChatDAO implements ChatDAO {
     }
 
     @Override
+    /**
+     * Loads a chat by document id.
+     */
     public Optional<Chat> findById(String chatId) {
         if (isBlank(chatId)) {
             return Optional.empty();
@@ -65,6 +77,9 @@ public class FirestoreChatDAO implements ChatDAO {
     }
 
     @Override
+    /**
+     * Finds a DIRECT chat containing both users.
+     */
     public Optional<Chat> findDirectByParticipants(String userA, String userB) {
         if (isBlank(userA) || isBlank(userB)) {
             return Optional.empty();
@@ -98,6 +113,9 @@ public class FirestoreChatDAO implements ChatDAO {
     }
 
     @Override
+    /**
+     * Finds the first chat matching a related resource and type.
+     */
     public Optional<Chat> findByRelatedIdAndType(String relatedId, ChatType type) {
         if (isBlank(relatedId) || type == null) {
             return Optional.empty();
@@ -130,6 +148,9 @@ public class FirestoreChatDAO implements ChatDAO {
         }
     }
 
+    /**
+     * Utility blank check used for request validation paths.
+     */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
