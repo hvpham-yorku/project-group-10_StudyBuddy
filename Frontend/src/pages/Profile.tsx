@@ -11,7 +11,7 @@ import { Avatar } from "@radix-ui/react-avatar";
 export default function Profile() {
   const navigate = useNavigate();
 
-  const userId = "ppbjTefl4zHlRRgvx4kq"; // replace with real user ID, this is specific to one specific user in firestore
+  const token = localStorage.getItem("studyBuddyToken");
   const [loading, setLoading] = useState(true);
 
   // STUDENT DATA
@@ -56,7 +56,7 @@ export default function Profile() {
   // AVATAR
   const [avatar, setAvatar] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // PRIVACY SETTINGS
   const [privacySettings, setPrivacySettings] = useState({
     showBio: true,
@@ -110,8 +110,15 @@ export default function Profile() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch(`http://localhost:8080/api/studentcontroller/${userId}`);
+        const token = localStorage.getItem("studyBuddyToken");
+        
+        const res = await fetch(`http://localhost:8080/api/studentcontroller/profile`, {
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
         const data = await res.json();
+        
         setStudent(data);
         setBio(data.bio || "");
         setTempBio(data.bio || "");
@@ -135,7 +142,7 @@ export default function Profile() {
           chatMessages: false,
           sessionUpdates: false,
           connectionRequests: false,
-};
+        };
 
         setNotifications(
           data.notifications &&
@@ -148,12 +155,11 @@ export default function Profile() {
         setLoading(false);
       }
     }
-
     loadProfile();
   }, []);
 
   // Save profile to backend
-  async function saveProfile(payload: {
+ async function saveProfile(payload: {
     courses?: string[];
     studyVibes?: string[];
     bio?: string;
@@ -167,30 +173,34 @@ export default function Profile() {
     isOnline?: boolean;
     twoFAEnabled?: boolean;
     autoTimeout?: number;
-
   } = {}) {
 
-  const fullPayload = {
-    courses,
-    studyVibes: vibes,
-    bio,
-    program,
-    year,
-    email,
-    avatar,
-    privacySettings,
-    notifications,
-    location,
-    isOnline,
-    twoFAEnabled,
-    autoTimeout,
-    ...payload
-  };
+    const fullPayload = {
+      courses,
+      studyVibes: vibes,
+      bio,
+      program,
+      year,
+      email,
+      avatar,
+      privacySettings,
+      notifications,
+      location,
+      isOnline,
+      twoFAEnabled,
+      autoTimeout,
+      ...payload
+    };
 
     try {
-      await fetch(`http://localhost:8080/api/studentcontroller/profile/update/${userId}`, {
+      const token = localStorage.getItem("studyBuddyToken");
+      
+      await fetch(`http://localhost:8080/api/studentcontroller/profile/update`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
         body: JSON.stringify(fullPayload)
       });
     } catch (err) {
@@ -198,32 +208,36 @@ export default function Profile() {
     }
   }
 
-function handleAvatarClick() {
-  fileInputRef.current?.click();
-}
+  function handleAvatarClick() {
+    fileInputRef.current?.click();
+  }
 
 async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // Read file 
-  const reader = new FileReader();
-  reader.onloadend = async () => {
-    const base64 = reader.result as string;
+    // Read file 
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const token = localStorage.getItem("studyBuddyToken");
 
-    // Send to backend
-    await fetch(`http://localhost:8080/api/studentcontroller/${userId}/avatar`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatar: base64 })
-    });
+      // Send to backend
+      await fetch(`http://localhost:8080/api/studentcontroller/profile/avatar`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ avatar: base64 })
+      });
 
-    // Update UI immediately
-    setAvatar(base64);
-  };
+      // Update UI immediately
+      setAvatar(base64);
+    };
 
-  reader.readAsDataURL(file);
-}
+    reader.readAsDataURL(file);
+  }
 
   if (loading) return <p className="p-6">Loading profile...</p>;
 
@@ -243,10 +257,10 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           {/* Avatar */}
           <div className="relative w-24 h-24">
             <img
-            src={avatar || "/default-avatar.png"}
-            onClick={handleAvatarClick}
-            className="w-24 h-24 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
-          />
+              src={avatar || "/default-avatar.png"}
+              onClick={handleAvatarClick}
+              className="w-24 h-24 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
+            />
 
             <input
               type="file"
@@ -266,20 +280,18 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                   {student?.name}
                 </h1>
                 <div className="flex items-center gap-1">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    isOnline ? "bg-green-500" : "bg-slate-400"
-                  }`}
-                ></div>
+                  <div
+                    className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-slate-400"
+                      }`}
+                  ></div>
 
-                <span
-                  className={`text-xs ${
-                    isOnline ? "text-green-600" : "text-slate-500"
-                  }`}
-                >
-                  {isOnline ? "Online" : "Offline"}
-                </span>
-              </div>
+                  <span
+                    className={`text-xs ${isOnline ? "text-green-600" : "text-slate-500"
+                      }`}
+                  >
+                    {isOnline ? "Online" : "Offline"}
+                  </span>
+                </div>
               </div>
 
               {/* Program + Year + Email */}
@@ -310,7 +322,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
               <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
             </div>
-             {/* Edit Profile Button */}
+            {/* Edit Profile Button */}
             <div className="flex gap-2">
               <button
                 onClick={() => setEditingBio(true)}
@@ -350,7 +362,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                         year,
                         privacySettings
                       });
-                      setProgram(tempProgram);                  
+                      setProgram(tempProgram);
                       setEditingProgram(false);
                     }}
                     className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
@@ -401,13 +413,13 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                   <button
                     onClick={async () => {
                       await saveProfile({
-                       courses,
-                       studyVibes: vibes,
-                       bio,
-                       program,
-                       year: tempYear,
-                       privacySettings       
-                       });
+                        courses,
+                        studyVibes: vibes,
+                        bio,
+                        program,
+                        year: tempYear,
+                        privacySettings
+                      });
                       setYear(tempYear);
                       setEditingYear(false);
                     }}
@@ -440,185 +452,185 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         </div>
       </div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2> 
-          {/* BIO CARD */} <div
-          className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
-          onClick={() => !editingBio && setEditingBio(true)}
-        >
-          {/* DISPLAY BIO */}
-          {!editingBio && (
-            <p className="text-slate-700 whitespace-pre-line">
-              {bio || "No bio added yet."}
-            </p>
-          )}
+      <h2 className="text-lg font-semibold text-slate-800 mb-3">Bio</h2>
+      {/* BIO CARD */} <div
+        className="bg-white rounded-2xl border border-slate-200 p-6 mb-5 cursor-pointer"
+        onClick={() => !editingBio && setEditingBio(true)}
+      >
+        {/* DISPLAY BIO */}
+        {!editingBio && (
+          <p className="text-slate-700 whitespace-pre-line">
+            {bio || "No bio added yet."}
+          </p>
+        )}
 
-              {/* EDIT BIO */}
-              {editingBio && (
-                <div>
-                  <textarea
-                    value={tempBio}
-                    onChange={(e) => setTempBio(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
-                    rows={4}
-                  />
+        {/* EDIT BIO */}
+        {editingBio && (
+          <div>
+            <textarea
+              value={tempBio}
+              onChange={(e) => setTempBio(e.target.value)}
+              className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+              rows={4}
+            />
 
-                  <div className="flex gap-3 mt-3">
-                    <button
-                      onClick={async () => {
-                        await saveProfile({
-                          courses,
-                          studyVibes: vibes,
-                          bio: tempBio,
-                          program,
-                          year,
-                          privacySettings
-                        });
-                        setBio(tempBio);
-                        setEditingBio(false);
-                      }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-        >
-          Save
-        </button>
+            <div className="flex gap-3 mt-3">
+              <button
+                onClick={async () => {
+                  await saveProfile({
+                    courses,
+                    studyVibes: vibes,
+                    bio: tempBio,
+                    program,
+                    year,
+                    privacySettings
+                  });
+                  setBio(tempBio);
+                  setEditingBio(false);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+              >
+                Save
+              </button>
+
+              <button
+                onClick={() => {
+                  setTempBio(bio);
+                  setEditingBio(false);
+                }}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* PRIVACY SETTINGS CARD */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Privacy Settings</h2>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Bio</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showBio}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showBio: e.target.checked
+              })
+            }
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Major</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showProgram}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showProgram: e.target.checked
+              })
+            }
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Year</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showYear}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showYear: e.target.checked
+              })
+            }
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Courses</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showCourses}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showCourses: e.target.checked
+              })
+            }
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Study Vibes</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showStudyVibes}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showStudyVibes: e.target.checked
+              })
+            }
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Email</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showEmail}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showEmail: e.target.checked
+              })
+            }
+          />
+
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show Location</span>
+          <input
+            type="checkbox"
+            checked={privacySettings.showLocation}
+            onChange={(e) =>
+              setPrivacySettings({
+                ...privacySettings,
+                showLocation: e.target.checked
+              })
+            }
+          />
+
+        </label>
 
         <button
-          onClick={() => {
-            setTempBio(bio);
-            setEditingBio(false);
-          }}
-          className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+          onClick={() =>
+            saveProfile({
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              email,
+              privacySettings,
+              location
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
         >
-          Cancel
+          Save Privacy Settings
         </button>
       </div>
-    </div>
-  )}
-</div>
 
-                {/* PRIVACY SETTINGS CARD */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-                  <h2 className="text-lg font-semibold text-slate-800 mb-3">Privacy Settings</h2>
 
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Bio</span>
-                    <input
-                    type="checkbox"
-                    checked={privacySettings.showBio}
-                    onChange={(e) =>
-                      setPrivacySettings({
-                        ...privacySettings,
-                        showBio: e.target.checked
-                      })
-                    }
-                  />
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Major</span>
-                    <input
-                    type="checkbox"
-                    checked={privacySettings.showProgram}
-                    onChange={(e) =>
-                      setPrivacySettings({
-                        ...privacySettings,
-                        showProgram: e.target.checked
-                      })
-                    }
-/>
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Year</span>
-                    <input
-                    type="checkbox"
-                    checked={privacySettings.showYear}
-                    onChange={(e) =>
-                      setPrivacySettings({
-                        ...privacySettings,
-                        showYear: e.target.checked
-                      })
-                    }
-                  />
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Courses</span>
-                    <input
-                    type="checkbox"
-                    checked={privacySettings.showCourses}
-                    onChange={(e) =>
-                      setPrivacySettings({
-                        ...privacySettings,
-                        showCourses: e.target.checked
-                      })
-                    }
-                  />
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Study Vibes</span>
-                    <input
-                    type="checkbox"
-                    checked={privacySettings.showStudyVibes}
-                    onChange={(e) =>
-                      setPrivacySettings({
-                        ...privacySettings,
-                        showStudyVibes: e.target.checked
-                      })
-                    }
-                  />
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Email</span>
-                      <input
-                      type="checkbox"
-                      checked={privacySettings.showEmail}
-                      onChange={(e) =>
-                        setPrivacySettings({
-                          ...privacySettings,
-                          showEmail: e.target.checked
-                        })
-                      }
-                    />
-                    
-                  </label>
-
-                  <label className="flex items-center justify-between py-2">
-                    <span>Show Location</span>
-                      <input
-                      type="checkbox"
-                      checked={privacySettings.showLocation}
-                      onChange={(e) =>
-                        setPrivacySettings({
-                          ...privacySettings,
-                          showLocation: e.target.checked
-                        })
-                      }
-                    />
-                    
-                  </label>
-
-                  <button
-                    onClick={() =>
-                      saveProfile({
-                        courses,
-                        studyVibes: vibes,
-                        bio,
-                        program,
-                        year,
-                        email,
-                        privacySettings,
-                        location
-                      })
-                    }
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-                  >
-                    Save Privacy Settings
-                  </button>
-                </div>
-
-          
 
       {/* COURSES SECTION */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
@@ -668,22 +680,22 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           </button>
         </div>
         <button
-           onClick={() =>
+          onClick={() =>
             saveProfile({
-            courses,
-            studyVibes: vibes,
-            bio, 
-            program,
-            year,
-            privacySettings
-      })
-  }
-  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
->
-  Save Changes
-</button>
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              privacySettings
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Changes
+        </button>
 
-</div>
+      </div>
 
       {/* STUDY VIBES SECTION */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
@@ -732,163 +744,163 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
             Add
           </button>
         </div>
-      <button
-        onClick={() =>
-          saveProfile({
-           courses,
-           studyVibes: vibes,
-           bio,
-           program,
-           year,
-           privacySettings
-       })
-  }
-  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
->
-  Save Changes
-</button>
-
-</div>
-
-{/* LOCATION SECTION */}
-<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-  <h2 className="text-lg font-semibold text-slate-800 mb-3">Location</h2>
-
-  <input
-    value={location}
-    onChange={(e) => setLocation(e.target.value)}
-    placeholder="Enter your current study location..."
-    className="border border-slate-300 rounded-lg px-3 py-2 w-full"
-  />
-
-  <button
-    onClick={() =>
-      saveProfile({
-        courses,
-        studyVibes: vibes,
-        bio,
-        program,
-        year,
-        privacySettings,
-        location,
-      })
-    }
-    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-  >
-    Save Location
-  </button>
-</div>
-
-{/* ONLINE STATUS */}
-<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-  <h2 className="text-lg font-semibold text-slate-800 mb-3">Online Status</h2>
-
-  <label className="flex items-center justify-between py-2">
-    <span>Show as Online</span>
-    <input
-      type="checkbox"
-      checked={isOnline}
-      onChange={(e) => setIsOnline(e.target.checked)}
-    />
-  </label>
-
-  <button
-    onClick={() =>
-      saveProfile({
-        courses,
-        studyVibes: vibes,
-        bio,
-        program,
-        year,
-        privacySettings,
-        isOnline,
-      })
-    }
-    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-  >
-    Save Online Status
-  </button>
-</div>
-
-{/* SECURITY SETTINGS */}
-<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-  <h2 className="text-lg font-semibold text-slate-800 mb-3">Security Settings</h2>
-
-  <label className="flex items-center justify-between py-2">
-    <span>Enable Two-Factor Authentication</span>
-    <input
-      type="checkbox"
-      checked={twoFAEnabled}
-      onChange={(e) => setTwoFAEnabled(e.target.checked)}
-    />
-  </label>
-
-  <label className="flex items-center justify-between py-2">
-    <span>Auto Timeout (minutes)</span>
-    <input
-      type="number"
-      value={autoTimeout}
-      onChange={(e) => setAutoTimeout(Number(e.target.value))}
-      className="border border-slate-300 rounded-lg px-3 py-1 w-24"
-    />
-  </label>
-
-  <button
-    onClick={() =>
-      saveProfile({
-        courses,
-        studyVibes: vibes,
-        bio,
-        program,
-        year,
-        privacySettings,
-        twoFAEnabled,
-        autoTimeout,
-      })
-    }
-    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-  >
-    Save Security Settings
-  </button>
-</div>
-
-{/* NOTIFICATION SETTINGS */}
-<div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-  <h2 className="text-lg font-semibold text-slate-800 mb-3">Notifications</h2>
-
-  <div className="space-y-3">
-    {Object.entries(notifications).map(([key, value]) => (
-      <label key={key} className="flex items-center gap-3 text-slate-700">
-        <input
-          type="checkbox"
-          checked={value}
-          onChange={(e) =>
-            setNotifications((prev: any) => ({
-              ...prev,
-              [key]: e.target.checked,
-            }))
+        <button
+          onClick={() =>
+            saveProfile({
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              privacySettings
+            })
           }
-          className="w-4 h-4"
-        />
-        <span className="capitalize">
-          {key.replace(/([A-Z])/g, " $1")}
-        </span>
-      </label>
-    ))}
-  </div>
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Changes
+        </button>
 
-  <button
-    onClick={() =>
-      saveProfile({
-        notifications,
-      })
-    }
-    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-  >
-    Save Notification Settings
-  </button>
-</div>
-</div>
-    
+      </div>
+
+      {/* LOCATION SECTION */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Location</h2>
+
+        <input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Enter your current study location..."
+          className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+        />
+
+        <button
+          onClick={() =>
+            saveProfile({
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              privacySettings,
+              location,
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Location
+        </button>
+      </div>
+
+      {/* ONLINE STATUS */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Online Status</h2>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Show as Online</span>
+          <input
+            type="checkbox"
+            checked={isOnline}
+            onChange={(e) => setIsOnline(e.target.checked)}
+          />
+        </label>
+
+        <button
+          onClick={() =>
+            saveProfile({
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              privacySettings,
+              isOnline,
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Online Status
+        </button>
+      </div>
+
+      {/* SECURITY SETTINGS */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Security Settings</h2>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Enable Two-Factor Authentication</span>
+          <input
+            type="checkbox"
+            checked={twoFAEnabled}
+            onChange={(e) => setTwoFAEnabled(e.target.checked)}
+          />
+        </label>
+
+        <label className="flex items-center justify-between py-2">
+          <span>Auto Timeout (minutes)</span>
+          <input
+            type="number"
+            value={autoTimeout}
+            onChange={(e) => setAutoTimeout(Number(e.target.value))}
+            className="border border-slate-300 rounded-lg px-3 py-1 w-24"
+          />
+        </label>
+
+        <button
+          onClick={() =>
+            saveProfile({
+              courses,
+              studyVibes: vibes,
+              bio,
+              program,
+              year,
+              privacySettings,
+              twoFAEnabled,
+              autoTimeout,
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Security Settings
+        </button>
+      </div>
+
+      {/* NOTIFICATION SETTINGS */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">Notifications</h2>
+
+        <div className="space-y-3">
+          {Object.entries(notifications).map(([key, value]) => (
+            <label key={key} className="flex items-center gap-3 text-slate-700">
+              <input
+                type="checkbox"
+                checked={value}
+                onChange={(e) =>
+                  setNotifications((prev: any) => ({
+                    ...prev,
+                    [key]: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4"
+              />
+              <span className="capitalize">
+                {key.replace(/([A-Z])/g, " $1")}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <button
+          onClick={() =>
+            saveProfile({
+              notifications,
+            })
+          }
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+        >
+          Save Notification Settings
+        </button>
+      </div>
+    </div>
+
   );
 }
