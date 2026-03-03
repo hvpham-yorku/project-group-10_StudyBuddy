@@ -3,7 +3,7 @@
  * This page shows detailed information regarding a specific study session.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, Star, MessageSquare,
@@ -21,20 +21,69 @@ const vibeColors: Record<string, string> = {
 export default function EventDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const event = events.find((e) => e.id === id) || events[0];
+
+  const [event, setEvent] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [joined, setJoined] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
-  const [localReviews, setLocalReviews] = useState(event.reviews);
+  const [localReviews, setLocalReviews] = useState<any[]>([]);
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [showCommentInput, setShowCommentInput] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/events/${id}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) throw new Error("Event not found");
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+
+        // Apply the same temporary host in Events.txt
+        const formattedEvent = {
+          ...data,
+          host: typeof data.host === 'string'
+            ? { id: "unknown_id", name: data.host, avatar: null }
+            : data.host,
+          attendees: data.attendees 
+          ? data.attendees.map((att: any) => 
+              typeof att === 'string' 
+                ? { id: att, name: "Student", avatar: null } // Fallback object
+                : att
+            )
+          : []
+        };
+
+        setEvent(formattedEvent);
+        setLocalReviews(formattedEvent.reviews || []); // Populate reviews after fetching
+
+      } catch (err: any) {
+        console.error("Failed to fetch event:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      };
+    };
+      if (id) {
+        fetchEvent();
+    }
+    }, [id]);
+
+  if (isLoading) return <div className="p-10 text-center text-slate-500 mt-10">Loading session details...</div>;
+  if (error) return <div className="p-10 text-center text-red-500 mt-10">{error}</div>;
+  if (!event) return <div className="p-10 text-center text-slate-500 mt-10">Event not found.</div>;
+
   const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const isMyEvent = event.host.id === currentUser.id;
+  new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const isMyEvent = "Alex Johnson" === currentUser.id;
 
   const submitReview = () => {
     if (!reviewText.trim()) return;
