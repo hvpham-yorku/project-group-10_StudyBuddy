@@ -53,7 +53,7 @@ public ResponseEntity<String> resetPassword(@RequestParam(required = false) Stri
 public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
     try {
         String sessionToken = authService.loginUser(body.get("email"), body.get("password"));
-        return ResponseEntity.ok("Login Successful! Session Token: " + sessionToken);
+        return ResponseEntity.ok(sessionToken);
     } catch (IllegalStateException e) {
         return ResponseEntity.status(403).body(e.getMessage());
     } catch (Exception e) {

@@ -3,6 +3,7 @@ import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StudentService;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import com.google.firebase.auth.UserRecord;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
@@ -14,6 +15,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -117,20 +120,39 @@ public class AuthService {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // If Firebase rejects the password, it returns a 400 error status
+        
         if (response.statusCode() != 200) {
             throw new IllegalArgumentException("Login Failed: Incorrect email or password.");
         }
 
-        // 3. Fetch user to check email verification status
+        // 1. Extract the secure ID Token from Google's response
+        JsonNode rootNode = mapper.readTree(response.body());
+        String idToken = rootNode.path("idToken").asText();
+
+        // 2. Fetch user to check email verification status
         UserRecord user = FirebaseAuth.getInstance().getUserByEmail(email);
         if (!user.isEmailVerified()) {
             throw new IllegalStateException("Login Denied: Please verify your YorkU email first.");
         }
 
-        // 4. Issue the session token
-        return FirebaseAuth.getInstance().createCustomToken(user.getUid());
+        // 3. Return the real ID Token!
+        return idToken;
+    }
+    
+    public String verifyFrontendToken(String authHeader) throws Exception {
+        // 1. Check if the header exists and is formatted properly
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid or missing Authorization header.");
+        }
+
+        // 2. Extract just the token string (remove "Bearer ")
+        String token = authHeader.substring(7);
+
+        // 3. Ask Firebase to verify it
+        FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+
+        // 4. Return the secure UID!
+        return decodedToken.getUid();
     }
 
     /**

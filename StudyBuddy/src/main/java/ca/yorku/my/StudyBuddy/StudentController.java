@@ -11,12 +11,14 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,56 +38,83 @@ public class StudentController {
 	// @Autowired
 	// private StudentService studentService;
 	
-	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database
-	@PostMapping("/profile/update/{studentID}")
-	public void updateProfile(@PathVariable String studentID,@RequestBody UpdateProfileRequestDTO req) throws Exception {
-    if (req.courses() != null) {
-        studentRepository.updateCourses(studentID, req.courses());
-    }
+	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database	
+	@PostMapping("/profile/update")
+	public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String authHeader, @RequestBody UpdateProfileRequestDTO req) {
+	    try {
+	        // Securely get the user's ID from the token!
+	        String studentID = authService.verifyFrontendToken(authHeader);
 
-    if (req.studyVibes() != null) {
-        studentRepository.updateStudyVibes(studentID, req.studyVibes());
-    }
+	        // Keep all your existing if-statements here...
+	        if (req.courses() != null) {
+	            studentRepository.updateCourses(studentID, req.courses());
+	        }
+	        
+	        if (req.courses() != null) {
+	            studentRepository.updateCourses(studentID, req.courses());
+	        }
 
-    if (req.privacySettings() != null) {
-        studentRepository.updatePrivacySettings(studentID, req.privacySettings());
-    }
+	        if (req.studyVibes() != null) {
+	            studentRepository.updateStudyVibes(studentID, req.studyVibes());
+	        }
 
-    if (req.bio() != null) {
-        studentRepository.updateBio(studentID, req.bio());
-    }
+	        if (req.privacySettings() != null) {
+	            studentRepository.updatePrivacySettings(studentID, req.privacySettings());
+	        }
 
-	if (req.year() != null) {
-		studentRepository.updateYear(studentID, req.year());
+	        if (req.bio() != null) {
+	            studentRepository.updateBio(studentID, req.bio());
+	        }
+
+	    	if (req.year() != null) {
+	    		studentRepository.updateYear(studentID, req.year());
+	    	}
+
+	    	if (req.program() != null) {
+	    		studentRepository.updateProgram(studentID, req.program());
+	    	}
+
+	    	if (req.avatar() != null) {
+	    		studentRepository.updateAvatar(studentID, req.avatar());
+	    	}
+
+	    	if (req.location() != null) {
+	    		studentRepository.updateLocation(studentID, req.location());
+	    	}
+
+	    	if (req.notifications() != null) {
+	    		studentRepository.updateNotifications(studentID, req.notifications());
+	    	}
+
+	    	if(req.twoFAEnabled() != null) {
+	    		studentRepository.updateTwoFAEnabled(studentID, req.twoFAEnabled());
+	    	}
+
+	    	if(req.autoTimeout() != 0) {
+	    		studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
+	    	}
+
+	    	if(req.isOnline() != null) {
+	    		studentRepository.updateOnlineStatus(studentID, req.isOnline());
+	    	}
+
+	        return ResponseEntity.ok("Profile updated");
+	    } catch (Exception e) {
+	        return ResponseEntity.status(401).body("Unauthorized");
+	    }
 	}
-
-	if (req.program() != null) {
-		studentRepository.updateProgram(studentID, req.program());
-	}
-
-	if (req.avatar() != null) {
-		studentRepository.updateAvatar(studentID, req.avatar());
-	}
-
-	if (req.location() != null) {
-		studentRepository.updateLocation(studentID, req.location());
-	}
-
-	if (req.notifications() != null) {
-		studentRepository.updateNotifications(studentID, req.notifications());
-	}
-
-	if(req.twoFAEnabled() != null) {
-		studentRepository.updateTwoFAEnabled(studentID, req.twoFAEnabled());
-	}
-
-	if(req.autoTimeout() != 0) {
-		studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
-	}
-
-	if(req.isOnline() != null) {
-		studentRepository.updateOnlineStatus(studentID, req.isOnline());
-	}
+	
+	@Autowired
+    private AuthService authService;
+	@GetMapping("/profile")
+	public ResponseEntity<?> getMyProfile(@RequestHeader("Authorization") String authHeader) {
+	    try {
+	        String uid = authService.verifyFrontendToken(authHeader);
+	        Student student = studentRepository.getStudent(uid);
+	        return ResponseEntity.ok(student);
+	    } catch (Exception e) {
+	        return ResponseEntity.status(401).body("Unauthorized");
+	    }
 	}
 
 	
@@ -198,9 +227,10 @@ public class StudentController {
 	}
 
 	// This method allows for a student's profile picture to be updated in the database through an API call
-	@PutMapping("/{studentID}/avatar")
-	public void updateAvatar(@PathVariable String studentID, @RequestBody Map<String, String> body) throws Exception {
-    	String newUrl = body.get("avatar");
-    	studentRepository.updateAvatar(studentID, newUrl);
-}
+	@PutMapping("/profile/avatar")
+	public void updateAvatar(@RequestHeader("Authorization") String authHeader, @RequestBody Map<String, String> body) throws Exception {
+	    String studentID = authService.verifyFrontendToken(authHeader);
+	    String newUrl = body.get("avatar");
+	    studentRepository.updateAvatar(studentID, newUrl);
+	}
 }
