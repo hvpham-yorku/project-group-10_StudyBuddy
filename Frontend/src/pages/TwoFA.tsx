@@ -1,55 +1,56 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, Shield, RefreshCw, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { BookOpen, Shield, MailCheck, AlertCircle } from "lucide-react";
 
 export default function TwoFA() {
   const navigate = useNavigate();
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const location = useLocation();
+  
+  // Grab the email passed from the Register page (fallback if accessed directly)
+  const registeredEmail = location.state?.email || "your email";
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resent, setResent] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleChange = (idx: number, val: string) => {
-    if (!/^\d*$/.test(val)) return;
-    const newCode = [...code];
-    newCode[idx] = val.slice(-1);
-    setCode(newCode);
-    if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
-  };
-
-  const handleKeyDown = (idx: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[idx] && idx > 0) {
-      inputRefs.current[idx - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (pasted.length === 6) {
-      setCode(pasted.split(""));
-      inputRefs.current[5]?.focus();
-    }
-  };
-
-  const handleVerify = () => {
-    const fullCode = code.join("");
-    if (fullCode.length < 6) {
-      setError("Please enter all 6 digits");
+  const handleCheckVerification = async () => {
+    if (registeredEmail === "your email") {
+      setError("No email found. Please go back to the registration page.");
       return;
     }
+
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      setLoading(false);
-      // Any 6-digit code works in mock mode
-      navigate("/dashboard");
-    }, 1200);
-  };
 
-  const handleResend = () => {
-    setResent(true);
-    setTimeout(() => setResent(false), 3000);
+    try {
+      // Attempt to log the user in using the email they just registered with
+      const response = await fetch(`http://localhost:8080/api/auth/login?email=${encodeURIComponent(registeredEmail)}`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+
+        // Status 200: The backend confirmed they are verified and gave a token!
+        // TODO: Add this to response headers instead
+        const data = await response.text();
+        console.log("Login Success:", data); 
+        
+        // TODO: Save the session token to localStorage/context here if needed
+        
+        // Route them to the main app!
+        navigate("/dashboard"); 
+      } else if (response.status === 403) {
+
+        // Status 403: AuthController caught the "Not Verified" exception
+        setError("We checked, but your email isn't verified yet. Please check your inbox (and spam folder) and click the link.");
+      } else {
+        const errorText = await response.text();
+        setError(errorText || "An unexpected error occurred. Please try again.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server. Please ensure your backend is running.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,69 +72,50 @@ export default function TwoFA() {
           <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
             <Shield size={28} className="text-blue-700" />
           </div>
-          <h2 className="text-slate-800 mb-2" style={{ fontSize: "1.25rem", fontWeight: 700 }}>Two-Factor Authentication</h2>
+          
+          <h2 className="text-slate-800 mb-2" style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+            Verify Your Email
+          </h2>
+          
           <p className="text-slate-500 text-sm mb-1">
-            We sent a 6-digit verification code to
+            We sent a verification link to:
           </p>
-          <p className="text-blue-700 text-sm mb-6" style={{ fontWeight: 600 }}>
-            a***@my.yorku.ca
+          <p className="text-blue-700 text-sm mb-6 bg-blue-50 py-2 rounded-md border border-blue-100" style={{ fontWeight: 600 }}>
+            {registeredEmail}
           </p>
 
+          <div className="bg-slate-50 rounded-lg p-4 mb-6 text-left border border-slate-100">
+            <p className="text-sm text-slate-600 mb-2">
+              <strong>Step 1:</strong> Open your YorkU email inbox.
+            </p>
+            <p className="text-sm text-slate-600 mb-2">
+              <strong>Step 2:</strong> Click the secure link we sent you.
+            </p>
+            <p className="text-sm text-slate-600">
+              <strong>Step 3:</strong> Come back here and click the button below!
+            </p>
+          </div>
+
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4 text-xs text-red-600 text-left">
-              {error}
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-3 mb-6 text-left">
+              <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 font-medium">{error}</p>
             </div>
           )}
 
-          {/* OTP Inputs */}
-          <div className="flex gap-2 justify-center mb-6" onPaste={handlePaste}>
-            {code.map((digit, idx) => (
-              <input
-                key={idx}
-                ref={(el) => { inputRefs.current[idx] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(idx, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-10 h-12 text-center border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors text-slate-800 bg-slate-50"
-                style={{ fontSize: "1.25rem", fontWeight: 700 }}
-              />
-            ))}
-          </div>
-
           <button
-            onClick={handleVerify}
+            onClick={handleCheckVerification}
             disabled={loading}
-            className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors disabled:opacity-60 mb-3"
+            className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-70 mb-4"
             style={{ fontWeight: 600 }}
           >
-            {loading ? "Verifying..." : "Verify Code"}
+            <MailCheck size={18} />
+            {loading ? "Checking status..." : "I have clicked the link"}
           </button>
 
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-sm text-slate-500">Didn't receive it?</p>
-            {resent ? (
-              <div className="flex items-center gap-1 text-green-600">
-                <CheckCircle size={14} />
-                <span className="text-xs">Sent!</span>
-              </div>
-            ) : (
-              <button
-                onClick={handleResend}
-                className="text-sm text-orange-500 hover:underline flex items-center gap-1"
-                style={{ fontWeight: 600 }}
-              >
-                <RefreshCw size={13} />
-                Resend
-              </button>
-            )}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="pt-4 border-t border-slate-100">
             <p className="text-xs text-slate-400">
-              Having trouble? <button className="text-blue-600 hover:underline">Contact support</button>
+              Didn't get the email? <button className="text-blue-600 hover:underline font-medium">Check spam folder</button>
             </p>
           </div>
         </div>

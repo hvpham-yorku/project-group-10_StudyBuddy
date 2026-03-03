@@ -91,7 +91,7 @@ export default function Register() {
     }
 
     // Proceed to the 2FA page to tell them to check their inbox.
-    navigate("/2fa");
+    navigate("/2fa", { state: { email: form.email } });
 
   } catch (err: any) {
     // Catch any network or backend errors and display them
