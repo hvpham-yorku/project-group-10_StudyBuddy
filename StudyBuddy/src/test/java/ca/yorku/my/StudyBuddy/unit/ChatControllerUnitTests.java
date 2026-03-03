@@ -10,6 +10,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -172,5 +173,36 @@ class ChatControllerUnitTests {
                                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isForbidden())
                                 .andExpect(jsonPath("$.error").exists());
+        }
+
+        @Test
+        void updateTypingStatusReturns204() throws Exception {
+                when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
+                doNothing().when(chatService).updateTypingStatus(eq("u1"), eq("u1_u2"), any(TypingStatusUpdateRequest.class));
+
+                TypingStatusUpdateRequest request = new TypingStatusUpdateRequest();
+                request.setTyping(true);
+
+                mockMvc.perform(put("/api/chats/u1_u2/typing")
+                                                .header("Authorization", "Bearer u1")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isNoContent());
+        }
+
+        @Test
+        void getTypingStatusReturns200() throws Exception {
+                when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
+
+                TypingStatusResponse response = new TypingStatusResponse();
+                response.setTypingUserIds(java.util.List.of("u2"));
+                response.setExpiresInMs(1200L);
+                when(chatService.getTypingStatus("u1", "u1_u2")).thenReturn(response);
+
+                mockMvc.perform(get("/api/chats/u1_u2/typing")
+                                                .header("Authorization", "Bearer u1"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.typingUserIds[0]").value("u2"))
+                                .andExpect(jsonPath("$.expiresInMs").value(1200));
         }
 }

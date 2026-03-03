@@ -127,6 +127,49 @@ public class ChatController {
         }
     }
 
+    @PutMapping("/{chatId}/typing")
+    public ResponseEntity<?> updateTypingStatus(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable String chatId,
+            @RequestBody TypingStatusUpdateRequest request) {
+        try {
+            String actorId = chatService.extractActorId(authorizationHeader);
+            chatService.updateTypingStatus(actorId, chatId, request);
+            return ResponseEntity.noContent().build();
+        } catch (UnauthorizedException ex) {
+            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        } catch (ForbiddenException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
+        } catch (NotFoundException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ValidationException ex) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        } catch (Exception ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+        }
+    }
+
+    @GetMapping("/{chatId}/typing")
+    public ResponseEntity<?> getTypingStatus(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable String chatId) {
+        try {
+            String actorId = chatService.extractActorId(authorizationHeader);
+            TypingStatusResponse response = chatService.getTypingStatus(actorId, chatId);
+            return ResponseEntity.ok(response);
+        } catch (UnauthorizedException ex) {
+            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        } catch (ForbiddenException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
+        } catch (NotFoundException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ValidationException ex) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        } catch (Exception ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+        }
+    }
+
     private ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }

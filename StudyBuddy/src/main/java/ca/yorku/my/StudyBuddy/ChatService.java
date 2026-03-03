@@ -10,17 +10,24 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 @Service
 public class ChatService {
 
+    private static final long TYPING_TTL_MS = 5000L;
+
     private final ChatDAO chatDAO;
     private final MessageDAO messageDAO;
     private final FriendRequestDAO friendRequestDAO;
+    private final Map<String, Long> typingStateByKey = new ConcurrentHashMap<>();
 
     @Autowired
     public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO) {
@@ -240,6 +247,82 @@ public class ChatService {
         return response;
     }
 
+    public void updateTypingStatus(String actorId, String chatId, TypingStatusUpdateRequest request) {
+        Chat chat = chatDAO.findById(chatId).orElse(null);
+        if (chat == null) {
+            throw new NotFoundException("Chat not found");
+        }
+        if (!chat.getParticipantIds().contains(actorId)) {
+            throw new ForbiddenException("Actor is not a participant in this chat");
+        }
+        if (request == null || request.getTyping() == null) {
+            throw new ValidationException("typing is required");
+        }
+
+        String key = typingKey(chatId, actorId);
+        if (Boolean.TRUE.equals(request.getTyping())) {
+            typingStateByKey.put(key, Instant.now().toEpochMilli() + TYPING_TTL_MS);
+            return;
+        }
+        typingStateByKey.remove(key);
+    }
+
+    public TypingStatusResponse getTypingStatus(String actorId, String chatId) {
+        Chat chat = chatDAO.findById(chatId).orElse(null);
+        if (chat == null) {
+            throw new NotFoundException("Chat not found");
+        }
+        if (!chat.getParticipantIds().contains(actorId)) {
+            throw new ForbiddenException("Actor is not a participant in this chat");
+        }
+
+        long now = Instant.now().toEpochMilli();
+        Map<String, Long> latestExpiryByUser = new HashMap<>();
+        List<String> staleKeys = new ArrayList<>();
+
+        for (Map.Entry<String, Long> entry : typingStateByKey.entrySet()) {
+            ParsedTypingKey parsedKey = parseTypingKey(entry.getKey());
+            if (parsedKey == null || !chatId.equals(parsedKey.chatId)) {
+                continue;
+            }
+
+            long expiresAt = entry.getValue() == null ? 0L : entry.getValue();
+            if (expiresAt <= now) {
+                staleKeys.add(entry.getKey());
+                continue;
+            }
+
+            if (!parsedKey.userId.equals(actorId)) {
+                long existing = latestExpiryByUser.getOrDefault(parsedKey.userId, 0L);
+                if (expiresAt > existing) {
+                    latestExpiryByUser.put(parsedKey.userId, expiresAt);
+                }
+            }
+        }
+
+        for (String staleKey : staleKeys) {
+            typingStateByKey.remove(staleKey);
+        }
+
+        List<Map.Entry<String, Long>> activeEntries = new ArrayList<>(latestExpiryByUser.entrySet());
+        activeEntries.sort(Comparator.comparing(Map.Entry::getKey));
+
+        List<String> activeUsers = new ArrayList<>();
+        long nearestExpiryMs = TYPING_TTL_MS;
+        for (Map.Entry<String, Long> entry : activeEntries) {
+            activeUsers.add(entry.getKey());
+            long remaining = Math.max(0L, entry.getValue() - now);
+            if (remaining < nearestExpiryMs) {
+                nearestExpiryMs = remaining;
+            }
+        }
+
+        TypingStatusResponse response = new TypingStatusResponse();
+        response.setTypingUserIds(activeUsers);
+        response.setExpiresInMs(activeUsers.isEmpty() ? TYPING_TTL_MS : nearestExpiryMs);
+        return response;
+    }
+
     public boolean hasCompletedSharedSession(String userA, String userB) throws ExecutionException, InterruptedException {
         if (isBlank(userA) || isBlank(userB)) {
             throw new ValidationException("userA and userB are required");
@@ -345,5 +428,27 @@ public class ChatService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String typingKey(String chatId, String userId) {
+        return chatId + ":" + userId;
+    }
+
+    private ParsedTypingKey parseTypingKey(String key) {
+        int idx = key.lastIndexOf(':');
+        if (idx <= 0 || idx >= key.length() - 1) {
+            return null;
+        }
+        return new ParsedTypingKey(key.substring(0, idx), key.substring(idx + 1));
+    }
+
+    private static class ParsedTypingKey {
+        private final String chatId;
+        private final String userId;
+
+        private ParsedTypingKey(String chatId, String userId) {
+            this.chatId = chatId;
+            this.userId = userId;
+        }
     }
 }

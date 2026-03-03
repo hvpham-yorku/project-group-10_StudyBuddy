@@ -38,6 +38,15 @@ function TypingIndicator() {
   );
 }
 
+function formatTypingLabel(names: string[]) {
+  if (names.length === 0) return "";
+  if (names.length === 1) return `${names[0]} is typing...`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing...`;
+  return `${names[0]} and ${names.length - 1} others are typing...`;
+}
+
+const DEV_ACTOR_KEY = "studybuddy.dev.actorId";
+
 export default function Chat() {
   const directChats = chats.filter((chat) => chat.type === "direct");
   const knownMembers = [currentUser, ...chats.flatMap((chat) => chat.members)].reduce((acc: any[], member: any) => {
@@ -58,11 +67,19 @@ export default function Chat() {
 
   const API_BASE = ((import.meta as any).env?.VITE_API_BASE_URL || "").replace(/\/$/, "");
   const apiUrl = (path: string) => `${API_BASE}${path}`;
+  const [devActorId, setDevActorId] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return currentUser.id;
+    }
+    return window.sessionStorage.getItem(DEV_ACTOR_KEY) || currentUser.id;
+  });
+  const activeUser = (knownMembers.find((member: any) => member.id === devActorId) as any) || currentUser;
+  const devActors = knownMembers.filter((member: any) => member.id === "u1" || member.id === "u2");
   const { id } = useParams<{ id?: string }>();
   const [selectedChatId, setSelectedChatId] = useState<string>(id || directChats[0]?.id || chats[0].id);
   const [messageInput, setMessageInput] = useState("");
   const [search, setSearch] = useState("");
-  const [localChats, setLocalChats] = useState(directChats);
+  const [localChats, setLocalChats] = useState(chats);
   const [chatBackendIds, setChatBackendIds] = useState<Record<string, string>>({});
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -73,8 +90,10 @@ export default function Chat() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [showAttach, setShowAttach] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
+  const typingPollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedChat = localChats.find((c) => c.id === selectedChatId)!;
@@ -83,15 +102,25 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedChat?.messages]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(DEV_ACTOR_KEY, activeUser.id);
+    }
+    setChatBackendIds({});
+    setTypingUserIds([]);
+    setIsTyping(false);
+  }, [activeUser.id]);
+
   const authHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${currentUser.id}`,
+    Authorization: `Bearer ${activeUser.id}`,
   };
 
   const loadBackendGroupChats = async () => {
     try {
       const response = await fetch(apiUrl("/api/events"));
       if (!response.ok) {
+        setLocalChats(chats);
         return;
       }
 
@@ -100,7 +129,7 @@ export default function Chat() {
         .filter((event: any) => {
           const participants = Array.isArray(event?.participantIds) ? event.participantIds : [];
           const hostId = event?.hostId;
-          return participants.includes(currentUser.id) || hostId === currentUser.id;
+          return participants.includes(activeUser.id) || hostId === activeUser.id;
         })
         .map((event: any) => {
           const participants = Array.isArray(event?.participantIds) ? event.participantIds : [];
@@ -126,15 +155,19 @@ export default function Chat() {
           } as any;
         });
 
-      setLocalChats([...directChats, ...availableGroupChats]);
+      if (availableGroupChats.length > 0) {
+        setLocalChats([...directChats, ...availableGroupChats]);
+      } else {
+        setLocalChats(chats);
+      }
     } catch {
-      setLocalChats(directChats);
+      setLocalChats(chats);
     }
   };
 
   useEffect(() => {
     void loadBackendGroupChats();
-  }, []);
+  }, [activeUser.id]);
 
   const mapMessageToUi = (chat: typeof chats[0], apiMessage: any) => {
     const sender = chat.members.find((member) => member.id === apiMessage.senderId) as any;
@@ -168,7 +201,7 @@ export default function Chat() {
 
     let chatId = "";
     if (chat.type === "direct") {
-      const other = chat.members.find((member) => member.id !== currentUser.id);
+      const other = chat.members.find((member) => member.id !== activeUser.id);
       if (!other) {
         throw new Error("Could not determine direct chat participant");
       }
@@ -176,7 +209,7 @@ export default function Chat() {
       const response = await fetch(apiUrl(`/api/chats/direct`), {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ userA: currentUser.id, userB: other.id }),
+        body: JSON.stringify({ userA: activeUser.id, userB: other.id }),
       });
       if (!response.ok) {
         let details = "Failed to create/fetch direct chat";
@@ -239,7 +272,7 @@ export default function Chat() {
       }
 
       const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages?${params.toString()}`), {
-        headers: { Authorization: `Bearer ${currentUser.id}` },
+        headers: { Authorization: `Bearer ${activeUser.id}` },
       });
 
       if (!response.ok) {
@@ -287,13 +320,105 @@ export default function Chat() {
     }
 
     void loadMessages(chat);
-  }, [selectedChatId]);
+  }, [selectedChatId, activeUser.id]);
+
+  const sendTypingStatus = async (chat: typeof chats[0], typing: boolean) => {
+    try {
+      const backendChatId = await ensureBackendChat(chat);
+      await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ typing }),
+      });
+    } catch {
+      // typing indicator is best-effort; ignore transient errors
+    }
+  };
+
+  const stopTypingAndNotify = async () => {
+    if (!isTyping) return;
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat) return;
+
+    setIsTyping(false);
+    await sendTypingStatus(chat, false);
+  };
+
+  useEffect(() => {
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat) {
+      return;
+    }
+
+    if (typingPollInterval.current) {
+      clearInterval(typingPollInterval.current);
+      typingPollInterval.current = null;
+    }
+
+    let cancelled = false;
+    const pollTyping = async () => {
+      try {
+        const backendChatId = await ensureBackendChat(chat);
+        const response = await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
+          headers: { Authorization: `Bearer ${activeUser.id}` },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json();
+        if (!cancelled) {
+          setTypingUserIds(Array.isArray(payload?.typingUserIds) ? payload.typingUserIds : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setTypingUserIds([]);
+        }
+      }
+    };
+
+    void pollTyping();
+    typingPollInterval.current = setInterval(() => {
+      void pollTyping();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      if (typingPollInterval.current) {
+        clearInterval(typingPollInterval.current);
+        typingPollInterval.current = null;
+      }
+      void stopTypingAndNotify();
+    };
+  }, [selectedChatId, activeUser.id]);
 
   const handleTyping = (val: string) => {
     setMessageInput(val);
-    setIsTyping(true);
+
+    const chat = localChats.find((existing) => existing.id === selectedChatId);
+    if (!chat) {
+      return;
+    }
+
+    const nextTyping = val.trim().length > 0;
+    if (nextTyping && !isTyping) {
+      setIsTyping(true);
+      void sendTypingStatus(chat, true);
+    }
+
+    if (!nextTyping && isTyping) {
+      setIsTyping(false);
+      void sendTypingStatus(chat, false);
+    }
+
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
-    typingTimeout.current = setTimeout(() => setIsTyping(false), 1500);
+    if (nextTyping) {
+      typingTimeout.current = setTimeout(() => {
+        setIsTyping(false);
+        void sendTypingStatus(chat, false);
+      }, 1500);
+    }
   };
 
   const sendMessage = async () => {
@@ -340,6 +465,7 @@ export default function Chat() {
       );
       setMessageInput("");
       setIsTyping(false);
+      void sendTypingStatus(chat, false);
     } catch (error: any) {
       setChatError(error?.message || "Failed to send message");
     } finally {
@@ -441,7 +567,7 @@ export default function Chat() {
       const uploadResponse = await fetch(apiUrl("/api/uploads"), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${currentUser.id}`,
+          Authorization: `Bearer ${activeUser.id}`,
         },
         body: formData,
       });
@@ -519,7 +645,7 @@ export default function Chat() {
       return;
     }
 
-    const target = chat.members.find((member) => member.id !== currentUser.id);
+    const target = chat.members.find((member) => member.id !== activeUser.id);
     if (!target) {
       setChatError("Could not determine target user for friend request");
       return;
@@ -574,11 +700,24 @@ export default function Chat() {
 
   const getOnlineStatus = (chat: typeof chats[0]): "online" | "offline" | "idle" => {
     if (chat.type === "direct") {
-      const other = chat.members.find((m) => m.id !== currentUser.id) as any;
+      const other = chat.members.find((m) => m.id !== activeUser.id) as any;
       if (other?.isOnline) return "online";
       return "offline";
     }
     return "online";
+  };
+
+  const getChatDisplayName = (chat: typeof chats[0]) => {
+    if (chat.type !== "direct") {
+      return chat.name;
+    }
+    const other = chat.members.find((member) => member.id !== activeUser.id) as any;
+    return other?.name || chat.name;
+  };
+
+  const getChatInitial = (chat: typeof chats[0]) => {
+    const label = getChatDisplayName(chat);
+    return label.charAt(0);
   };
 
   return (
@@ -586,7 +725,23 @@ export default function Chat() {
       {/* Chat List Sidebar */}
       <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="px-4 py-4 border-b border-slate-100">
-          <h2 className="text-slate-800 mb-3" style={{ fontWeight: 700, fontSize: "1rem" }}>Messages</h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-slate-800" style={{ fontWeight: 700, fontSize: "1rem" }}>Messages</h2>
+            {(import.meta as any).env?.DEV && (
+              <select
+                value={activeUser.id}
+                onChange={(event) => setDevActorId(event.target.value)}
+                className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600"
+                title="Dev Actor"
+              >
+                {devActors.map((actor: any) => (
+                  <option key={actor.id} value={actor.id}>
+                    {actor.name.split(" ")[0]} ({actor.id})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -614,11 +769,11 @@ export default function Chat() {
                         <Users size={18} className="text-blue-600" />
                       ) : (
                         (() => {
-                          const other = chat.members.find((m) => m.id !== currentUser.id) as any;
+                          const other = chat.members.find((m) => m.id !== activeUser.id) as any;
                           return other?.avatar ? (
                             <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-orange-600" style={{ fontWeight: 700 }}>{chat.name.charAt(0)}</span>
+                            <span className="text-orange-600" style={{ fontWeight: 700 }}>{getChatInitial(chat)}</span>
                           );
                         })()
                       )}
@@ -630,7 +785,7 @@ export default function Chat() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="text-sm text-slate-800 truncate" style={{ fontWeight: isSelected ? 600 : 500 }}>{chat.name}</p>
+                        <p className="text-sm text-slate-800 truncate" style={{ fontWeight: isSelected ? 600 : 500 }}>{getChatDisplayName(chat)}</p>
                         {(chat as any).isLiveEvent && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 shrink-0">Live Event</span>
                         )}
@@ -666,18 +821,18 @@ export default function Chat() {
                 <Users size={16} className="text-blue-600" />
               ) : (
                 (() => {
-                  const other = selectedChat.members.find((m) => m.id !== currentUser.id) as any;
+                  const other = selectedChat.members.find((m) => m.id !== activeUser.id) as any;
                   return other?.avatar ? (
                     <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-orange-600" style={{ fontWeight: 700 }}>{selectedChat.name.charAt(0)}</span>
+                    <span className="text-orange-600" style={{ fontWeight: 700 }}>{getChatInitial(selectedChat)}</span>
                   );
                 })()
               )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm text-slate-800" style={{ fontWeight: 600 }}>{selectedChat.name}</p>
+                <p className="text-sm text-slate-800" style={{ fontWeight: 600 }}>{getChatDisplayName(selectedChat)}</p>
                 {(selectedChat as any).isLiveEvent && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Live Event</span>
                 )}
@@ -755,7 +910,7 @@ export default function Chat() {
               </div>
             )}
             {selectedChat.messages.map((msg, idx) => {
-              const isMe = msg.senderId === currentUser.id;
+              const isMe = msg.senderId === activeUser.id;
               const prevMsg = selectedChat.messages[idx - 1];
               const showSender = !isMe && (!prevMsg || prevMsg.senderId !== msg.senderId);
               return (
@@ -821,9 +976,16 @@ export default function Chat() {
             })}
 
             {/* Typing Indicator (mock - shows occasionally) */}
-            {isTyping && selectedChat.messages[selectedChat.messages.length - 1]?.senderId !== currentUser.id && (
-              <TypingIndicator />
-            )}
+              {(typingUserIds.length > 0 || isTyping) && (
+                <div>
+                  <TypingIndicator />
+                  <p className="text-xs text-slate-400 px-4">
+                    {typingUserIds.length > 0
+                      ? formatTypingLabel(typingUserIds.map((userId) => toMemberProfile(userId).name.split(" ")[0]))
+                      : "You are typing..."}
+                  </p>
+                </div>
+              )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -885,8 +1047,9 @@ export default function Chat() {
             <input
               value={messageInput}
               onChange={(e) => handleTyping(e.target.value)}
+              onBlur={() => void stopTypingAndNotify()}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendMessage()}
-              placeholder={`Message ${selectedChat.name}...`}
+              placeholder={`Message ${getChatDisplayName(selectedChat)}...`}
               className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <button
