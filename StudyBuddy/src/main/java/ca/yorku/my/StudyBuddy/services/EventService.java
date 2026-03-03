@@ -31,6 +31,13 @@ public class EventService {
 
     private static final String COLLECTION_NAME = "events";
 
+    /**
+     * Creates an event 
+     * @param event						The event object to translate and store into Firestore
+     * @return 							The event that was retrieved from Firestore (or null)
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public Event createEvent(Event event) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -47,7 +54,12 @@ public class EventService {
         return event;
     }
 
-    // Retrieves all events from Firestore.
+    /**
+     * Obtains all events from the Firestore.
+     * @return							List of type Events; all the events in Firestore
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public List<Event> getAllEvents() throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -64,6 +76,13 @@ public class EventService {
         return events;
     }
     
+    /**
+     * Returns an event object by given Event ID
+     * @param eventId
+     * @return						A singular event (or null)
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
     	Firestore db = FirestoreClient.getFirestore();
     	
@@ -78,7 +97,14 @@ public class EventService {
            return null;
     }
 
-    // Deletes the specified event if the user is the host. Returns true if deletion was successful, false otherwise.
+    /**
+     * Delete event (aka a document) in Firestore
+     * @param eventId
+     * @param userId
+     * @return							Whether or not the deletion was successful
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public boolean deleteEvent(String eventId, String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -100,7 +126,15 @@ public class EventService {
         }
     }
     
-    // Join event (Updates both student and event)
+    /**
+     * Join event and update both student and event document in Firestore
+     * @param currentUserId			The user joining the event
+     * @param eventId				The event the user is joining
+     * @return						If this method works
+     * @throws Exception
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public boolean joinEvent(String currentUserId, String eventId) throws Exception, ExecutionException, InterruptedException {
 		StudentService ss = new StudentService();
 		Student s;
@@ -131,7 +165,14 @@ public class EventService {
     	}
     }
     
-    // Updates both the student and the event 
+    /**
+     * Leave event and update bboth the student and the event documents in Firestore
+     * @param currentUserId				The user leaving the event
+     * @param eventId					The event the user is leaving from
+     * @return
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
     public boolean leaveEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
     	try {
 			StudentService ss = new StudentService();
@@ -179,7 +220,13 @@ public class EventService {
     	return true;
     }
     
-    // Updates only the event
+    /**
+     * Add an attendee to the event given by an ID and save to Firestore
+     * @param eventId
+     * @param studentId
+     * @return
+     * @throws Exception
+     */
     public boolean addAttendee(String eventId, String studentId) throws Exception {
     	
     	StudentService ss = new StudentService();
@@ -206,7 +253,13 @@ public class EventService {
     	return true;
     }
     
-    // Updates only the event
+    /**
+     * Remove an attendee of an event by an ID and save the resultant list to Firestore
+     * @param eventId
+     * @param studentId
+     * @return
+     * @throws Exception
+     */
     public boolean removeAttendee(String eventId, String studentId) throws Exception {
     	
     	StudentService ss = new StudentService();
