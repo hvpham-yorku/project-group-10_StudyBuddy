@@ -14,6 +14,7 @@ import TwoFA from "./pages/TwoFA";
 import NotFound from "./pages/NotFound";
 import EventDetails from "./pages/EventDetails";
 import Layout from "./pages/Layout";
+import DevLogin from "./pages/DevLogin";
 
 export const router = createBrowserRouter([
   // --- Public Routes (No Sidebar) ---
@@ -78,6 +79,10 @@ export const router = createBrowserRouter([
         path: "settings",
         element: <Settings />,
       },
+      {
+  path: "dev-login",
+  element: <DevLogin />,
+},
     ],
   },
 ]);
