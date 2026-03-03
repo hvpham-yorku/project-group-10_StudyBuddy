@@ -1,4 +1,6 @@
 package ca.yorku.my.StudyBuddy;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.services.StudentService;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserRecord;
@@ -15,6 +17,8 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.time.LocalDate;
+
 @Service
 public class AuthService {
 
@@ -24,8 +28,17 @@ public class AuthService {
     /**
      * Registers a new student, saves their profile to NoSQL, 
      * and sends a verification email.
+     * (e.x)
+     * {
+	    "first name" : "Vaughn",
+	    "last name" : "Chan",
+	    "email": "vc8@my.yorku.ca",
+	    "major": "Software Engineering",
+	    "year": "2022",
+	    "password": "test123"
+		}
      */
-    public String registerUser(String email, String password) throws Exception {
+    public String registerUser(String email, String password, String firstName, String lastName, String major, String year) throws Exception {
 
         // 1. UNIVERSITY GUARD: Restrict registration to YorkU domains
         if (!email.endsWith("@yorku.ca") && !email.endsWith("@my.yorku.ca")) {
@@ -39,6 +52,24 @@ public class AuthService {
             .setDisplayName("DELETE ME");
 
         UserRecord userRecord = FirebaseAuth.getInstance().createUser(request);
+        
+        // 2.5 Create the student
+        String uid = userRecord.getUid();
+
+        // Immediately create their linked Firestore document
+	     Student newStudent = new Student();
+	     newStudent.setUserId(uid);
+	     newStudent.setEmail(email);
+	     newStudent.setFirstName(firstName);
+	     newStudent.setLastName(lastName);
+	     newStudent.setProgram(major);
+	     newStudent.setYear(year);
+	     
+	     LocalDate ld = LocalDate.now();
+	     newStudent.setJoinedDate(ld.toString());
+	     
+	     Firestore db = FirestoreClient.getFirestore();
+	     db.collection("students").document(uid).set(newStudent);
 
         // 3. EMAIL OWNERSHIP: Generate and send the verification link
         String vLink = FirebaseAuth.getInstance().generateEmailVerificationLink(email);
@@ -65,7 +96,6 @@ public class AuthService {
      * Validates credentials and checks if the student has verified their email.
      * Issues a Session Token if successful, as well as password.
      */
- // Inside your AuthService class:
     @Value("${firebase.web.api.key}")
     private String webApiKey;
     public String loginUser(String email, String password) throws Exception {

@@ -18,7 +18,13 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         try {
-            String firebaseUid = authService.registerUser(body.get("email"), body.get("password"));
+            String firebaseUid = authService.registerUser(
+            		body.get("email"), 
+            		body.get("password"),
+            		body.get("firstName"),
+            		body.get("lastName"),
+            		body.get("major"),
+            		body.get("year"));
             return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());
