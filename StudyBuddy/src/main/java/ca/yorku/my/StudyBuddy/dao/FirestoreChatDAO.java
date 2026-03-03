@@ -3,6 +3,7 @@ package ca.yorku.my.StudyBuddy;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import ca.yorku.my.StudyBuddy.model.ChatType;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;

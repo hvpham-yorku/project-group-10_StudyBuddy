@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import ca.yorku.my.StudyBuddy.SessionLogService;
+import ca.yorku.my.StudyBuddy.dao.StubDatabase;
 
 @WebMvcTest(StudentController.class)
 class StudentTests {

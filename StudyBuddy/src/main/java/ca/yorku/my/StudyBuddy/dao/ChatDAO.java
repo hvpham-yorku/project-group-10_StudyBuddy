@@ -1,5 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 
+import ca.yorku.my.StudyBuddy.model.ChatType;
+
 import java.util.Optional;
 
 public interface ChatDAO {

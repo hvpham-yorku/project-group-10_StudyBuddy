@@ -1,7 +1,11 @@
 package ca.yorku.my.StudyBuddy;
 
+import ca.yorku.my.StudyBuddy.model.ChatType;
+import ca.yorku.my.StudyBuddy.model.LastMessagePreview;
+import ca.yorku.my.StudyBuddy.model.MessageType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Chat {
     private String chatId;
@@ -70,5 +74,41 @@ public class Chat {
 
     public void setLastMessage(LastMessagePreview lastMessage) {
         this.lastMessage = lastMessage;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void setLastMessage(Object rawLastMessage) {
+        if (rawLastMessage == null) {
+            this.lastMessage = null;
+            return;
+        }
+
+        if (rawLastMessage instanceof LastMessagePreview preview) {
+            this.lastMessage = preview;
+            return;
+        }
+
+        if (rawLastMessage instanceof Map<?, ?> rawMap) {
+            Map<String, Object> map = (Map<String, Object>) rawMap;
+            LastMessagePreview preview = new LastMessagePreview();
+            Object senderId = map.get("senderId");
+            Object content = map.get("content");
+            Object type = map.get("type");
+            Object timestamp = map.get("timestamp");
+
+            preview.setSenderId(senderId == null ? null : String.valueOf(senderId));
+            preview.setContent(content == null ? null : String.valueOf(content));
+            preview.setTimestamp(timestamp == null ? null : String.valueOf(timestamp));
+
+            if (type != null) {
+                try {
+                    preview.setType(MessageType.valueOf(String.valueOf(type)));
+                } catch (IllegalArgumentException ignored) {
+                    preview.setType(null);
+                }
+            }
+
+            this.lastMessage = preview;
+        }
     }
 }

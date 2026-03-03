@@ -1,5 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 
+import ca.yorku.my.StudyBuddy.model.FriendRequestStatus;
+
 public class FriendRequest {
     private String requestId;
     private String senderId;

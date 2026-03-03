@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.model;
 
 public class LastMessagePreview {
     private String senderId;

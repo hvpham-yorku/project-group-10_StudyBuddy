@@ -1,5 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 
+import ca.yorku.my.StudyBuddy.model.MessageType;
+
 public class MessageResponseDTO {
     private String messageId;
     private String chatId;

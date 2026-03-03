@@ -1,4 +1,6 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.dao;
+
+import ca.yorku.my.StudyBuddy.Student;
 
 import java.util.ArrayList;
 

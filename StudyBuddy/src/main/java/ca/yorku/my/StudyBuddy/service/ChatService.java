@@ -3,6 +3,10 @@ package ca.yorku.my.StudyBuddy;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
+import ca.yorku.my.StudyBuddy.model.ChatType;
+import ca.yorku.my.StudyBuddy.model.FriendRequestStatus;
+import ca.yorku.my.StudyBuddy.model.LastMessagePreview;
+import ca.yorku.my.StudyBuddy.model.MessageType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
