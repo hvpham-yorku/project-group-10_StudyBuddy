@@ -84,7 +84,7 @@ public class Chat {
      * do not directly materialize LastMessagePreview instances.
      */
     @SuppressWarnings("unchecked")
-    public void setLastMessage(Object rawLastMessage) {
+    public void setLastMessageFromRaw(Object rawLastMessage) {
         if (rawLastMessage == null) {
             this.lastMessage = null;
             return;

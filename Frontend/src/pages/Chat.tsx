@@ -195,7 +195,7 @@ export default function Chat() {
         }
       : undefined;
 
-    return {
+    const baseMessage = {
       id: apiMessage.messageId,
       senderId: apiMessage.senderId,
       senderName: apiMessage.senderName,
@@ -203,8 +203,9 @@ export default function Chat() {
       text: apiMessage.content,
       timestamp: apiMessage.timestamp,
       type: uiType,
-      attachment: fileMeta,
     };
+
+    return fileMeta ? { ...baseMessage, attachment: fileMeta } : baseMessage;
   };
 
   const isBackendBackedChat = (chat: typeof chats[0]) => {
@@ -212,8 +213,9 @@ export default function Chat() {
   };
 
   const resolveBackendEventIdForGroup = async (chat: typeof chats[0]): Promise<string> => {
-    if (chat.isLiveEvent && chat.eventId) {
-      return chat.eventId;
+    const existingEventId = (chat as any)?.eventId;
+    if ((chat as any)?.isLiveEvent && existingEventId) {
+      return existingEventId;
     }
 
     const storageKey = `studybuddy.backendEventId.${chat.id}`;
