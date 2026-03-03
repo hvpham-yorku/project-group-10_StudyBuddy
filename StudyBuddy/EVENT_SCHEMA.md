@@ -62,7 +62,7 @@ const eventData = {
   participantIds: []  // Empty array initially
 };
 
-const response = await fetch("http://localhost:8080/api/events", {
+const response = await fetch("/api/events", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(eventData)

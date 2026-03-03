@@ -12,7 +12,7 @@ export default function ProfileViewer() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`http://localhost:8080/api/studentcontroller/${userId}`);
+        const res = await fetch(`/api/studentcontroller/${userId}`);
         const data = await res.json();
         setStudent(data);
       } catch (err) {

@@ -112,7 +112,7 @@ export default function Profile() {
       try {
         const token = localStorage.getItem("studyBuddyToken");
         
-        const res = await fetch(`http://localhost:8080/api/studentcontroller/profile`, {
+        const res = await fetch(`/api/studentcontroller/profile`, {
           headers: {
             "Authorization": "Bearer " + token
           }
@@ -195,7 +195,7 @@ export default function Profile() {
     try {
       const token = localStorage.getItem("studyBuddyToken");
       
-      await fetch(`http://localhost:8080/api/studentcontroller/profile/update`, {
+      await fetch(`/api/studentcontroller/profile/update`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -223,7 +223,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
       const token = localStorage.getItem("studyBuddyToken");
 
       // Send to backend
-      await fetch(`http://localhost:8080/api/studentcontroller/profile/avatar`, {
+      await fetch(`/api/studentcontroller/profile/avatar`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",

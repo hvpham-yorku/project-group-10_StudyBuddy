@@ -38,7 +38,7 @@ export default function EventDetails() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/events/${id}`);
+        const response = await fetch(`/api/events/${id}`);
         
         if (!response.ok) {
           if (response.status === 404) throw new Error("Event not found");

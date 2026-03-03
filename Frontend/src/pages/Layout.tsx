@@ -36,7 +36,7 @@ export default function Layout() {
         const token = localStorage.getItem("studyBuddyToken");
         if (!token) return;
         
-        const res = await fetch("http://localhost:8080/api/studentcontroller/profile", {
+        const res = await fetch("/api/studentcontroller/profile", {
           headers: { "Authorization": "Bearer " + token }
         });
         
