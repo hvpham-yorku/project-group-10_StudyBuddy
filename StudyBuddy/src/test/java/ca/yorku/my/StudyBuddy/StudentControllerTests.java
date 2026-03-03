@@ -1,5 +1,6 @@
 package ca.yorku.my.StudyBuddy;
 import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.classes.StudentRepository;
 
 import java.util.List;
 import java.util.Map;

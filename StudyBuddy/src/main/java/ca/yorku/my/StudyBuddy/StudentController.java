@@ -1,6 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 import ca.yorku.my.StudyBuddy.services.StudentService;
 import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.classes.StudentRepository;
 import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
 import ca.yorku.my.StudyBuddy.classes.Event;
 

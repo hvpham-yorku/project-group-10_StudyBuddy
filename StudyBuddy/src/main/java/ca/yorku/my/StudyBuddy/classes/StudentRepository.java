@@ -1,8 +1,7 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.classes;
 
 import java.util.List;
 import java.util.Map;
-import ca.yorku.my.StudyBuddy.classes.Student;
 
 // This interface creates methods that allow for information in student database
 public interface StudentRepository {

@@ -1,5 +1,4 @@
 package ca.yorku.my.StudyBuddy.services;
-import ca.yorku.my.StudyBuddy.StudentRepository;
 import ca.yorku.my.StudyBuddy.classes.*;
 
 import com.google.cloud.firestore.DocumentReference;
