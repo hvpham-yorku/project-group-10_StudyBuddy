@@ -2,6 +2,9 @@ package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.model.MessageType;
 
+/**
+ * This class represents a persisted chat message including sender, type, and timestamp metadata.
+ */
 public class Message {
     private String messageId;
     private String chatId;

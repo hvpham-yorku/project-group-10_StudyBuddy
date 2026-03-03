@@ -2,33 +2,34 @@ package ca.yorku.my.StudyBuddy;
 import java.util.ArrayList;
 import java.util.List;
 
-// This class represents an event that students can create and join.
+/**
+ * This class represents a study event that users can create, join, and attend.
+ */
 
 public class Event{
 
-    // Variable Declaration for the event class
     private String eventId;
     private String hostId;
     private String title;
     private String course;
     private String location;
     private String description;
-    // Keep time as String for easier comparison, sorting, and serialization with Firestore. We can use a specific format like "yyyy-MM-dd HH:mm" for consistency.
+    // Time values are stored as strings to keep Firestore serialization simple and uniform.
     private String startTime;
     private String endTime;
     private int maxCapacity;
-    // Used List<String> to store participantIds for easier management of participants for each event.
+    // Participant ids represent enrolled users for this event instance.
     private List<String> participantIds;
     
 
-    // Default constructor for the Event class. Used for Firebase SDK.
+    // Default constructor required by serialization frameworks.
     public Event(){
         
         participantIds = new ArrayList<>();
 
     }
 
-    // Constructor for the Event class
+    // Convenience constructor for creating a fully populated event object.
  public Event(String hostId, String title, String course, String location, String description,
              String startTime, String endTime, int maxCapacity) {
     this.hostId = hostId;
@@ -131,7 +132,7 @@ public class Event{
             this.participantIds.remove(participantId);
         }else{
 
-            // Handle the case where the participant is not in the event. We can just print a message for now.
+            // Keep behavior non-throwing when participant is already absent.
             System.out.println("Cannot remove participant. Participant is not in the event.");
 
         }

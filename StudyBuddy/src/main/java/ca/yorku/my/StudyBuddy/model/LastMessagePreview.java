@@ -1,5 +1,8 @@
 package ca.yorku.my.StudyBuddy.model;
 
+/**
+ * This class stores compact preview metadata for the latest message in a chat.
+ */
 public class LastMessagePreview {
     private String senderId;
     private String content;

@@ -3,6 +3,9 @@ package ca.yorku.my.StudyBuddy;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class represents a student profile and session-related metadata.
+ */
 public class Student {
 	
 	private String firstName;
@@ -27,8 +30,7 @@ public class Student {
 		this.attendedEventIds = new ArrayList<>();
 	}
 
-
-    // 1. MUST HAVE: The empty constructor for Firebase/Spring automation
+    // Empty constructor required by Firebase/Spring object mapping.
     public Student() {}
 	
 	public List<String> getAttendedEventIds() {

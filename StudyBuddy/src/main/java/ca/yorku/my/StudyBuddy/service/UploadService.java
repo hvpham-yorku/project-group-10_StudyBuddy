@@ -14,11 +14,19 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 
 @Service
+/**
+ * This class handles upload and retrieval of chat attachment files on local storage.
+ */
 public class UploadService {
 
     private static final Path BASE_UPLOAD_DIR = Paths.get("uploads", "chat-attachments");
 
+    /**
+     * Stores a user attachment under uploads/chat-attachments/<actorId>/ and
+     * returns metadata used by chat message payloads.
+     */
     public FileAttachmentDTO uploadAttachment(MultipartFile file, String actorId) {
+        // Basic request validation before touching filesystem.
         if (isBlank(actorId)) {
             throw new ValidationException("actorId is required");
         }
@@ -37,6 +45,7 @@ public class UploadService {
         Path actorDir = BASE_UPLOAD_DIR.resolve(safeActorId).normalize();
         Path targetFile = actorDir.resolve(storedName).normalize();
 
+        // Prevent path traversal: final path must remain inside actor directory.
         if (!targetFile.startsWith(actorDir)) {
             throw new ValidationException("invalid file path");
         }
@@ -58,6 +67,10 @@ public class UploadService {
         return response;
     }
 
+    /**
+     * Resolves and loads a previously uploaded file and returns resource data
+     * required by the download endpoint.
+     */
     public DownloadedFile loadAttachment(String actorId, String storedFileName, String requestedDownloadName) {
         if (isBlank(actorId) || isBlank(storedFileName)) {
             throw new ValidationException("actorId and fileName are required");
@@ -70,6 +83,7 @@ public class UploadService {
         Path actorDir = BASE_UPLOAD_DIR.resolve(safeActorId).normalize();
         Path targetFile = actorDir.resolve(safeStoredName).normalize();
 
+        // Prevent path traversal by enforcing actor directory boundary.
         if (!targetFile.startsWith(actorDir)) {
             throw new ValidationException("invalid file path");
         }
@@ -88,18 +102,30 @@ public class UploadService {
         return new DownloadedFile(resource, isBlank(contentType) ? "application/octet-stream" : contentType, downloadName);
     }
 
+    /**
+     * Sanitizes user-provided file names to a safe subset for storage.
+     */
     private String sanitizeFileName(String fileName) {
         return fileName.trim().replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
+    /**
+     * Sanitizes path segments (such as actor ids) to safe filesystem tokens.
+     */
     private String sanitizePathSegment(String segment) {
         return segment.trim().replaceAll("[^a-zA-Z0-9_-]", "_");
     }
 
+    /**
+     * Shared utility for null/blank string checks.
+     */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 
+    /**
+     * Compact value object used by controller to build download responses.
+     */
     public record DownloadedFile(Resource resource, String contentType, String downloadName) {
     }
 }

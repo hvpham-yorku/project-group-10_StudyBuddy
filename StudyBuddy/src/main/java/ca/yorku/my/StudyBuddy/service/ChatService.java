@@ -24,6 +24,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 @Service
+/**
+ * This class implements chat business rules including authorization checks,
+ * message validation, friend-request eligibility, and transient typing state.
+ */
 public class ChatService {
 
     private static final long TYPING_TTL_MS = 5000L;
@@ -40,6 +44,9 @@ public class ChatService {
         this.friendRequestDAO = friendRequestDAO;
     }
 
+    /**
+     * Extracts actor identity from the Bearer authorization header.
+     */
     public String extractActorId(String authorizationHeader) {
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
             throw new UnauthorizedException("Missing Authorization header");
@@ -54,6 +61,9 @@ public class ChatService {
         return actorId;
     }
 
+    /**
+     * Creates or resolves a direct chat while enforcing participant constraints.
+     */
     public Chat createDirectChat(String actorId, CreateDirectChatRequest request) {
         if (request == null || isBlank(request.getUserA()) || isBlank(request.getUserB())) {
             throw new ValidationException("Both userA and userB are required");
@@ -84,6 +94,9 @@ public class ChatService {
         return chatDAO.create(chat);
     }
 
+    /**
+     * Creates or resolves an event chat and validates actor/participants against event membership.
+     */
     public Chat createEventChat(String actorId, String eventId, CreateEventChatRequest request)
             throws ExecutionException, InterruptedException {
         if (isBlank(eventId)) {
@@ -139,6 +152,9 @@ public class ChatService {
         return chatDAO.create(chat);
     }
 
+    /**
+     * Validates and persists a chat message, then updates chat preview metadata.
+     */
     public MessageResponseDTO sendMessage(String actorId, String chatId, SendMessageDTO request) {
         Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
@@ -178,6 +194,9 @@ public class ChatService {
         return toMessageResponse(savedMessage, actorId);
     }
 
+    /**
+     * Validates message payload fields according to message type semantics.
+     */
     private String normalizeAndValidateMessagePayload(SendMessageDTO request) {
         if (request.getType() == MessageType.TEXT) {
             if (isBlank(request.getContent())) {
@@ -213,6 +232,9 @@ public class ChatService {
         throw new ValidationException("Unsupported message type");
     }
 
+    /**
+     * Accepts only fully qualified http(s) URLs for LINK message content.
+     */
     private boolean isValidHttpUrl(String value) {
         try {
             URI uri = new URI(value);
@@ -223,6 +245,9 @@ public class ChatService {
         }
     }
 
+    /**
+     * Returns paginated messages using cursor-based fetch semantics.
+     */
     public PagedMessagesResponse getChatMessages(String actorId, String chatId, int limit, String before) {
         Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
@@ -251,6 +276,9 @@ public class ChatService {
         return response;
     }
 
+    /**
+     * Updates ephemeral typing state for the actor in a chat.
+     */
     public void updateTypingStatus(String actorId, String chatId, TypingStatusUpdateRequest request) {
         Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
@@ -271,6 +299,9 @@ public class ChatService {
         typingStateByKey.remove(key);
     }
 
+    /**
+     * Returns currently active typers for a chat and removes expired entries.
+     */
     public TypingStatusResponse getTypingStatus(String actorId, String chatId) {
         Chat chat = chatDAO.findById(chatId).orElse(null);
         if (chat == null) {
@@ -284,6 +315,7 @@ public class ChatService {
         Map<String, Long> latestExpiryByUser = new HashMap<>();
         List<String> staleKeys = new ArrayList<>();
 
+        // Build a per-user latest expiry snapshot and collect stale entries for cleanup.
         for (Map.Entry<String, Long> entry : typingStateByKey.entrySet()) {
             ParsedTypingKey parsedKey = parseTypingKey(entry.getKey());
             if (parsedKey == null || !chatId.equals(parsedKey.chatId)) {
@@ -304,10 +336,12 @@ public class ChatService {
             }
         }
 
+        // Opportunistic cleanup keeps memory bounded without a separate scheduler.
         for (String staleKey : staleKeys) {
             typingStateByKey.remove(staleKey);
         }
 
+        // Sort output for deterministic responses (useful for tests and frontend diffs).
         List<Map.Entry<String, Long>> activeEntries = new ArrayList<>(latestExpiryByUser.entrySet());
         activeEntries.sort(Comparator.comparing(Map.Entry::getKey));
 
@@ -327,6 +361,11 @@ public class ChatService {
         return response;
     }
 
+    /**
+     * Checks whether two users have at least one overlapping attended event.
+     *
+     * This is used as the eligibility gate for friend-request creation.
+     */
     public boolean hasCompletedSharedSession(String userA, String userB) throws ExecutionException, InterruptedException {
         if (isBlank(userA) || isBlank(userB)) {
             throw new ValidationException("userA and userB are required");
@@ -346,6 +385,15 @@ public class ChatService {
         return false;
     }
 
+    /**
+     * Creates a pending friend request once all business rules pass.
+     *
+     * Rules enforced here:
+     * 1) target is present and not self
+     * 2) both users exist
+     * 3) users share a completed session
+     * 4) no existing pending request between the pair
+     */
     public FriendRequest sendFriendRequest(String actorId, SendFriendRequestDTO request)
             throws ExecutionException, InterruptedException {
         if (request == null || isBlank(request.getTargetUserId())) {
@@ -379,6 +427,11 @@ public class ChatService {
         return friendRequestDAO.create(friendRequest);
     }
 
+    /**
+     * Reads attended event ids from the user profile document.
+     *
+     * Missing user or missing attended list is treated as no attendance.
+     */
     protected List<String> getAttendedEventIds(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentSnapshot doc = db.collection("users").document(userId).get().get();
@@ -393,6 +446,9 @@ public class ChatService {
         return new ArrayList<>(student.getAttendedEventIds());
     }
 
+    /**
+     * Loads an event by id and copies Firestore doc id back into the object.
+     */
     protected Event getEventById(String eventId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentSnapshot doc = db.collection("events").document(eventId).get().get();
@@ -408,6 +464,9 @@ public class ChatService {
         return event;
     }
 
+    /**
+     * Verifies that a user document exists before dependent operations run.
+     */
     protected void ensureUserExists(String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
         DocumentSnapshot doc = db.collection("users").document(userId).get().get();
@@ -416,6 +475,9 @@ public class ChatService {
         }
     }
 
+    /**
+     * Maps internal message model to API response shape consumed by frontend.
+     */
     private MessageResponseDTO toMessageResponse(Message message, String actorId) {
         MessageResponseDTO dto = new MessageResponseDTO();
         dto.setMessageId(message.getMessageId());
@@ -438,6 +500,9 @@ public class ChatService {
         return chatId + ":" + userId;
     }
 
+    /**
+     * Parses composite key format <chatId>:<userId>.
+     */
     private ParsedTypingKey parseTypingKey(String key) {
         int idx = key.lastIndexOf(':');
         if (idx <= 0 || idx >= key.length() - 1) {

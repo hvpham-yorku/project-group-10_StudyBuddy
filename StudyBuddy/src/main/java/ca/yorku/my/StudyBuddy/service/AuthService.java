@@ -8,14 +8,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * This class handles the account lifecycle operations such as registration,
+ * login token generation, and password reset link flow.
+ */
 public class AuthService {
 
     @Autowired
     private EmailService emailService;
 
     /**
-     * Registers a new student, saves their profile to NoSQL, 
-     * and sends a verification email.
+        * Registers a new student, persists profile data, and sends
+        * an email verification link.
      */
     public String registerUser(Student student, String password) throws Exception {
         String email = student.getEmail().toLowerCase();
@@ -55,8 +59,7 @@ db.collection("users").document(generatedId).set(student);
     }
 
     /**
-     * Validates credentials and checks if the student has verified their email.
-     * Issues a Session Token if successful.
+        * Validates login eligibility and returns a custom session token.
      */
     public String loginUser(String email) throws Exception {
         // 1. Fetch user by email
@@ -72,7 +75,7 @@ db.collection("users").document(generatedId).set(student);
     }
 
     /**
-     * Triggers a password reset flow and sends the secure Google-hosted link to the user.
+        * Triggers password reset flow and dispatches a reset link email.
      */
     public String generateResetLink(String email) throws Exception {
         // 1. Verify user existence

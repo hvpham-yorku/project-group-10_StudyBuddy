@@ -14,11 +14,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * This class is responsible interacting with the Firestore database to perform CRUD operations on event data.
- * 
- * 
- * 
- * 
+ * This class performs Firestore-backed CRUD operations for event records.
  */
 
 @Service
@@ -26,6 +22,9 @@ public class EventService {
 
     private static final String COLLECTION_NAME = "events";
 
+    /**
+     * Creates an event document and copies generated id back to the event payload.
+     */
     public Event createEvent(Event event) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -42,7 +41,9 @@ public class EventService {
         return event;
     }
 
-    // Retrieves all events from Firestore.
+    /**
+     * Retrieves every event from the events collection.
+     */
 
     public List<Event> getAllEvents() throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
@@ -60,7 +61,9 @@ public class EventService {
         return events;
     }
 
-// Deletes the specified event if the user is the host. Returns true if deletion was successful, false otherwise.
+    /**
+     * Deletes an event when the supplied user is the host owner.
+     */
     public boolean deleteEvent(String eventId, String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 

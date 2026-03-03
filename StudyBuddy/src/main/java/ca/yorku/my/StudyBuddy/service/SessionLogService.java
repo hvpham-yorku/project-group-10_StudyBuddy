@@ -15,9 +15,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 
-/**  This class manages the session logs of students. It updates the user's session  
-*    when an event is created or joined. It includes information such as duration and location
-*/
+/**
+ * This class manages student session-log operations such as retrieval,
+ * filtering, and total study time calculation.
+ */
 @Service
 public class SessionLogService {
 

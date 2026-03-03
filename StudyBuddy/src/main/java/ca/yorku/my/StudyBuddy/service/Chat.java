@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This class represents a chat aggregate including participants and latest-message preview.
+ */
 public class Chat {
     private String chatId;
     private ChatType type;
@@ -76,6 +79,10 @@ public class Chat {
         this.lastMessage = lastMessage;
     }
 
+    /**
+     * This section handles map-based deserialization payloads for lastMessage when data sources
+     * do not directly materialize LastMessagePreview instances.
+     */
     @SuppressWarnings("unchecked")
     public void setLastMessage(Object rawLastMessage) {
         if (rawLastMessage == null) {
