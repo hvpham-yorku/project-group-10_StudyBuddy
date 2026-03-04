@@ -1,8 +1,5 @@
 package ca.yorku.my.StudyBuddy;
 
-import ca.yorku.my.StudyBuddy.model.ChatType;
-import ca.yorku.my.StudyBuddy.model.LastMessagePreview;
-import ca.yorku.my.StudyBuddy.model.MessageType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

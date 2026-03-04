@@ -1,8 +1,9 @@
 package ca.yorku.my.StudyBuddy.unit;
 
 import ca.yorku.my.StudyBuddy.Chat;
-import ca.yorku.my.StudyBuddy.model.LastMessagePreview;
-import ca.yorku.my.StudyBuddy.model.MessageType;
+import ca.yorku.my.StudyBuddy.LastMessagePreview;
+import ca.yorku.my.StudyBuddy.MessageType;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;

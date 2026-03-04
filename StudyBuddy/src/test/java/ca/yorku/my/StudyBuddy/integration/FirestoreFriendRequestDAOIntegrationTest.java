@@ -2,7 +2,8 @@ package ca.yorku.my.StudyBuddy.integration;
 
 import ca.yorku.my.StudyBuddy.FriendRequest;
 import ca.yorku.my.StudyBuddy.FriendRequestDAO;
-import ca.yorku.my.StudyBuddy.model.FriendRequestStatus;
+import ca.yorku.my.StudyBuddy.FriendRequestStatus;
+
 import com.google.firebase.cloud.FirestoreClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;

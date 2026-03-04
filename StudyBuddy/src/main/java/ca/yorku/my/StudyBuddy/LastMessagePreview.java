@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy.model;
+package ca.yorku.my.StudyBuddy;
 
 /**
  * This class stores compact preview metadata for the latest message in a chat.

@@ -1,22 +1,20 @@
 package ca.yorku.my.StudyBuddy;
 
-import ca.yorku.my.StudyBuddy.model.MessageType;
-
 /**
- * This class contains logic for when response payload is returned after sending/fetching chat messages.
+ * This class represents a persisted chat message including sender, type, and timestamp metadata.
  */
-public class MessageResponseDTO {
+public class Message {
     private String messageId;
     private String chatId;
     private String senderId;
     private String senderName;
     private String content;
     private String timestamp;
+    private long timestampEpochMillis;
     private MessageType type;
     private FileAttachmentDTO file;
-    private boolean isMine;
 
-    public MessageResponseDTO() {
+    public Message() {
     }
 
     public String getMessageId() {
@@ -67,6 +65,14 @@ public class MessageResponseDTO {
         this.timestamp = timestamp;
     }
 
+    public long getTimestampEpochMillis() {
+        return timestampEpochMillis;
+    }
+
+    public void setTimestampEpochMillis(long timestampEpochMillis) {
+        this.timestampEpochMillis = timestampEpochMillis;
+    }
+
     public MessageType getType() {
         return type;
     }
@@ -81,13 +87,5 @@ public class MessageResponseDTO {
 
     public void setFile(FileAttachmentDTO file) {
         this.file = file;
-    }
-
-    public boolean isMine() {
-        return isMine;
-    }
-
-    public void setMine(boolean mine) {
-        isMine = mine;
     }
 }

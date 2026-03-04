@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy.model;
+package ca.yorku.my.StudyBuddy;
 
 /**
  * This class defines lifecycle states for friend request records.

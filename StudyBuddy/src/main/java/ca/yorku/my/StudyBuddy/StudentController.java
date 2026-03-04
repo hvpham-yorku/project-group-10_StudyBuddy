@@ -1,6 +1,5 @@
 package ca.yorku.my.StudyBuddy;
 
-import ca.yorku.my.StudyBuddy.dao.StubDatabase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy.dao;
+package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.Student;
 

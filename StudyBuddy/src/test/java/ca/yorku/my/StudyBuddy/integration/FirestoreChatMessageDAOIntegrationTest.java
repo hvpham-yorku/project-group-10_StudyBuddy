@@ -1,8 +1,7 @@
 package ca.yorku.my.StudyBuddy.integration;
 
 import ca.yorku.my.StudyBuddy.*;
-import ca.yorku.my.StudyBuddy.model.ChatType;
-import ca.yorku.my.StudyBuddy.model.MessageType;
+
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 import org.junit.jupiter.api.*;

@@ -1,9 +1,7 @@
 package ca.yorku.my.StudyBuddy.unit;
 
 import ca.yorku.my.StudyBuddy.*;
-import ca.yorku.my.StudyBuddy.model.ChatType;
-import ca.yorku.my.StudyBuddy.model.FriendRequestStatus;
-import ca.yorku.my.StudyBuddy.model.MessageType;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.*;

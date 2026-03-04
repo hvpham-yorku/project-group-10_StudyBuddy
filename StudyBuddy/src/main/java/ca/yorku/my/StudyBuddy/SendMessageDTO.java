@@ -1,7 +1,5 @@
 package ca.yorku.my.StudyBuddy;
 
-import ca.yorku.my.StudyBuddy.model.MessageType;
-
 /**
  * This class is a request payload for sending chat messages of multiple supported types.
  */
