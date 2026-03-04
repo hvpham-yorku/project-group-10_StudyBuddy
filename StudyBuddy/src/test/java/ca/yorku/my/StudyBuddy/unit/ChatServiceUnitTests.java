@@ -10,12 +10,18 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Unit tests for ChatService business rules using in-memory DAO stubs.
+ */
 class ChatServiceUnitTests {
 
     private ChatService newService() {
         return new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
     }
 
+    /**
+     * Verifies Bearer header parsing extracts actor id.
+     */
     @Test
     void extractActorIdReturnsBearerValue() {
         ChatService service = newService();
@@ -25,6 +31,9 @@ class ChatServiceUnitTests {
         assertEquals("u1", actorId);
     }
 
+    /**
+     * Verifies missing authorization header throws UnauthorizedException.
+     */
     @Test
     void extractActorIdThrowsWhenMissingHeader() {
         ChatService service = newService();
@@ -32,6 +41,9 @@ class ChatServiceUnitTests {
         assertThrows(UnauthorizedException.class, () -> service.extractActorId(null));
     }
 
+    /**
+     * Verifies direct-chat id generation is stable and sorted.
+     */
     @Test
     void createDirectChatCreatesStableSortedId() {
         ChatService service = newService();
@@ -46,6 +58,9 @@ class ChatServiceUnitTests {
         assertEquals(2, chat.getParticipantIds().size());
     }
 
+    /**
+     * Verifies actors outside the participant pair cannot create the direct chat.
+     */
     @Test
     void createDirectChatBlocksActorOutsideParticipants() {
         ChatService service = newService();
@@ -56,6 +71,9 @@ class ChatServiceUnitTests {
         assertThrows(ForbiddenException.class, () -> service.createDirectChat("u9", request));
     }
 
+    /**
+     * Verifies duplicate direct-chat requests return the existing chat.
+     */
     @Test
     void createDirectChatReturnsExistingChatWhenDuplicateRequested() {
         ChatService service = newService();
@@ -74,6 +92,9 @@ class ChatServiceUnitTests {
         assertEquals(created.getChatId(), duplicate.getChatId());
     }
 
+    /**
+     * Verifies successful message send and retrieval in paged messages response.
+     */
     @Test
     void sendMessageAndGetMessagesHappyPath() {
         ChatService service = newService();
@@ -97,6 +118,9 @@ class ChatServiceUnitTests {
         assertFalse(page.isHasMore());
     }
 
+    /**
+     * Verifies non-participants cannot send messages to a chat.
+     */
     @Test
     void sendMessageBlocksNonParticipant() {
         ChatService service = newService();
@@ -114,6 +138,9 @@ class ChatServiceUnitTests {
                 () -> service.sendMessage("u3", "u1_u2", messageRequest));
     }
 
+    /**
+     * Verifies pagination limit validation rejects out-of-range values.
+     */
     @Test
     void getMessagesRejectsInvalidLimit() {
         ChatService service = newService();
@@ -126,6 +153,9 @@ class ChatServiceUnitTests {
                 () -> service.getChatMessages("u1", "u1_u2", 0, null));
     }
 
+    /**
+     * Verifies shared-session check returns true when users attended a common event.
+     */
     @Test
     void hasCompletedSharedSessionReturnsTrueWhenUsersShareAttendedEvent() throws Exception {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -137,6 +167,9 @@ class ChatServiceUnitTests {
         assertTrue(result);
     }
 
+    /**
+     * Verifies shared-session check returns false when there is no overlap.
+     */
     @Test
     void hasCompletedSharedSessionReturnsFalseWhenNoOverlap() throws Exception {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -148,6 +181,9 @@ class ChatServiceUnitTests {
         assertFalse(result);
     }
 
+    /**
+     * Verifies event-chat creation checks event existence through service boundary methods.
+     */
     @Test
     void createEventChatChecksEventExistsViaServiceBoundary() {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -159,6 +195,9 @@ class ChatServiceUnitTests {
                 () -> service.createEventChat("u1", "missing-event", new CreateEventChatRequest()));
     }
 
+    /**
+     * Verifies event-chat participants must belong to the event roster.
+     */
     @Test
     void createEventChatRejectsParticipantOutsideEvent() {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -172,6 +211,9 @@ class ChatServiceUnitTests {
                 () -> service.createEventChat("u1", "event-1", request));
     }
 
+    /**
+     * Verifies valid HTTP links are accepted for LINK messages.
+     */
     @Test
     void sendMessageAcceptsValidLink() {
         ChatService service = newService();
@@ -191,6 +233,9 @@ class ChatServiceUnitTests {
         assertEquals("https://example.com", sent.getContent());
     }
 
+    /**
+     * Verifies malformed links are rejected for LINK messages.
+     */
     @Test
     void sendMessageRejectsInvalidLinkFormat() {
         ChatService service = newService();
@@ -208,6 +253,9 @@ class ChatServiceUnitTests {
                 () -> service.sendMessage("u1", "u1_u2", messageRequest));
     }
 
+    /**
+     * Verifies FILE messages accept complete file metadata payloads.
+     */
     @Test
     void sendMessageAcceptsFilePlaceholderMetadata() {
         ChatService service = newService();
@@ -236,6 +284,9 @@ class ChatServiceUnitTests {
         assertEquals(2048L, sent.getFile().getFileSizeBytes());
     }
 
+    /**
+     * Verifies FILE messages reject incomplete metadata.
+     */
     @Test
     void sendMessageRejectsFileWithoutRequiredMetadata() {
         ChatService service = newService();
@@ -256,6 +307,9 @@ class ChatServiceUnitTests {
                 () -> service.sendMessage("u1", "u1_u2", messageRequest));
     }
 
+    /**
+     * Verifies friend-request creation is blocked when users lack shared completed sessions.
+     */
     @Test
     void sendFriendRequestRejectsWithoutSharedCompletedSession() {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -269,6 +323,9 @@ class ChatServiceUnitTests {
                 () -> service.sendFriendRequest("u1", request));
     }
 
+    /**
+     * Verifies friend-request creation succeeds when all eligibility checks pass.
+     */
     @Test
     void sendFriendRequestCreatesPendingWhenSharedSessionExists() throws Exception {
         TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
@@ -286,6 +343,9 @@ class ChatServiceUnitTests {
         assertNotNull(created.getCreatedAt());
     }
 
+    /**
+     * Verifies cursor pagination returns descending pages and hasMore semantics.
+     */
     @Test
     void getMessagesUsesDescendingCursorPagination() {
         ChatService service = newService();
@@ -310,6 +370,108 @@ class ChatServiceUnitTests {
         PagedMessagesResponse secondPage = service.getChatMessages("u1", "u1_u2", 2, firstPage.getNextCursor());
         assertEquals(1, secondPage.getMessages().size());
         assertFalse(secondPage.isHasMore());
+    }
+
+    /**
+     * Verifies typing status excludes actor and reports other active typers.
+     */
+    @Test
+    void typingStatusIncludesOtherParticipantsAndExcludesActor() throws Exception {
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
+        service.setExistingEvents(Set.of("event-1"));
+        service.setEventParticipants("event-1", Set.of("u1", "u2", "u3"));
+
+        CreateEventChatRequest createRequest = new CreateEventChatRequest();
+        createRequest.setParticipantIds(List.of("u1", "u2", "u3"));
+        Chat chat = service.createEventChat("u1", "event-1", createRequest);
+
+        TypingStatusUpdateRequest typingOn = new TypingStatusUpdateRequest();
+        typingOn.setTyping(true);
+        service.updateTypingStatus("u1", chat.getChatId(), typingOn);
+        service.updateTypingStatus("u2", chat.getChatId(), typingOn);
+        service.updateTypingStatus("u3", chat.getChatId(), typingOn);
+
+        TypingStatusResponse response = service.getTypingStatus("u1", chat.getChatId());
+
+        assertEquals(List.of("u2", "u3"), response.getTypingUserIds());
+        assertTrue(response.getExpiresInMs() > 0);
+        assertTrue(response.getExpiresInMs() <= 5000L);
+    }
+
+    /**
+     * Verifies typing-off updates remove actor from active typing status.
+     */
+    @Test
+    void typingStatusTurnsOffWhenActorSendsTypingFalse() {
+        ChatService service = newService();
+        CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+        chatRequest.setUserA("u1");
+        chatRequest.setUserB("u2");
+        service.createDirectChat("u1", chatRequest);
+
+        TypingStatusUpdateRequest typingOn = new TypingStatusUpdateRequest();
+        typingOn.setTyping(true);
+        service.updateTypingStatus("u2", "u1_u2", typingOn);
+
+        TypingStatusUpdateRequest typingOff = new TypingStatusUpdateRequest();
+        typingOff.setTyping(false);
+        service.updateTypingStatus("u2", "u1_u2", typingOff);
+
+        TypingStatusResponse response = service.getTypingStatus("u1", "u1_u2");
+
+        assertTrue(response.getTypingUserIds().isEmpty());
+        assertEquals(5000L, response.getExpiresInMs());
+    }
+
+    /**
+     * Verifies typing updates require explicit typing flag in payload.
+     */
+    @Test
+    void updateTypingStatusRejectsRequestMissingTypingFlag() {
+        ChatService service = newService();
+        CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+        chatRequest.setUserA("u1");
+        chatRequest.setUserB("u2");
+        service.createDirectChat("u1", chatRequest);
+
+        TypingStatusUpdateRequest invalidRequest = new TypingStatusUpdateRequest();
+
+        assertThrows(ValidationException.class,
+                () -> service.updateTypingStatus("u1", "u1_u2", invalidRequest));
+    }
+
+    /**
+     * Verifies friend requests cannot target the same actor.
+     */
+    @Test
+    void sendFriendRequestRejectsSelfTarget() throws Exception {
+        ChatService service = newService();
+
+        SendFriendRequestDTO request = new SendFriendRequestDTO();
+        request.setTargetUserId("u1");
+
+        assertThrows(ValidationException.class,
+                () -> service.sendFriendRequest("u1", request));
+    }
+
+    /**
+     * Verifies duplicate pending friend requests are rejected.
+     */
+    @Test
+    void sendFriendRequestRejectsWhenPendingAlreadyExists() throws Exception {
+        TestableChatService service = new TestableChatService(new InMemoryChatDAO(), new InMemoryMessageDAO(), new InMemoryFriendRequestDAO());
+        service.setAttended("u1", List.of("e1", "e2"));
+        service.setAttended("u2", List.of("e2"));
+
+        SendFriendRequestDTO first = new SendFriendRequestDTO();
+        first.setTargetUserId("u2");
+        service.sendFriendRequest("u1", first);
+
+        SendFriendRequestDTO duplicate = new SendFriendRequestDTO();
+        duplicate.setTargetUserId("u2");
+
+        assertThrows(ValidationException.class,
+                () -> service.sendFriendRequest("u1", duplicate));
     }
 
     private static class TestableChatService extends ChatService {
