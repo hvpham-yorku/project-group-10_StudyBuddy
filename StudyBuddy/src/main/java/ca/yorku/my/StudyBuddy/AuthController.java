@@ -1,5 +1,7 @@
 package ca.yorku.my.StudyBuddy;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +16,15 @@ public class AuthController {
     private AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody Student student, @RequestParam String password) {
+    public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         try {
-            String firebaseUid = authService.registerUser(student, password);
+            String firebaseUid = authService.registerUser(
+            		body.get("email"), 
+            		body.get("password"),
+            		body.get("firstName"),
+            		body.get("lastName"),
+            		body.get("major"),
+            		body.get("year"));
             return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());
@@ -42,10 +50,10 @@ public ResponseEntity<String> resetPassword(@RequestParam(required = false) Stri
 }
 
 @PostMapping("/login")
-public ResponseEntity<String> login(@RequestParam String email) {
+public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
     try {
-        String sessionToken = authService.loginUser(email);
-        return ResponseEntity.ok("Login Successful! Session Token: " + sessionToken);
+        String sessionToken = authService.loginUser(body.get("email"), body.get("password"));
+        return ResponseEntity.ok(sessionToken);
     } catch (IllegalStateException e) {
         return ResponseEntity.status(403).body(e.getMessage());
     } catch (Exception e) {
