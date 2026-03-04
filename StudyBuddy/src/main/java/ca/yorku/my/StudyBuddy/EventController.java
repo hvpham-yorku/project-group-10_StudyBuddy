@@ -169,9 +169,11 @@ public class EventController {
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
             @PathVariable String eventId,
-            @RequestParam String userId) {
+            @RequestHeader("Authorization") String authHeader) {
         try {
+        	String userId = authService.verifyFrontendToken(authHeader);
             System.out.println("Attempted to delete " + eventId + " as " + userId);
+            
             boolean deleted = eventService.deleteEvent(eventId, userId);
             if (deleted) {
                 return ResponseEntity.noContent().build();
@@ -179,7 +181,7 @@ public class EventController {
             	System.out.println("Failed Deletion");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

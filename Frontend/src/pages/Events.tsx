@@ -133,10 +133,15 @@ export default function Events() {
   if (!window.confirm("Are you sure you want to cancel this event?")) return;
 
   try {
-    const response = await fetch(
-      `/api/events/${eventId}?userId=${student.name}`,
-      { method: "DELETE" }
-    );
+
+    const token = localStorage.getItem("studyBuddyToken");
+
+    const response = await fetch(`http://localhost:8080/api/events/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      });
 
     if (response.ok) {
       setEvents((prev) => prev.filter((ev) => ev.id !== eventId));
