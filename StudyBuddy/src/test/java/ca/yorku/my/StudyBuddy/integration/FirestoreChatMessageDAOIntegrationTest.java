@@ -17,6 +17,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Integration tests for Firestore-backed ChatDAO and MessageDAO behavior.
+ */
 @SpringBootTest
 class FirestoreChatMessageDAOIntegrationTest {
 
@@ -50,6 +53,9 @@ class FirestoreChatMessageDAOIntegrationTest {
         db.collection("chats").document(chatId).delete().get();
     }
 
+    /**
+    * Verifies chat creation and retrieval by id/participants against Firestore.
+    */
     @Test
     void createAndFindDirectChatByParticipants() {
         Chat chat = new Chat();
@@ -69,6 +75,9 @@ class FirestoreChatMessageDAOIntegrationTest {
         assertEquals(chatId, byParticipants.get().getChatId());
     }
 
+    /**
+     * Verifies message creation order and cursor-based pagination against Firestore.
+     */
     @Test
     void createMessagesAndListWithCursorPagination() {
         Chat chat = new Chat();

@@ -14,12 +14,18 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Integration tests for EventService against real Firestore persistence.
+ */
 @SpringBootTest
 class EventServiceFirestoreIntegrationTest {
 
     @Autowired
     private EventService eventService;
 
+    /**
+     * Verifies create -> read -> delete flow against Firestore for event records.
+     */
     @Test
     void createReadDeleteEventAgainstActualFirestore() throws Exception {
         Path firebaseKey = Path.of("src/main/resources/serviceAccountKey.json");
