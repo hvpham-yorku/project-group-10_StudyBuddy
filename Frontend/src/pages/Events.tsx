@@ -9,7 +9,7 @@ import {
   Plus, Search, Filter, CalendarDays, Clock, MapPin, Users,
   ChevronDown, Star
 } from "lucide-react";
-import { currentUser } from "../data/mockData";
+// import { currentUser } from "../data/mockData";
 
 const vibeColors: Record<string, string> = {
   "Quiet Focus": "bg-blue-50 text-blue-700",
@@ -27,6 +27,7 @@ export default function Events() {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [student, setStudent] = useState<any>(null);
 
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -51,20 +52,58 @@ export default function Events() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+
+        // Student
+        const token = localStorage.getItem("studyBuddyToken");
+        if (token) {
+          const userRes = await fetch("http://localhost:8080/api/studentcontroller/profile", {
+            headers: { "Authorization": "Bearer " + token }
+          });
+          if (userRes.ok) {
+            const studentData = await userRes.json();
+            setStudent(studentData);
+          }
+        }
+        // Events
         const response = await fetch("/api/events");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
 
-        // Temporary fix: Map the string 'host' from backend to an object for the frontend
-        // TODO: Update backend to send host as an object through the Student class
-        const formattedData = data.map((ev: any) => ({
-          ...ev,
-          host: typeof ev.host === 'string'
-            ? { id: "unknown_id", name: ev.host, avatar: null }
-            : ev.host
-        }));
+        const formattedData = await Promise.all(
+          data.map(async (ev: any) => {
+            let hostObj = { id: ev.host, name: "Unknown Student", avatar: null };
+
+            // Look up who the host is by their ID
+            if (typeof ev.host === 'string') {
+              try {
+                // Call endpoint to get the host's profile information
+                const hostRes = await fetch(`http://localhost:8080/api/studentcontroller/${ev.host}`);
+                
+                if (hostRes.ok) {
+                  const hostProfile = await hostRes.json();
+                  hostObj = {
+                    id: ev.host,
+                    // Combine their first and last name
+                    name: `${hostProfile.firstName} ${hostProfile.lastName}`,
+                    avatar: hostProfile.avatar || null
+                  };
+                }
+              } catch (err) {
+                console.error("Failed to fetch host details for event", err);
+              }
+            } else {
+              // Fallback just in case the backend eventually sends the whole object
+              hostObj = ev.host;
+            }
+
+            return {
+              ...ev,
+              host: hostObj
+            };
+          })
+        );
 
         setEvents(formattedData);
       } catch (err: any) {
@@ -77,8 +116,6 @@ export default function Events() {
 
     fetchEvents();
   }, []);
-
-
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
@@ -97,7 +134,7 @@ export default function Events() {
 
   try {
     const response = await fetch(
-      `/api/events/${eventId}?userId=${currentUser.name}`,
+      `/api/events/${eventId}?userId=${student.name}`,
       { method: "DELETE" }
     );
 
@@ -112,7 +149,7 @@ export default function Events() {
   }
 };
 
-  const isMyEvent = (ev: typeof events[0]) => ev.host.id === currentUser.id;
+  const isMyEvent = (ev: typeof events[0]) => ev.host.id === student.id;
   const isJoined = (id: string) => joinedEvents.includes(id);
 
   return (
@@ -305,7 +342,7 @@ export default function Events() {
                     <div className="flex items-center gap-2">
 
                       {/* Delete User's Own Event  */}
-                      {ev.host.name == currentUser.name &&(
+                      {ev.host.id == student.userId &&(
                       <button
                         onClick={(e) => handleDeleteEvent(ev.id, e)}
                         className="px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200 hover:bg-red-400 bg-red-500 text-white transition-colors"
@@ -316,7 +353,7 @@ export default function Events() {
                       )}
 
                       {/* Join an event */}
-                      {ev.host.name != currentUser.name && (
+                      {ev.host.name != student.name && (
                       <button
                         onClick={(e) => handleJoin(ev.id, e)}
                         className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)

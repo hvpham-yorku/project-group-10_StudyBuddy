@@ -63,7 +63,6 @@ export default function CreateEvent() {
     const payload = {
       title: form.title,
       course: form.course,
-      host: currentUser.name, 
       location: form.location,
       date: form.date,
       time: form.time,
@@ -81,6 +80,7 @@ export default function CreateEvent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("studyBuddyToken")}`
         },
         body: JSON.stringify(payload),
       });
