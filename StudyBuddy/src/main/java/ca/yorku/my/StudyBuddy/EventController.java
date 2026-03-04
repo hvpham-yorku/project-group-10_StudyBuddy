@@ -28,18 +28,24 @@ public class EventController {
 
     @Autowired
     private EventService eventService;
+    
+    @Autowired
+    private AuthService authService;
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
-
     @PostMapping
-    public ResponseEntity<EventResponseDTO> createEvent(@RequestBody EventResponseDTO eventDTO) {
+    public ResponseEntity<EventResponseDTO> createEvent(@RequestHeader("Authorization") String authHeader, @RequestBody EventResponseDTO eventDTO) {
         try {
+        	
         	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
+        	
+        	String hostId = authService.verifyFrontendToken(authHeader);
+        	
         	Event newEvent = new Event(
         		eventDTO.id(),
         		eventDTO.title(),
         		eventDTO.course(),
-        		eventDTO.host(),
+        		hostId,
         		eventDTO.location(),
         		eventDTO.date(),
         		eventDTO.time(),
@@ -57,7 +63,7 @@ public class EventController {
         		
         	// 3. Print it back to user to indicate success
         	return ResponseEntity.status(HttpStatus.CREATED).body(eventDTO);
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -163,9 +169,11 @@ public class EventController {
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
             @PathVariable String eventId,
-            @RequestParam String userId) {
+            @RequestHeader("Authorization") String authHeader) {
         try {
+        	String userId = authService.verifyFrontendToken(authHeader);
             System.out.println("Attempted to delete " + eventId + " as " + userId);
+            
             boolean deleted = eventService.deleteEvent(eventId, userId);
             if (deleted) {
                 return ResponseEntity.noContent().build();
@@ -173,7 +181,7 @@ public class EventController {
             	System.out.println("Failed Deletion");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
