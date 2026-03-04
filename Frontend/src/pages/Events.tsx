@@ -358,7 +358,7 @@ export default function Events() {
                       )}
 
                       {/* Join an event */}
-                      {ev.host.name != student.name && (
+                      {ev.host.id != student.userId && (
                       <button
                         onClick={(e) => handleJoin(ev.id, e)}
                         className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
