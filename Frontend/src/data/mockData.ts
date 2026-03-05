@@ -1,5 +1,43 @@
 // ─── Mock Data for StudyBuddy ────────────────────────────────────────────────
 
+export const YORK_BUILDINGS = [
+  { acronym: "ACE", name: "Accolade East", lat: 43.7715, lng: -79.5006 },
+  { acronym: "ACW", name: "Accolade West", lat: 43.7722, lng: -79.5015 },
+  { acronym: "ATK", name: "Atkinson", lat: 43.7710, lng: -79.5020 },
+  { acronym: "BSB", name: "Behavioural Science Building", lat: 43.7745, lng: -79.5030 },
+  { acronym: "BRG", name: "Bergeron Centre", lat: 43.7741, lng: -79.5058 },
+  { acronym: "BC",  name: "Bethune College", lat: 43.7750, lng: -79.5035 },
+  { acronym: "CC",  name: "Calumet College", lat: 43.7758, lng: -79.5053 },
+  { acronym: "CSQ", name: "Central Square", lat: 43.7735, lng: -79.5027 },
+  { acronym: "CFT", name: "Centre for Film and Theatre", lat: 43.7725, lng: -79.5015 },
+  { acronym: "CB",  name: "Chemistry Building", lat: 43.7736, lng: -79.5050 },
+  { acronym: "CLH", name: "Curtis Lecture Halls", lat: 43.7730, lng: -79.5024 },
+  { acronym: "FRG", name: "Farquharson Life Sciences", lat: 43.7740, lng: -79.5040 },
+  { acronym: "FAN", name: "Founders College Annex", lat: 43.7760, lng: -79.5000 },
+  { acronym: "FAS", name: "Fine Arts Studios", lat: 43.7720, lng: -79.5000 },
+  { acronym: "FC",  name: "Founders College", lat: 43.7765, lng: -79.5010 },
+  { acronym: "HNE", name: "Health, Nursing & Environmental Studies", lat: 43.7728, lng: -79.5045 },
+  { acronym: "CFA", name: "Joan & Martin Goldfarb Centre", lat: 43.7720, lng: -79.5010 },
+  { acronym: "LAS", name: "Lassonde Building", lat: 43.7732, lng: -79.5043 },
+  { acronym: "LSB", name: "Life Sciences Building", lat: 43.7748, lng: -79.5050 },
+  { acronym: "LUM", name: "Lumbers Building", lat: 43.7745, lng: -79.5055 },
+  { acronym: "MC",  name: "McLaughlin College", lat: 43.7742, lng: -79.4990 },
+  { acronym: "OSG", name: "Osgoode Hall Law School", lat: 43.7721, lng: -79.5036 },
+  { acronym: "PSE", name: "Petrie Science & Engineering", lat: 43.7733, lng: -79.5057 },
+  { acronym: "R",   name: "Ross Building", lat: 43.7736, lng: -79.5031 },
+  { acronym: "SCL", name: "Scott Library", lat: 43.7732, lng: -79.5037 },
+  { acronym: "SSB", name: "Seymour Schulich Building", lat: 43.7726, lng: -79.4991 },
+  { acronym: "STL", name: "Steacie Science and Engineering", lat: 43.7737, lng: -79.5041 },
+  { acronym: "SLH", name: "Stedman Lecture Halls", lat: 43.7736, lng: -79.5016 },
+  { acronym: "SC",  name: "Stong College", lat: 43.7756, lng: -79.5051 },
+  { acronym: "STC", name: "Student Centre", lat: 43.7746, lng: -79.5016 },
+  { acronym: "SSC", name: "Student Services Centre", lat: 43.7739, lng: -79.5011 },
+  { acronym: "VH",  name: "Vari Hall", lat: 43.7731, lng: -79.5019 },
+  { acronym: "DB",  name: "Victor Dahdaleh Building", lat: 43.7726, lng: -79.5003 },
+  { acronym: "WSC", name: "William Small Centre", lat: 43.7739, lng: -79.5056 },
+  { acronym: "WC",  name: "Winters College", lat: 43.7751, lng: -79.5006 }
+];
+
 export const currentUser = {
   id: "u1",
   name: "Alex Johnson",

@@ -4,6 +4,7 @@ import {
   MapPin, Users, Clock, Navigation, Search, X, BookOpen, ArrowRight
 } from "lucide-react";
 import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from "@vis.gl/react-google-maps";
+import { YORK_BUILDINGS } from "../data/mockData";
 
 // Make sure to add VITE_GOOGLE_MAPS_API_KEY to your Frontend/.env file!
 const API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -70,20 +71,31 @@ export default function MapView() {
     return matchSearch && matchCourse;
   });
 
-  // 2. Group the events into map pins ("Study Hubs") based on their coordinates
+  // 2. Group the events strictly using the YORK_BUILDINGS dictionary
   const hubs = useMemo(() => {
-    const map = new globalThis.Map(); // Use globalThis to avoid collision with Google Map
+    const map = new globalThis.Map(); 
+    
     filteredSessions.forEach(e => {
-      const coords = getCoords(e.location);
-      if (!coords) return; 
+      if (!e.location) return;
       
-      const key = `${coords.lat},${coords.lng}`;
-      if (!map.has(key)) {
-        const buildingName = e.location.split(",")[0];
-        map.set(key, { coords, locationName: buildingName, events: [] });
+      // Find the exact building in our dictionary that matches the event location
+      const building = YORK_BUILDINGS.find(b => e.location === b.name);
+      
+      // If it doesn't match exactly (e.g., "Online (Zoom)"), skip drawing a pin!
+      if (!building) return; 
+      
+      // Group them using the Building Name as the unique key
+      if (!map.has(building.name)) {
+        map.set(building.name, { 
+          coords: { lat: building.lat, lng: building.lng }, 
+          locationName: building.name, 
+          acronym: building.acronym,
+          events: [] 
+        });
       }
-      map.get(key).events.push(e);
+      map.get(building.name).events.push(e);
     });
+    
     return Array.from(map.values());
   }, [filteredSessions]);
 
