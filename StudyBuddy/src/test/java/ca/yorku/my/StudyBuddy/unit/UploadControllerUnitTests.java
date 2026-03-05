@@ -17,6 +17,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Unit tests for UploadController HTTP behavior and error mapping.
+ */
 @WebMvcTest(UploadController.class)
 class UploadControllerUnitTests {
 
@@ -29,6 +32,9 @@ class UploadControllerUnitTests {
     @MockitoBean
     private UploadService uploadService;
 
+        /**
+         * Verifies successful upload returns 201 and attachment payload.
+         */
     @Test
     void uploadAttachmentReturns201() throws Exception {
         when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
@@ -54,6 +60,9 @@ class UploadControllerUnitTests {
                 .andExpect(jsonPath("$.fileName").value("notes.pdf"));
     }
 
+        /**
+         * Verifies invalid upload input is mapped to 422 validation response.
+         */
     @Test
     void uploadAttachmentWithInvalidFileReturns422() throws Exception {
         when(chatService.extractActorId("Bearer u1")).thenReturn("u1");
@@ -73,6 +82,9 @@ class UploadControllerUnitTests {
                 .andExpect(jsonPath("$.error").exists());
     }
 
+        /**
+         * Verifies download endpoint returns 200 and attachment headers for existing files.
+         */
     @Test
     void downloadAttachmentReturns200() throws Exception {
         UploadService.DownloadedFile downloadedFile = new UploadService.DownloadedFile(
@@ -90,6 +102,9 @@ class UploadControllerUnitTests {
                         .string("Content-Disposition", org.hamcrest.Matchers.containsString("notes.pdf")));
     }
 
+        /**
+         * Verifies missing files are translated to 404 responses.
+         */
     @Test
     void downloadAttachmentMissingReturns404() throws Exception {
         when(uploadService.loadAttachment("u1", "missing.pdf", null))
