@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.controllers;
 
 import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +10,7 @@ import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.HostDTO;
+import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.EventService;
 import ca.yorku.my.StudyBuddy.services.StudentService;
 

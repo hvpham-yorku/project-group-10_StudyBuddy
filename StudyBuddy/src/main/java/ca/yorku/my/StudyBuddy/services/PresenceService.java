@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.services;
 
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;

@@ -1,7 +1,9 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import ca.yorku.my.StudyBuddy.services.ConnectionsService;
 
 import java.util.List;
 
