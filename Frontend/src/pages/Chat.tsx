@@ -149,8 +149,11 @@ export default function Chat() {
       // 1. Fetch accepted connections (Direct Chats)
       const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
       let directChatsList: any[] = [];
+      let connectionsData: any[] = [];
+
+
       if (connRes.ok) {
-        const connectionsData = await connRes.json();
+        connectionsData = await connRes.json();
         directChatsList = connectionsData.map((c: any) => ({
           id: `direct_${c.userId}`, 
           name: c.fullName || c.userId,
@@ -172,24 +175,44 @@ export default function Chat() {
         const eventsData = await eventsRes.json();
         // Filter out only the events you are hosting or attending
         const myEvents = eventsData.filter((e: any) => 
-          e.host?.id === activeUser.id || (e.participantIds && e.participantIds.includes(activeUser.id))
+          e.host?.id === activeUser.id || (e.attendees && e.attendees.includes(activeUser.id))
         );
 
-        eventChatsList = myEvents.map((e: any) => ({
-          id: `event_${e.id}`,
-          eventId: e.id, // Store the real backend event ID!
-          name: e.title || e.course || "Study Session",
-          type: "group",
-          isLiveEvent: true, // This triggers the cool green badge in the UI
-          members: [
+        eventChatsList = myEvents.map((e: any) => {
+          // Combine attendees AND the host, and figure out their real names
+          const membersList = [
             activeUser,
-            // Map the other participant IDs so they show up as members
-            ...(e.participantIds || []).filter((id: string) => id !== activeUser.id).map((id: string) => ({ id, name: id, isOnline: true }))
-          ],
-          lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
-          unreadCount: 0,
-          messages: []
-        }));
+            ...[...(e.attendees || []), e.host?.id]
+              .filter((id: string) => id && id !== activeUser.id)
+              .map((id: string) => {
+                // Check if this person is your friend
+                const friend = connectionsData.find((c: any) => c.userId === id);
+                // Check if this person is the event host
+                const isHost = e.host?.id === id;
+
+                // Resolve their real name and avatar
+                const displayName = friend ? (friend.fullName || friend.userId) : (isHost ? e.host?.name : id);
+                const avatar = friend ? friend.profilePic : (isHost ? e.host?.avatar : null);
+
+                return { id, name: displayName, avatar: avatar, isOnline: true };
+              })
+          ];
+
+          // Deduplicate the list just in case the host is also in the attendees array
+          const uniqueMembers = Array.from(new Map(membersList.map(m => [m.id, m])).values());
+
+          return {
+            id: `event_${e.id}`,
+            eventId: e.id, 
+            name: e.title || e.course || "Study Session",
+            type: "group",
+            isLiveEvent: true, 
+            members: uniqueMembers,
+            lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
+            unreadCount: 0,
+            messages: []
+          };
+        });
       }
 
       const combinedChats = [...directChatsList, ...eventChatsList];

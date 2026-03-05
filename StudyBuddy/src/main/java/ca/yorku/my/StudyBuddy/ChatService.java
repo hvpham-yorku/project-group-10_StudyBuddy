@@ -128,6 +128,12 @@ public class ChatService {
 
         Chat existing = chatDAO.findByRelatedIdAndType(eventId, ChatType.EVENT).orElse(null);
         if (existing != null) {
+            // SYNC: Update the chat document so new attendees are granted access, 
+            // and people who left the event lose access
+            List<String> updatedParticipants = new ArrayList<>(eligibleParticipants);
+            existing.setParticipantIds(updatedParticipants);
+            chatDAO.save(existing);
+            
             return existing;
         }
 
