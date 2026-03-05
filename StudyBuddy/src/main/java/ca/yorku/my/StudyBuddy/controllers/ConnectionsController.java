@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import ca.yorku.my.StudyBuddy.services.ConnectionsService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/connections")
@@ -13,6 +14,7 @@ import java.util.List;
 public class ConnectionsController {
 
     private final ConnectionsService connectionsService;
+    
 
     public ConnectionsController(ConnectionsService connectionsService) {
         this.connectionsService = connectionsService;
@@ -22,5 +24,16 @@ public class ConnectionsController {
     @GetMapping
     public ResponseEntity<List<ConnectionsService.ConnectionDTO>> getConnections(@RequestParam String userId) {
         return ResponseEntity.ok(connectionsService.getAcceptedConnections(userId));
+    }
+    
+    @GetMapping("/available")
+    public ResponseEntity<List<ConnectionsService.ConnectionDTO>> getAvailable(@RequestParam String userId) throws Exception {
+        return ResponseEntity.ok(connectionsService.getAvailableStudents(userId));
+    }
+    
+    @PostMapping("/request")
+    public ResponseEntity<String> sendRequest(@RequestBody Map<String, String> payload) {
+        connectionsService.sendRequest(payload.get("myUserId"), payload.get("targetUserId"));
+        return ResponseEntity.ok("Request sent");
     }
 }

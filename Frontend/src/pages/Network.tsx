@@ -79,7 +79,9 @@ export default function Network() {
   const navigate = useNavigate();
 
   // ✅ Firebase Auth UID wiring
-  const { uid, authReady } = useAuthUid();
+  // const { uid, authReady } = useAuthUid();
+  const authReady = true;
+  const uid = "testUser123";
 
   // ✅ quick sanity log (remove later if you want)
   console.log("authReady:", authReady, "uid:", uid);
@@ -96,7 +98,24 @@ export default function Network() {
   const [accepted, setAccepted] = useState<string[]>([]);
   const [declined, setDeclined] = useState<string[]>([]);
 
+  // Keep track of users
+  const [availableUsers, setAvailableUsers] = useState<Connection[]>([]);
+
   const [inviteModal, setInviteModal] = useState<string | null>(null);
+
+  // Handle connections
+  const handleConnect = async (targetId: string) => {
+    try {
+      await fetch(`/api/connections/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      });
+      alert("Connection request sent!");
+    } catch (e) {
+      console.error("Failed to send request", e);
+    }
+  };
 
   // ✅ Load connections from backend ONLY after auth is ready, using UID
   useEffect(() => {
@@ -117,8 +136,12 @@ export default function Network() {
         // Update my own presence
         await apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`);
 
+        // Fetch existing connections AND available users
         const data = await apiGet<Connection[]>(
           `/api/connections?userId=${encodeURIComponent(uid)}`
+        );
+        const availableData = await apiGet<Connection[]>(
+          `/api/connections/available?userId=${encodeURIComponent(uid)}`
         );
 
         if (cancelled) return;
@@ -129,6 +152,15 @@ export default function Network() {
             courses: c.courses ?? [],
           }))
         );
+
+        // Save the available users to the state variable you already created
+        setAvailableUsers(
+          (availableData ?? []).map((c) => ({
+            ...c,
+            courses: c.courses ?? [],
+          }))
+        );
+
       } catch (e) {
         console.error(e);
         if (!cancelled) setConnections([]);
@@ -141,7 +173,7 @@ export default function Network() {
 
     // Keep heartbeat alive while logged in
     const id = window.setInterval(() => {
-      apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`).catch(() => {});
+      apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`).catch(() => { });
     }, 45_000);
 
     return () => {
@@ -170,6 +202,7 @@ export default function Network() {
 
   const getStatusColor = (c: Connection) => computePresence(c).color;
   const getStatusLabel = (c: Connection) => computePresence(c).label;
+
 
   // Optional: show auth loading state (keeps UI deterministic)
   if (!authReady) {
@@ -225,11 +258,10 @@ export default function Network() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors flex items-center gap-2 ${
-              activeTab === tab
+            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors flex items-center gap-2 ${activeTab === tab
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+              }`}
             style={{ fontWeight: activeTab === tab ? 600 : 400 }}
           >
             {tab === "connections" && <UserCheck size={14} />}
@@ -388,17 +420,10 @@ export default function Network() {
         </div>
       )}
 
-      {/* Find People Tab (UI placeholder for now) */}
+      {/* Find People Tab */}
       {activeTab === "find" && (
         <div className="space-y-3">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4">
-            <p className="text-sm text-blue-700 flex items-center gap-2">
-              <BookOpen size={15} />
-              This tab isn’t wired yet — later we’ll load candidates from the backend.
-            </p>
-          </div>
-
-          {connections.map((c) => {
+          {availableUsers.map((c) => {
             const displayName = c.fullName ?? c.userId;
             return (
               <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
@@ -421,6 +446,7 @@ export default function Network() {
                   <p className="text-xs text-slate-500">{c.program ?? ""}</p>
                 </div>
                 <button
+                  onClick={() => handleConnect(c.userId)}
                   className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1 shrink-0"
                   style={{ fontWeight: 600 }}
                 >

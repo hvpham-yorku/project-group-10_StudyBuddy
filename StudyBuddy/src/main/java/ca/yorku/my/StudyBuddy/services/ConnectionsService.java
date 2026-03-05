@@ -71,11 +71,11 @@ public class ConnectionsService {
                 dto.userId = otherId;
 
                 // users/{userId}
-                DocumentSnapshot userDoc = db().collection("users").document(otherId).get().get();
+                DocumentSnapshot userDoc = db().collection("students").document(otherId).get().get();
                 if (userDoc.exists()) {
                     dto.fullName = userDoc.getString("fullName");
                     dto.program = userDoc.getString("program");
-                    dto.profilePic = userDoc.getString("profilePic");
+                    dto.profilePic = userDoc.getString("avatar");
                     dto.courses = toStringArray(userDoc.get("courses"));
                 } else {
                     dto.courses = new String[0];
@@ -132,5 +132,33 @@ public class ConnectionsService {
         }
 
         return new String[0];
+    }
+    
+    // Get all available students
+    public List<ConnectionDTO> getAvailableStudents(String myUserId) throws Exception {
+        List<ConnectionDTO> out = new ArrayList<>();
+        QuerySnapshot query = db().collection("students").get().get();
+        
+        for (QueryDocumentSnapshot doc : query.getDocuments()) {
+            if (doc.getId().equals(myUserId)) continue; 
+            
+            ConnectionDTO dto = new ConnectionDTO();
+            dto.userId = doc.getId();
+            dto.fullName = doc.getString("fullName");
+            dto.program = doc.getString("program");
+            dto.profilePic = doc.getString("avatar");
+            dto.courses = toStringArray(doc.get("courses"));
+            out.add(dto);
+        }
+        return out;
+    }
+    
+    // Send a connection request
+    public void sendRequest(String fromUserId, String toUserId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("userA", fromUserId);
+        data.put("userB", toUserId);
+        data.put("status", "pending");
+        db().collection("connections").add(data);
     }
 }
