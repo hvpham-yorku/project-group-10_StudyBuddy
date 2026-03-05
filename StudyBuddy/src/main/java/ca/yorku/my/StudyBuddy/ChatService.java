@@ -12,7 +12,10 @@ import ca.yorku.my.StudyBuddy.daos.MessageDAO;
 import ca.yorku.my.StudyBuddy.dtos.MessageResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendFriendRequestDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendMessageDTO;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.AuthService;
+import ca.yorku.my.StudyBuddy.services.EventRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,10 +46,10 @@ public class ChatService {
     private final MessageDAO messageDAO;
     private final FriendRequestDAO friendRequestDAO;
     private final Map<String, Long> typingStateByKey = new ConcurrentHashMap<>();
-    private final AuthService authService;
+    private final AuthRepository authService;
 
     @Autowired
-    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO, AuthService authService) {
+    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO, AuthRepository authService) {
         this.chatDAO = chatDAO;
         this.messageDAO = messageDAO;
         this.friendRequestDAO = friendRequestDAO;
@@ -103,7 +106,7 @@ public class ChatService {
      * Creates or resolves an event chat and validates actor/participants against event membership.
      */
     public Chat createEventChat(String actorId, String eventId, CreateEventChatRequest request)
-            throws ExecutionException, InterruptedException {
+            throws Exception{
         if (isBlank(eventId)) {
             throw new ValidationException("eventId is required");
         }
@@ -381,7 +384,7 @@ public class ChatService {
      *
      * This is used as the eligibility gate for friend-request creation.
      */
-    public boolean hasCompletedSharedSession(String userA, String userB) throws ExecutionException, InterruptedException {
+    public boolean hasCompletedSharedSession(String userA, String userB) throws Exception {
         if (isBlank(userA) || isBlank(userB)) {
             throw new ValidationException("userA and userB are required");
         }
@@ -410,7 +413,7 @@ public class ChatService {
      * 4) no existing pending request between the pair
      */
     public FriendRequest sendFriendRequest(String actorId, SendFriendRequestDTO request)
-            throws ExecutionException, InterruptedException {
+            throws Exception {
         if (request == null || isBlank(request.getTargetUserId())) {
             throw new ValidationException("targetUserId is required");
         }
@@ -441,53 +444,34 @@ public class ChatService {
 
         return friendRequestDAO.create(friendRequest);
     }
+    
+    @Autowired private StudentRepository studentRepository;
+    @Autowired private EventRepository eventRepository;
 
     /**
      * Reads attended event ids from the user profile document.
      *
      * Missing user or missing attended list is treated as no attendance.
      */
-    protected List<String> getAttendedEventIds(String userId) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        DocumentSnapshot doc = db.collection("users").document(userId).get().get();
-        if (!doc.exists()) {
-            return new ArrayList<>();
-        }
-
-        Student student = doc.toObject(Student.class);
-        if (student == null || student.getAttendedEventIds() == null) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(student.getAttendedEventIds());
+    protected List<String> getAttendedEventIds(String userId) throws Exception {
+        Student s = studentRepository.getStudent(userId);
+        return (s != null && s.getAttendedEventIds() != null) ? s.getAttendedEventIds() : new ArrayList<>();
     }
 
     /**
      * Loads an event by id and copies Firestore doc id back into the object.
      */
-    protected Event getEventById(String eventId) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        DocumentSnapshot doc = db.collection("events").document(eventId).get().get();
-        if (!doc.exists()) {
-            throw new NotFoundException("Event not found");
-        }
-
-        Event event = doc.toObject(Event.class);
-        if (event == null) {
-            throw new NotFoundException("Event not found");
-        }
-        event.setId(doc.getId());
-        return event;
+    protected Event getEventById(String eventId) throws Exception {
+        Event e = eventRepository.getEventById(eventId);
+        if (e == null) throw new NotFoundException("Event not found");
+        return e;
     }
 
     /**
      * Verifies that a user document exists before dependent operations run.
      */
-    protected void ensureUserExists(String userId) throws ExecutionException, InterruptedException {
-        Firestore db = FirestoreClient.getFirestore();
-        DocumentSnapshot doc = db.collection("users").document(userId).get().get();
-        if (!doc.exists()) {
-            throw new NotFoundException("User not found");
-        }
+    protected void ensureUserExists(String userId) throws Exception {
+        if (studentRepository.getStudent(userId) == null) throw new NotFoundException("User not found");
     }
 
     /**

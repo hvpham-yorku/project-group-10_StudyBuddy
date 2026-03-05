@@ -19,7 +19,7 @@ public class StubDatabase {
     static {
         // Initial Seed Data
         Student s = new Student("123", "John", "Doe");
-        s.setEmail("sean@yorku.ca");
+        s.setEmail("test@yorku.ca");
         s.setIsOnline(true);
         s.setLocation("Steacie");
         s.setJoinedDate("2024-01-01");

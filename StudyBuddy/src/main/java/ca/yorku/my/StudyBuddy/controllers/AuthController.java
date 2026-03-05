@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ import org.springframework.http.ResponseEntity;
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
+    private AuthRepository authService;
 
     /**
      * Registers a new student account and triggers an email verification flow.

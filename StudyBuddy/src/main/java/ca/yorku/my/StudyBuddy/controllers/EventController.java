@@ -1,4 +1,7 @@
 package ca.yorku.my.StudyBuddy.controllers;
+import ca.yorku.my.StudyBuddy.services.EventRepository;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,13 +34,13 @@ import java.util.concurrent.ExecutionException;
 public class EventController {
 
     @Autowired
-    private EventService eventService;
+    private EventRepository eventService;
     
     @Autowired
-    private AuthService authService;
+    private AuthRepository authService;
     
     @Autowired
-    private StudentService studentService;
+    private StudentRepository studentService;
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping

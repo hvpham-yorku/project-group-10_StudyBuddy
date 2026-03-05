@@ -105,6 +105,7 @@ public class Student {
     }
     return fn + " " + ln;
     }
+    
     public void setFullName(String fullName) { this.fullName = fullName; }
 
     public String getProgram() { return program; }
@@ -159,5 +160,6 @@ public class Student {
 
     public Map<String, Boolean> getNotifications() { return notifications; }
     public void setNotifications(Map<String, Boolean> notifications) { this.notifications = notifications; }
+
     
 }

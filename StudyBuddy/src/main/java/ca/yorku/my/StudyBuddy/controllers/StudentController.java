@@ -1,4 +1,5 @@
 package ca.yorku.my.StudyBuddy.controllers;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
 import ca.yorku.my.StudyBuddy.services.StudentService;
@@ -35,6 +36,9 @@ public class StudentController {
 	// This allows for the student repository to be used in this class, whether it is the stub or Firestore version
 	@Autowired
 	private StudentRepository studentRepository;
+	
+	@Autowired
+    private AuthRepository authService;
 
 	// This allows for the session log service to be used in this class
 	// @Autowired
@@ -106,8 +110,7 @@ public class StudentController {
 	    }
 	}
 	
-	@Autowired
-    private AuthService authService;
+
 	@GetMapping("/profile")
 	public ResponseEntity<?> getMyProfile(@RequestHeader("Authorization") String authHeader) {
 	    try {
