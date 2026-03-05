@@ -33,7 +33,6 @@ export default function Events() {
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("All");
   const [filterStatus, setFilterStatus] = useState("upcoming");
-  const [joinedEvents, setJoinedEvents] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   const uniqueCourses = ["All", ...Array.from(new Set(events.map((e) => e.course)))];
@@ -88,43 +87,46 @@ export default function Events() {
     new Date(d).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
 
   const handleJoin = async (eventId: string, e: React.MouseEvent) => {
-  e.stopPropagation();
-  if (!student) return; // Safety check
-  
-  const isCurrentlyJoined = joinedEvents.includes(eventId);
-  const token = localStorage.getItem("studyBuddyToken");
-
-  try {
-    // 1. Decide which endpoint to hit based on their current status
-    const endpoint = isCurrentlyJoined ? "/api/events/leave" : "/api/events/join";
+    e.stopPropagation();
+    if (!student) return; 
     
-    // 2. Call Spring Boot backend
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({
-        eventId: eventId,
-        userId: student.userId
-      })
-    });
+    const isCurrentlyJoined = isJoined(eventId);
+    const token = localStorage.getItem("studyBuddyToken");
 
-    if (response.ok) {
-      // 3. If the database updated successfully, update the button UI
-      setJoinedEvents((prev) =>
-        isCurrentlyJoined ? prev.filter((id) => id !== eventId) : [...prev, eventId]
-      );
+    try {
+      const endpoint = isCurrentlyJoined ? "/api/events/leave" : "/api/events/join";
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          eventId: eventId,
+          userId: student.userId
+        })
+      });
 
-    } else {
-      console.error("Backend failed to join/leave event");
-      alert("Failed to join the event. Please try again.");
+      if (response.ok) {
+        // Instantly update the event directly in the main state array
+        setEvents((prev) => prev.map((ev) => {
+          if (ev.id === eventId) {
+            const currentAttendees = ev.attendees || [];
+            const newAttendees = isCurrentlyJoined
+              ? currentAttendees.filter((id: string) => id !== student.userId)
+              : [...currentAttendees, student.userId];
+            return { ...ev, attendees: newAttendees };
+          }
+          return ev;
+        }));
+      } else {
+        alert("Failed to join the event. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error joining/leaving event:", err);
     }
-  } catch (err) {
-    console.error("Error joining/leaving event:", err);
-  }
-};
+  };
 
   const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
   e.stopPropagation(); // Prevents navigating to the event details page
@@ -154,7 +156,11 @@ export default function Events() {
 };
 
   const isMyEvent = (ev: typeof events[0]) => student && ev.host.id === student.userId;
-  const isJoined = (id: string) => joinedEvents.includes(id);
+  const isJoined = (id: string) => {
+    if (!student) return false;
+    const ev = events.find(e => e.id === id);
+    return ev?.attendees?.includes(student.userId) ?? false;
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

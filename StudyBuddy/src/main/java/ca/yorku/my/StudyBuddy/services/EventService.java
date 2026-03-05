@@ -138,33 +138,33 @@ public class EventService {
      * @throws InterruptedException
      */
     public boolean joinEvent(String currentUserId, String eventId) throws Exception, ExecutionException, InterruptedException {
-		StudentService ss = new StudentService();
-		Student s;
-		try {
-			s = ss.getStudent(currentUserId);
-		} catch (Exception e) {
-			return false;
-		}
-		
-    	Event e = getEventById(eventId);
-        	
-        // Check if user and event exist
-    	if (s == null) {
-    		throw new Exception("Student does not exist!");
-    	} else if (e == null) {
-    		throw new Exception("Event does not exist!");
-    	}
-    	else {
-    		// Update student to show that they attended this event
-    		List<String> newAttendedEventIds = s.getAttendedEventIds();
-    		newAttendedEventIds.add(e.getId());
-    		ss.updateAttendedEventIDs(currentUserId, newAttendedEventIds);
-    		
-    		// Update the event to show that student went to it
-    		addAttendee(eventId, currentUserId);
-    		
-    		return true;
-    	}
+        StudentService ss = new StudentService();
+        Student s;
+        try {
+            s = ss.getStudent(currentUserId);
+        } catch (Exception e) {
+            return false;
+        }
+        
+        Event e = getEventById(eventId);
+            
+        if (s == null) {
+            throw new Exception("Student does not exist!");
+        } else if (e == null) {
+            throw new Exception("Event does not exist!");
+        } else {
+            List<String> newAttendedEventIds = s.getAttendedEventIds();
+            if (newAttendedEventIds == null) newAttendedEventIds = new ArrayList<>();
+            
+            // Prevent duplicates in student document
+            if (!newAttendedEventIds.contains(e.getId())) {
+                newAttendedEventIds.add(e.getId());
+                ss.updateAttendedEventIDs(currentUserId, newAttendedEventIds);
+            }
+            
+            addAttendee(eventId, currentUserId);
+            return true;
+        }
     }
     
     /**
@@ -230,29 +230,29 @@ public class EventService {
      * @throws Exception
      */
     public boolean addAttendee(String eventId, String studentId) throws Exception {
-    	
-    	StudentService ss = new StudentService();
-    	Student s;
-    	try {
-    		s = ss.getStudent(studentId);
-    	} catch (Exception e) {
-    		return false;
-    	}
-    	
-    	Event e = this.getEventById(eventId);
-    	if (e == null) return false;
-    	else {
-    		List<String> newAttendees = e.getAttendees();
-    		if (newAttendees == null) {
-    			newAttendees = new ArrayList<String>();
-    		}
-    		newAttendees.add(studentId);
-    		
-    		Firestore db = FirestoreClient.getFirestore();
-        	db.collection("events").document(eventId).update("attendees", newAttendees).get();
-    	}
-    	
-    	return true;
+        StudentService ss = new StudentService();
+        try {
+            ss.getStudent(studentId);
+        } catch (Exception e) {
+            return false;
+        }
+        
+        Event e = this.getEventById(eventId);
+        if (e == null) return false;
+        else {
+            List<String> newAttendees = e.getAttendees();
+            if (newAttendees == null) {
+                newAttendees = new ArrayList<>();
+            }
+            
+            // Prevent duplicates in event document
+            if (!newAttendees.contains(studentId)) {
+                newAttendees.add(studentId);
+                Firestore db = FirestoreClient.getFirestore();
+                db.collection("events").document(eventId).update("attendees", newAttendees).get();
+            }
+        }
+        return true;
     }
     
     /**

@@ -9,7 +9,7 @@ import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, BookOpen,
   FileText, Tag, ChevronDown, Check
 } from "lucide-react";
-import { campusLocations, courseOptions, studyVibeOptions, currentUser } from "../data/mockData";
+import { campusLocations, courseOptions, studyVibeOptions } from "../data/mockData";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ export default function CreateEvent() {
       duration: Number(form.duration),
       description: form.description,
       maxParticipants: Number(form.maxParticipants),
-      attendees: [currentUser.name], 
+      attendees: [], 
       tags: form.tags,
       status: "upcoming",
       reviews: []

@@ -206,8 +206,8 @@ export default function Network() {
 
     let cancelled = false;
 
-    const load = async () => {
-      setLoading(true);
+    const load = async (silent = false) => {
+      if (!silent) setLoading(true); // Only show spinner on the very first load
       try {
         // Update my own presence
         await apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`);
@@ -254,7 +254,8 @@ export default function Network() {
     // Keep heartbeat alive while logged in
     const id = window.setInterval(() => {
       apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`).catch(() => { });
-    }, 45_000);
+      load(true);
+    }, 5000);
 
     return () => {
       cancelled = true;

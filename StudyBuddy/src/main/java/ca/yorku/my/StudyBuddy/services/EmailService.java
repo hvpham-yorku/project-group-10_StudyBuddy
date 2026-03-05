@@ -6,6 +6,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * This class sends plain-text transactional emails through Spring Mail.
+ */
 public class EmailService {
 
     @Autowired
