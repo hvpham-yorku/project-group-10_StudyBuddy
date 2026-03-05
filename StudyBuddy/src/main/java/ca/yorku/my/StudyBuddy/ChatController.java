@@ -46,32 +46,32 @@ public class ChatController {
         }
     }
 
-//    /**
-//     * Creates or returns an event chat linked to the given event id.
-//     */
-//    @PostMapping("/event/{eventId}")
-//    public ResponseEntity<?> createEventChat(
-//            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-//            @PathVariable String eventId,
-//            @RequestBody(required = false) CreateEventChatRequest request) {
-//        try {
-//            String actorId = chatService.extractActorId(authorizationHeader);
-//            Chat chat = chatService.createEventChat(actorId, eventId, request);
-//            return ResponseEntity.status(HttpStatus.CREATED).body(chat);
-//        } catch (UnauthorizedException ex) {
-//            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
-//        } catch (ForbiddenException ex) {
-//            return error(HttpStatus.FORBIDDEN, ex.getMessage());
-//        } catch (NotFoundException ex) {
-//            return error(HttpStatus.NOT_FOUND, ex.getMessage());
-//        } catch (ValidationException ex) {
-//            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
-//        } catch (ExecutionException | InterruptedException ex) {
-//            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create event chat");
-//        } catch (Exception ex) {
-//            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
-//        }
-//    }
+    /**
+     * Creates or returns an event chat linked to the given event id.
+     */
+    @PostMapping("/event/{eventId}")
+    public ResponseEntity<?> createEventChat(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable String eventId,
+            @RequestBody(required = false) CreateEventChatRequest request) {
+        try {
+            String actorId = chatService.extractActorId(authorizationHeader);
+            Chat chat = chatService.createEventChat(actorId, eventId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(chat);
+        } catch (UnauthorizedException ex) {
+            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        } catch (ForbiddenException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
+        } catch (NotFoundException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ValidationException ex) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        } catch (ExecutionException | InterruptedException ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create event chat");
+        } catch (Exception ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+        }
+    }
 
     /**
      * Sends a new message to an existing chat.

@@ -102,60 +102,64 @@ public class ChatService {
     /**
      * Creates or resolves an event chat and validates actor/participants against event membership.
      */
-//    public Chat createEventChat(String actorId, String eventId, CreateEventChatRequest request)
-//            throws ExecutionException, InterruptedException {
-//        if (isBlank(eventId)) {
-//            throw new ValidationException("eventId is required");
-//        }
-//
-//        Event event = getEventById(eventId);
-//
-//        Set<String> eligibleParticipants = new HashSet<>();
-//        if (event.getParticipantIds() != null) {
-//            eligibleParticipants.addAll(event.getParticipantIds());
-//        }
-//        if (!isBlank(event.getHostId())) {
-//            eligibleParticipants.add(event.getHostId());
-//        }
-//
-//        if (!eligibleParticipants.contains(actorId)) {
-//            throw new ForbiddenException("Actor must be an event participant");
-//        }
-//
-//        Chat existing = chatDAO.findByRelatedIdAndType(eventId, ChatType.EVENT).orElse(null);
-//        if (existing != null) {
-//            return existing;
-//        }
-//
-//        String chatId = "event_" + eventId;
-//
-//        List<String> participants = new ArrayList<>();
-//        if (request != null && request.getParticipantIds() != null) {
-//            participants.addAll(request.getParticipantIds());
-//        }
-//        if (participants.isEmpty()) {
-//            participants.addAll(eligibleParticipants);
-//        }
-//
-//        if (!participants.contains(actorId)) {
-//            participants.add(actorId);
-//        }
-//
-//        for (String participant : participants) {
-//            if (!eligibleParticipants.contains(participant)) {
-//                throw new ValidationException("All participants must belong to the event");
-//            }
-//        }
-//
-//        Chat chat = new Chat();
-//        chat.setChatId(chatId);
-//        chat.setType(ChatType.EVENT);
-//        chat.setRelatedId(eventId);
-//        chat.setParticipantIds(participants);
-//        chat.setChatName(request != null && !isBlank(request.getChatName()) ? request.getChatName() : "Event Chat");
-//
-//        return chatDAO.create(chat);
-//    }
+    public Chat createEventChat(String actorId, String eventId, CreateEventChatRequest request)
+            throws ExecutionException, InterruptedException {
+        if (isBlank(eventId)) {
+            throw new ValidationException("eventId is required");
+        }
+
+        Event event = getEventById(eventId);
+
+        Set<String> eligibleParticipants = new HashSet<>();
+        
+        // CHANGED: Use getAttendees() instead of getParticipantIds()
+        if (event.getAttendees() != null) {
+            eligibleParticipants.addAll(event.getAttendees());
+        }
+        
+        // CHANGED: Use getHost() instead of getHostId()
+        if (!isBlank(event.getHost())) {
+            eligibleParticipants.add(event.getHost());
+        }
+
+        if (!eligibleParticipants.contains(actorId)) {
+            throw new ForbiddenException("Actor must be an event participant");
+        }
+
+        Chat existing = chatDAO.findByRelatedIdAndType(eventId, ChatType.EVENT).orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
+        String chatId = "event_" + eventId;
+
+        List<String> participants = new ArrayList<>();
+        if (request != null && request.getParticipantIds() != null) {
+            participants.addAll(request.getParticipantIds());
+        }
+        if (participants.isEmpty()) {
+            participants.addAll(eligibleParticipants);
+        }
+
+        if (!participants.contains(actorId)) {
+            participants.add(actorId);
+        }
+
+        for (String participant : participants) {
+            if (!eligibleParticipants.contains(participant)) {
+                throw new ValidationException("All participants must belong to the event");
+            }
+        }
+
+        Chat chat = new Chat();
+        chat.setChatId(chatId);
+        chat.setType(ChatType.EVENT);
+        chat.setRelatedId(eventId);
+        chat.setParticipantIds(participants);
+        chat.setChatName(request != null && !isBlank(request.getChatName()) ? request.getChatName() : "Event Chat");
+
+        return chatDAO.create(chat);
+    }
 
     /**
      * Validates and persists a chat message, then updates chat preview metadata.
@@ -454,20 +458,20 @@ public class ChatService {
     /**
      * Loads an event by id and copies Firestore doc id back into the object.
      */
-//    protected Event getEventById(String eventId) throws ExecutionException, InterruptedException {
-//        Firestore db = FirestoreClient.getFirestore();
-//        DocumentSnapshot doc = db.collection("events").document(eventId).get().get();
-//        if (!doc.exists()) {
-//            throw new NotFoundException("Event not found");
-//        }
-//
-//        Event event = doc.toObject(Event.class);
-//        if (event == null) {
-//            throw new NotFoundException("Event not found");
-//        }
-//        event.setEventId(doc.getId());
-//        return event;
-//    }
+    protected Event getEventById(String eventId) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        DocumentSnapshot doc = db.collection("events").document(eventId).get().get();
+        if (!doc.exists()) {
+            throw new NotFoundException("Event not found");
+        }
+
+        Event event = doc.toObject(Event.class);
+        if (event == null) {
+            throw new NotFoundException("Event not found");
+        }
+        event.setId(doc.getId());
+        return event;
+    }
 
     /**
      * Verifies that a user document exists before dependent operations run.

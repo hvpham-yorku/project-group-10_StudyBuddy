@@ -146,29 +146,57 @@ export default function Chat() {
     if (!activeUser || activeUser.id === currentUser.id) return;
     
     try {
-      // Fetch accepted connections
-      const res = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
-      if (!res.ok) return;
-      
-      const connectionsData = await res.json();
-      
-      // Convert connections into Chat boxes for the sidebar
-      const directChatsList = connectionsData.map((c: any) => ({
-        id: `direct_${c.userId}`, 
-        name: c.fullName || c.userId,
-        type: "direct",
-        members: [
-          activeUser,
-          { id: c.userId, name: c.fullName || c.userId, avatar: c.profilePic, isOnline: c.activityStatus === "online" }
-        ],
-        lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
-        unreadCount: 0,
-        messages: []
-      }));
+      // 1. Fetch accepted connections (Direct Chats)
+      const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
+      let directChatsList: any[] = [];
+      if (connRes.ok) {
+        const connectionsData = await connRes.json();
+        directChatsList = connectionsData.map((c: any) => ({
+          id: `direct_${c.userId}`, 
+          name: c.fullName || c.userId,
+          type: "direct",
+          members: [
+            activeUser,
+            { id: c.userId, name: c.fullName || c.userId, avatar: c.profilePic, isOnline: c.activityStatus === "online" }
+          ],
+          lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
+          unreadCount: 0,
+          messages: []
+        }));
+      }
 
-      // Deal with disappearance with chats on refresh
+      // 2. Fetch Events (Group Chats)
+      const eventsRes = await fetch(`/api/events`);
+      let eventChatsList: any[] = [];
+      if (eventsRes.ok) {
+        const eventsData = await eventsRes.json();
+        // Filter out only the events you are hosting or attending
+        const myEvents = eventsData.filter((e: any) => 
+          e.host?.id === activeUser.id || (e.participantIds && e.participantIds.includes(activeUser.id))
+        );
+
+        eventChatsList = myEvents.map((e: any) => ({
+          id: `event_${e.id}`,
+          eventId: e.id, // Store the real backend event ID!
+          name: e.title || e.course || "Study Session",
+          type: "group",
+          isLiveEvent: true, // This triggers the cool green badge in the UI
+          members: [
+            activeUser,
+            // Map the other participant IDs so they show up as members
+            ...(e.participantIds || []).filter((id: string) => id !== activeUser.id).map((id: string) => ({ id, name: id, isOnline: true }))
+          ],
+          lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
+          unreadCount: 0,
+          messages: []
+        }));
+      }
+
+      const combinedChats = [...directChatsList, ...eventChatsList];
+      
+      // Merge new connections/events with existing messages to prevent flicker
       setLocalChats((prev) => {
-        return directChatsList.map((newChat: any) => {
+        return combinedChats.map((newChat: any) => {
           const existingChat = prev.find((c) => c.id === newChat.id);
           if (existingChat) {
             return {
@@ -181,15 +209,16 @@ export default function Chat() {
         });
       });
       
-      // Select the right chat on load
-      if (id) {
-         setSelectedChatId(`direct_${id}`);
-      } else if (directChatsList.length > 0) {
-         setSelectedChatId(directChatsList[0].id);
-      }
+      // Select the right chat on initial load using a live functional update
+      setSelectedChatId((currentId) => {
+        if (!currentId && combinedChats.length > 0) {
+          return combinedChats[0].id;
+        }
+        return currentId;
+      });
       
     } catch (e) {
-      console.error("Failed to load connections for chat", e);
+      console.error("Failed to load chats", e);
     }
   };
 
@@ -227,86 +256,8 @@ export default function Chat() {
     return fileMeta ? { ...baseMessage, attachment: fileMeta } : baseMessage;
   };
 
-  const isBackendBackedChat = (chat: typeof chats[0]) => {
+  const isBackendBackedChat = (chat: any) => {
     return true;
-  };
-
-  const resolveBackendEventIdForGroup = async (chat: typeof chats[0]): Promise<string> => {
-    const existingEventId = (chat as any)?.eventId;
-    if ((chat as any)?.isLiveEvent && existingEventId) {
-      return existingEventId;
-    }
-
-    const storageKey = `studybuddy.backendEventId.${chat.id}`;
-    if (typeof window !== "undefined") {
-      const cachedEventId = window.sessionStorage.getItem(storageKey);
-      if (cachedEventId) {
-        return cachedEventId;
-      }
-    }
-
-    const eventsResponse = await fetch(apiUrl("/api/events"));
-    if (!eventsResponse.ok) {
-      throw new Error("Could not fetch backend events for group chat");
-    }
-
-    const backendEvents = await eventsResponse.json();
-    const normalizedChatName = String(chat.name || "").trim().toLowerCase();
-    const matchingEvent = (backendEvents || []).find((event: any) => {
-      const eventLabel = String(event?.title || event?.course || "").trim().toLowerCase();
-      return eventLabel.length > 0 && eventLabel === normalizedChatName;
-    });
-
-    if (matchingEvent?.eventId) {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(storageKey, matchingEvent.eventId);
-      }
-      return matchingEvent.eventId;
-    }
-
-    const now = new Date();
-    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-    const participantIds = [...new Set((chat.members || []).map((member: any) => member.id).filter(Boolean))];
-
-    const createResponse = await fetch(apiUrl("/api/events"), {
-      method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({
-        hostId: activeUser.id,
-        title: chat.name,
-        course: chat.name,
-        location: "TBD",
-        description: "Auto-created backend event for legacy group chat",
-        startTime: now.toISOString(),
-        endTime: oneHourLater.toISOString(),
-        maxCapacity: Math.max(10, participantIds.length || 1),
-        participantIds,
-      }),
-    });
-
-    if (!createResponse.ok) {
-      let details = "Failed to create backend event for group chat";
-      try {
-        const errorPayload = await createResponse.json();
-        if (errorPayload?.error) {
-          details = errorPayload.error;
-        }
-      } catch {
-        // ignore parse errors
-      }
-      throw new Error(details);
-    }
-
-    const createdEvent = await createResponse.json();
-    const backendEventId = createdEvent?.eventId;
-    if (!backendEventId) {
-      throw new Error("Backend event creation did not return eventId");
-    }
-
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(storageKey, backendEventId);
-    }
-    return backendEventId;
   };
 
   const appendLocalMessage = (
@@ -332,64 +283,32 @@ export default function Chat() {
     );
   };
 
-  const ensureBackendChat = async (chat: typeof chats[0]): Promise<string> => {
+  const ensureBackendChat = async (chat: any): Promise<string> => {
     if (chatBackendIds[chat.id]) {
       return chatBackendIds[chat.id];
     }
 
     let chatId = "";
     if (chat.type === "direct") {
-      const other = chat.members.find((member) => member.id !== activeUser.id);
-      if (!other) {
-        throw new Error("Could not determine direct chat participant");
-      }
-
+      const other = chat.members.find((member: any) => member.id !== activeUser.id);
       const response = await fetch(apiUrl(`/api/chats/direct`), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ userA: activeUser.id, userB: other.id }),
       });
-      if (!response.ok) {
-        let details = "Failed to create/fetch direct chat";
-        try {
-          const errorPayload = await response.json();
-          if (errorPayload?.error) {
-            details = errorPayload.error;
-          }
-        } catch {
-          // ignore parse errors
-        }
-        throw new Error(details);
-      }
-
+      if (!response.ok) throw new Error("Failed to create direct chat");
       const data = await response.json();
       chatId = data.chatId;
     } else {
-      const backendEventId = await resolveBackendEventIdForGroup(chat);
-      if (!backendEventId) {
-        throw new Error("Could not resolve backend eventId for this group chat");
-      }
-
-      const response = await fetch(apiUrl(`/api/chats/event/${backendEventId}`), {
+      // It's a Group Chat! Use the real eventId we attached earlier
+      const response = await fetch(apiUrl(`/api/chats/event/${chat.eventId}`), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
           chatName: chat.name,
         }),
       });
-      if (!response.ok) {
-        let details = `Failed to create/fetch event chat for eventId '${backendEventId}'`;
-        try {
-          const errorPayload = await response.json();
-          if (errorPayload?.error) {
-            details = errorPayload.error;
-          }
-        } catch {
-          // ignore parse errors
-        }
-        throw new Error(details);
-      }
-
+      if (!response.ok) throw new Error("Failed to create event chat");
       const data = await response.json();
       chatId = data.chatId;
     }
@@ -398,13 +317,10 @@ export default function Chat() {
     return chatId;
   };
 
-  const loadMessages = async (chat: typeof chats[0], before?: string, appendOlder = false, silent = false) => {
+  const loadMessages = async (chat: any, before?: string, appendOlder = false, silent = false) => {
     const backendChatId = await ensureBackendChat(chat);
 
     if (!silent) setIsLoadingMessages(true);
-    setChatError(null);
-
-    setIsLoadingMessages(true);
     setChatError(null);
     try {
       const params = new URLSearchParams({ limit: "20" });
@@ -471,7 +387,7 @@ export default function Chat() {
     return () => clearInterval(interval);
   }, [selectedChatId, activeUser.id]);
 
-  const sendTypingStatus = async (chat: typeof chats[0], typing: boolean) => {
+  const sendTypingStatus = async (chat: any, typing: boolean) => {
     try {
       const backendChatId = await ensureBackendChat(chat);
       await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
@@ -509,7 +425,7 @@ export default function Chat() {
       try {
         const backendChatId = await ensureBackendChat(chat);
         const response = await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
-          headers: { Authorization: `Bearer ${activeUser.id}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
         });
 
         if (!response.ok) {
@@ -715,9 +631,7 @@ export default function Chat() {
       formData.append("file", selectedFile);
       const uploadResponse = await fetch(apiUrl("/api/uploads"), {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeUser.id}`,
-        },
+        headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
         body: formData,
       });
 
@@ -847,7 +761,7 @@ export default function Chat() {
     (c) => c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getOnlineStatus = (chat: typeof chats[0]): "online" | "offline" | "idle" => {
+  const getOnlineStatus = (chat: any): "online" | "offline" | "idle" => {
     if (chat.type === "direct") {
       const other = chat.members.find((m) => m.id !== activeUser.id) as any;
       if (other?.isOnline) return "online";
@@ -856,7 +770,7 @@ export default function Chat() {
     return "online";
   };
 
-  const getChatDisplayName = (chat: typeof chats[0]) => {
+  const getChatDisplayName = (chat: any) => {
     if (chat.type !== "direct") {
       return chat.name;
     }
@@ -864,7 +778,7 @@ export default function Chat() {
     return other?.name || chat.name;
   };
 
-  const getChatInitial = (chat: typeof chats[0]) => {
+  const getChatInitial = (chat: any) => {
     const label = getChatDisplayName(chat);
     return label.charAt(0);
   };
