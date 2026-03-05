@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class FirestoreChatDAO implements ChatDAO {
 
-    private static final String CHATS_COLLECTION = "chats";
+    private static final String CHATS_COLLECTION = "chat2";
 
     @Override
     /**

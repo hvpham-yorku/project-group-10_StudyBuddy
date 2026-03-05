@@ -12,6 +12,7 @@ import ca.yorku.my.StudyBuddy.daos.MessageDAO;
 import ca.yorku.my.StudyBuddy.dtos.MessageResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendFriendRequestDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendMessageDTO;
+import ca.yorku.my.StudyBuddy.services.AuthService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,29 +43,27 @@ public class ChatService {
     private final MessageDAO messageDAO;
     private final FriendRequestDAO friendRequestDAO;
     private final Map<String, Long> typingStateByKey = new ConcurrentHashMap<>();
+    private final AuthService authService;
 
     @Autowired
-    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO) {
+    public ChatService(ChatDAO chatDAO, MessageDAO messageDAO, FriendRequestDAO friendRequestDAO, AuthService authService) {
         this.chatDAO = chatDAO;
         this.messageDAO = messageDAO;
         this.friendRequestDAO = friendRequestDAO;
+        this.authService = authService;
     }
 
     /**
      * Extracts actor identity from the Bearer authorization header.
      */
     public String extractActorId(String authorizationHeader) {
-        if (authorizationHeader == null || authorizationHeader.isBlank()) {
-            throw new UnauthorizedException("Missing Authorization header");
+    	
+    	// Decrypt the JWT token to get the actual user ID
+    	try {
+    		return authService.verifyFrontendToken(authorizationHeader);
+    	} catch (Exception e) {
+            throw new UnauthorizedException("Invalid or missing token");
         }
-        if (!authorizationHeader.startsWith("Bearer ")) {
-            throw new UnauthorizedException("Authorization header must use Bearer token format");
-        }
-        String actorId = authorizationHeader.substring(7).trim();
-        if (actorId.isEmpty()) {
-            throw new UnauthorizedException("Missing actor identity in token");
-        }
-        return actorId;
     }
 
     /**

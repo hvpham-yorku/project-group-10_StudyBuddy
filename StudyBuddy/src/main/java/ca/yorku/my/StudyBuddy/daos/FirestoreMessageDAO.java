@@ -19,7 +19,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class FirestoreMessageDAO implements MessageDAO {
 
-    private static final String CHATS_COLLECTION = "chats";
+    private static final String CHATS_COLLECTION = "chat2";
     private static final String MESSAGES_SUBCOLLECTION = "messages";
 
     @Override
