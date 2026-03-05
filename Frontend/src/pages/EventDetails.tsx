@@ -23,6 +23,7 @@ export default function EventDetails() {
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<any>(null);
+  const [student, setStudent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +39,17 @@ export default function EventDetails() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
+        const token = localStorage.getItem("studyBuddyToken");
+        if (token) {
+          const userRes = await fetch("/api/studentcontroller/profile", {
+            headers: { "Authorization": "Bearer " + token }
+          });
+          if (userRes.ok) {
+             const studentData = await userRes.json();
+             setStudent(studentData);
+          }
+        }
+
         const response = await fetch(`/api/events/${id}`);
         
         if (!response.ok) {
@@ -83,7 +95,7 @@ export default function EventDetails() {
 
   const formatDate = (d: string) =>
   new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const isMyEvent = "Alex Johnson" === currentUser.id;
+  const isMyEvent = student && event.host.id === student.userId;
 
   const submitReview = () => {
     if (!reviewText.trim()) return;
