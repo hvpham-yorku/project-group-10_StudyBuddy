@@ -7,8 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
+import ca.yorku.my.StudyBuddy.dtos.HostDTO;
 import ca.yorku.my.StudyBuddy.services.EventService;
+import ca.yorku.my.StudyBuddy.services.StudentService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +34,9 @@ public class EventController {
     
     @Autowired
     private AuthService authService;
+    
+    @Autowired
+    private StudentService studentService;
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
@@ -103,11 +109,20 @@ public class EventController {
     	try {
     		Event event = eventService.getEventById(eventId);
     		
+    		Student hostStudent = studentService.getStudent(event.getHost());
+            
+            // 2. Create the HostDTO
+            HostDTO hostDTO = new HostDTO(
+                hostStudent.getUserId(),
+                hostStudent.getFullName(),
+                hostStudent.getAvatar()
+            );
+    		
     		EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(),
                 	event.getTitle(),
                 	event.getCourse(),
-                	event.getHost(),
+                	hostDTO,
                 	event.getLocation(),
                 	event.getDate(),
                 	event.getTime(),
@@ -121,7 +136,7 @@ public class EventController {
                 );
     		
     		return ResponseEntity.ok(dto);
-    	} catch (ExecutionException | InterruptedException e) {
+    	} catch (Exception e) {
     		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     	}
     }
@@ -131,35 +146,33 @@ public class EventController {
     @GetMapping
     public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
         try {
-            // 1. Get the raw Events from firestore
-        	List<Event> events = eventService.getAllEvents();
-
-            // 2. Empty list to hold formatted DTOs
+            List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
-            // 3. Loop through each event, get the host details, and create a DTO for each event
             for (Event event : events) {
+                // 1. Fetch the host student details
+                Student hostStudent = studentService.getStudent(event.getHost());
+                
+                // 2. Create the HostDTO
+                HostDTO hostDTO = new HostDTO(
+                    hostStudent.getUserId(),
+                    hostStudent.getFullName(),
+                    hostStudent.getAvatar()
+                );
+
+                // 3. Create the EventResponseDTO with the new hostDTO
                 EventResponseDTO dto = new EventResponseDTO(
-                	event.getId(),
-                	event.getTitle(),
-                	event.getCourse(),
-                	event.getHost(),
-                	event.getLocation(),
-                	event.getDate(),
-                	event.getTime(),
-                	event.getDuration(),
-                	event.getDescription(),
-                	event.getMaxParticipants(),
-                	event.getAttendees(),
-                	event.getTags(),
-                	event.getStatus(),
-                	event.getReviews()
+                	event.getId(), event.getTitle(), event.getCourse(),
+                	hostDTO,
+                	event.getLocation(), event.getDate(), event.getTime(),
+                	event.getDuration(), event.getDescription(),
+                	event.getMaxParticipants(), event.getAttendees(),
+                	event.getTags(), event.getStatus(), event.getReviews()
                 );
                 eventDTOs.add(dto);
             }
-                		
             return ResponseEntity.ok(eventDTOs);
-        } catch (ExecutionException | InterruptedException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -1,10 +1,13 @@
 package ca.yorku.my.StudyBuddy.classes;
 import java.util.List;
 
+import com.google.cloud.firestore.annotation.IgnoreExtraProperties;
+
 // This class represents an event that students can create and join.
 // NOTE: This complete matches the EventResponseDTO
 // Despite this, Event.java is kept this way for architectural purposes
 
+@IgnoreExtraProperties
 public class Event {
 	private String id;
 	private String title;

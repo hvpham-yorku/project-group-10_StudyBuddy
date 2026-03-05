@@ -11,6 +11,7 @@ import com.google.firebase.cloud.FirestoreClient;
 import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
 
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -27,6 +28,7 @@ import java.util.concurrent.ExecutionException;
  */
 
 @Service
+@DependsOn("firebaseConfig")
 public class EventService {
 
     private static final String COLLECTION_NAME = "events";

@@ -52,11 +52,10 @@ export default function Events() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-
-        // Student
+        // Fetch Student
         const token = localStorage.getItem("studyBuddyToken");
         if (token) {
-          const userRes = await fetch("http://localhost:8080/api/studentcontroller/profile", {
+          const userRes = await fetch("/api/studentcontroller/profile", {
             headers: { "Authorization": "Bearer " + token }
           });
           if (userRes.ok) {
@@ -64,48 +63,16 @@ export default function Events() {
             setStudent(studentData);
           }
         }
-        // Events
+        
+        // Fetch Events 
         const response = await fetch("/api/events");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const data = await response.json();
+        setEvents(data); 
 
-        const formattedData = await Promise.all(
-          data.map(async (ev: any) => {
-            let hostObj = { id: ev.host, name: "Unknown Student", avatar: null };
-
-            // Look up who the host is by their ID
-            if (typeof ev.host === 'string') {
-              try {
-                // Call endpoint to get the host's profile information
-                const hostRes = await fetch(`http://localhost:8080/api/studentcontroller/${ev.host}`);
-                
-                if (hostRes.ok) {
-                  const hostProfile = await hostRes.json();
-                  hostObj = {
-                    id: ev.host,
-                    // Combine their first and last name
-                    name: `${hostProfile.firstName} ${hostProfile.lastName}`,
-                    avatar: hostProfile.avatar || null
-                  };
-                }
-              } catch (err) {
-                console.error("Failed to fetch host details for event", err);
-              }
-            } else {
-              // Fallback just in case the backend eventually sends the whole object
-              hostObj = ev.host;
-            }
-
-            return {
-              ...ev,
-              host: hostObj
-            };
-          })
-        );
-
-        setEvents(formattedData);
       } catch (err: any) {
         console.error("Failed to fetch events:", err);
         setError(err.message);
@@ -136,7 +103,7 @@ export default function Events() {
 
     const token = localStorage.getItem("studyBuddyToken");
 
-    const response = await fetch(`http://localhost:8080/api/events/${eventId}`, {
+    const response = await fetch(`/api/events/${eventId}`, {
         method: "DELETE",
         headers: {
           "Authorization": "Bearer " + token
@@ -154,7 +121,7 @@ export default function Events() {
   }
 };
 
-  const isMyEvent = (ev: typeof events[0]) => ev.host.id === student.id;
+  const isMyEvent = (ev: typeof events[0]) => student && ev.host.id === student.userId;
   const isJoined = (id: string) => joinedEvents.includes(id);
 
   return (
@@ -347,7 +314,7 @@ export default function Events() {
                     <div className="flex items-center gap-2">
 
                       {/* Delete User's Own Event  */}
-                      {ev.host.id == student.userId &&(
+                      {student && ev.host.id === student.userId &&(
                       <button
                         onClick={(e) => handleDeleteEvent(ev.id, e)}
                         className="px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200 hover:bg-red-400 bg-red-500 text-white transition-colors"
@@ -358,7 +325,7 @@ export default function Events() {
                       )}
 
                       {/* Join an event */}
-                      {ev.host.id != student.userId && (
+                      {student && ev.host.id !== student.userId && (
                       <button
                         onClick={(e) => handleJoin(ev.id, e)}
                         className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
@@ -371,15 +338,6 @@ export default function Events() {
                       </button>
                       )}
                     </div>
-                  )}
-                  {isMyEvent(ev) && ev.status === "upcoming" && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); }}
-                      className="px-4 py-1.5 rounded-lg text-xs bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                      style={{ fontWeight: 600 }}
-                    >
-                      Cancel Event
-                    </button>
                   )}
                   {ev.status === "past" && (
                     <button

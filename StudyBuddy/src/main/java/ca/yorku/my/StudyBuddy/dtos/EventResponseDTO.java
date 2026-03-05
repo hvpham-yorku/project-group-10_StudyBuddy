@@ -11,7 +11,7 @@ public record EventResponseDTO(
 	String id,
 	String title,
 	String course,
-	String host,
+	HostDTO host,
 	String location,
 	String date,
 	String time,
