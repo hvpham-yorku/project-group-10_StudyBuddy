@@ -1,10 +1,5 @@
 package ca.yorku.my.StudyBuddy;
 
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.google.firebase.cloud.FirestoreClient;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -12,6 +7,11 @@ import java.util.Map;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.cloud.FirestoreClient;
 
 @Service 
 @Profile("firestore")
@@ -118,4 +118,8 @@ public class FirestoreStudentRepository implements StudentRepository {
     public void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception {
         db.collection("students").document(userId).update("notifications", notifications).get();
     }
+
+    public void deleteStudent(String userId) throws Exception {
+        db.collection("students").document(userId).delete().get();
+}
 }
