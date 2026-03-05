@@ -11,24 +11,24 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-
-//*** 
-// 
-// This class is can be used to configure Firebase settings.
-// Runs once during startup to initialize Firebase Admin SDK with service account credentials.
-// Loads serviceAccountKey.json from src/main/resources/
-// Initializes Firebase Admin SDK
-// 
-//  
-
 @Configuration
+/**
+ * This class initializes Firebase Admin SDK once during application startup.
+ *
+ * Priority order:
+ * 1) FIREBASE_CREDENTIALS environment variable
+ * 2) serviceAccountKey.json from classpath (This is our local development fallback)
+ */
 public class FirebaseConfig {
 
+    /**
+     * This helps bootstrap FirebaseApp if no existing app has been created.
+     */
     @PostConstruct
     public void initialize() {
         try {
-        	
-        	// Check the secret at runtime
+
+	        // Prefer runtime-provided credentials for containerized/cloud environments.
         	String envKey = System.getenv("FIREBASE_CREDENTIALS");
         	if (envKey != null && !envKey.isEmpty()) {
                 if (FirebaseApp.getApps().isEmpty()) {
@@ -43,11 +43,8 @@ public class FirebaseConfig {
                 }
                 return; 
         	}
-        	
-        	
-        	// If doesn't exist, then check if local file exists
-        	// This is for development purposes; one should never push actual
-        	// keys into repository!
+
+	        // Local fallback used for development only.
             if (FirebaseApp.getApps().isEmpty()) {
                 InputStream serviceAccount = getClass().getClassLoader()
                         .getResourceAsStream("serviceAccountKey.json");
