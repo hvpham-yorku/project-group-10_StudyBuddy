@@ -16,7 +16,6 @@ import {
   Check,
   BookOpen,
 } from "lucide-react";
-import { useAuthUid } from "../hooks/useAuthUid"; // ✅ auth-ready + uid
 
 type Connection = {
   userId: string;
@@ -78,10 +77,40 @@ function computePresence(c: Connection) {
 export default function Network() {
   const navigate = useNavigate();
 
-  // ✅ Firebase Auth UID wiring
-  // const { uid, authReady } = useAuthUid();
-  const authReady = true;
-  const uid = "testUser123";
+  // Firebase Auth depending on local storage token, which depends on backend auth
+  const [uid, setUid] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    async function fetchRealUser() {
+      const token = localStorage.getItem("studyBuddyToken");
+      
+      // If no token, stop loading and show the "Please sign in" screen
+      if (!token) {
+        setAuthReady(true);
+        return;
+      }
+
+      try {
+        // Basically how Layout.tsx does it
+        const res = await fetch("/api/studentcontroller/profile", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Save your database into uid variable
+          setUid(data.userId); 
+        }
+      } catch (err) {
+        console.error("Failed to load user", err);
+      } finally {
+        setAuthReady(true);
+      }
+    }
+
+    fetchRealUser();
+  }, []);
 
   // ✅ quick sanity log (remove later if you want)
   console.log("authReady:", authReady, "uid:", uid);
