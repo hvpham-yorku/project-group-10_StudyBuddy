@@ -166,7 +166,20 @@ export default function Chat() {
         messages: []
       }));
 
-      setLocalChats(directChatsList);
+      // Deal with disappearance with chats on refresh
+      setLocalChats((prev) => {
+        return directChatsList.map((newChat: any) => {
+          const existingChat = prev.find((c) => c.id === newChat.id);
+          if (existingChat) {
+            return {
+              ...newChat,
+              messages: existingChat.messages,
+              lastMessage: existingChat.lastMessage,
+            };
+          }
+          return newChat;
+        });
+      });
       
       // Select the right chat on load
       if (id) {
@@ -182,6 +195,10 @@ export default function Chat() {
 
   useEffect(() => {
     void loadRealChats();
+    const interval = setInterval(() => {
+      void loadRealChats();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [activeUser.id]);
 
   const mapMessageToUi = (chat: any, apiMessage: any) => {
@@ -381,8 +398,11 @@ export default function Chat() {
     return chatId;
   };
 
-  const loadMessages = async (chat: typeof chats[0], before?: string, appendOlder = false) => {
+  const loadMessages = async (chat: typeof chats[0], before?: string, appendOlder = false, silent = false) => {
     const backendChatId = await ensureBackendChat(chat);
+
+    if (!silent) setIsLoadingMessages(true);
+    setChatError(null);
 
     setIsLoadingMessages(true);
     setChatError(null);
@@ -427,7 +447,7 @@ export default function Chat() {
     } catch (error: any) {
       setChatError(error?.message || "Failed to fetch chat messages");
     } finally {
-      setIsLoadingMessages(false);
+      if (!silent) setIsLoadingMessages(false);
     }
   };
 
@@ -441,6 +461,14 @@ export default function Chat() {
     }
 
     void loadMessages(chat);
+
+    // Set up the polling interval to fetch new messages every 3 seconds
+    const interval = setInterval(() => {
+    void loadMessages(chat, undefined, false, true);
+    }, 3000);
+
+    // Clean up the interval if clicking on different chat
+    return () => clearInterval(interval);
   }, [selectedChatId, activeUser.id]);
 
   const sendTypingStatus = async (chat: typeof chats[0], typing: boolean) => {
