@@ -36,4 +36,22 @@ public class ConnectionsController {
         connectionsService.sendRequest(payload.get("myUserId"), payload.get("targetUserId"));
         return ResponseEntity.ok("Request sent");
     }
+    
+    @GetMapping("/pending")
+    public ResponseEntity<List<ConnectionsService.ConnectionDTO>> getPending(@RequestParam String userId) throws Exception {
+        return ResponseEntity.ok(connectionsService.getPendingRequests(userId));
+    }
+    
+    @PostMapping("/accept")
+    public ResponseEntity<String> acceptRequest(@RequestBody Map<String, String> payload) throws Exception {
+        connectionsService.acceptRequest(payload.get("senderId"), payload.get("myUserId"));
+        return ResponseEntity.ok("Request accepted");
+    }
+
+    @PostMapping("/decline")
+    public ResponseEntity<String> declineRequest(@RequestBody Map<String, String> payload) throws Exception {
+        connectionsService.declineRequest(payload.get("senderId"), payload.get("myUserId"));
+        return ResponseEntity.ok("Request declined");
+    }
+    
 }

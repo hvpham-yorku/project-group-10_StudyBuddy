@@ -161,4 +161,55 @@ public class ConnectionsService {
         data.put("status", "pending");
         db().collection("connections").add(data);
     }
+    
+    public List<ConnectionDTO> getPendingRequests(String myUserId) throws Exception {
+        List<ConnectionDTO> out = new ArrayList<>();
+        QuerySnapshot query = db().collection("connections")
+                .whereEqualTo("userB", myUserId)
+                .whereEqualTo("status", "pending")
+                .get().get();
+
+        for (QueryDocumentSnapshot doc : query.getDocuments()) {
+            String senderId = doc.getString("userA");
+            if (senderId != null) {
+                DocumentSnapshot studentDoc = db().collection("students").document(senderId).get().get();
+                if (studentDoc.exists()) {
+                    ConnectionDTO dto = new ConnectionDTO();
+                    dto.userId = senderId; 
+                    dto.fullName = studentDoc.getString("fullName");
+                    dto.program = studentDoc.getString("program");
+                    dto.profilePic = studentDoc.getString("avatar");
+                    dto.courses = toStringArray(studentDoc.get("courses"));
+                    out.add(dto);
+                }
+            }
+        }
+        return out;
+    }
+    
+    public void acceptRequest(String senderId, String myUserId) throws Exception {
+        QuerySnapshot query = db().collection("connections")
+                .whereEqualTo("userA", senderId)
+                .whereEqualTo("userB", myUserId)
+                .whereEqualTo("status", "pending")
+                .get().get();
+                
+        for (QueryDocumentSnapshot doc : query.getDocuments()) {
+            doc.getReference().update("status", "accepted");
+        }
+    }
+
+    public void declineRequest(String senderId, String myUserId) throws Exception {
+        QuerySnapshot query = db().collection("connections")
+                .whereEqualTo("userA", senderId)
+                .whereEqualTo("userB", myUserId)
+                .whereEqualTo("status", "pending")
+                .get().get();
+                
+        for (QueryDocumentSnapshot doc : query.getDocuments()) {
+            doc.getReference().delete();
+        }
+    }
+    
+    
 }

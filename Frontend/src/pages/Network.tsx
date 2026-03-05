@@ -123,7 +123,7 @@ export default function Network() {
   const [loading, setLoading] = useState(true);
 
   // Requests tab (still UI-only for now)
-  const [pendingRequests] = useState<PendingRequest[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<Connection[]>([]);
   const [accepted, setAccepted] = useState<string[]>([]);
   const [declined, setDeclined] = useState<string[]>([]);
 
@@ -143,6 +143,35 @@ export default function Network() {
       alert("Connection request sent!");
     } catch (e) {
       console.error("Failed to send request", e);
+    }
+  };
+
+  const handleAccept = async (senderId: string) => {
+    try {
+      await fetch(`/api/connections/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      });
+      // Move from pending to accepted UI
+      setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
+      setAccepted(prev => [...prev, senderId]);
+    } catch (e) {
+      console.error("Failed to accept request", e);
+    }
+  };
+
+  const handleDecline = async (senderId: string) => {
+    try {
+      await fetch(`/api/connections/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      });
+      // Remove from UI
+      setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
+    } catch (e) {
+      console.error("Failed to decline request", e);
     }
   };
 
@@ -166,12 +195,9 @@ export default function Network() {
         await apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`);
 
         // Fetch existing connections AND available users
-        const data = await apiGet<Connection[]>(
-          `/api/connections?userId=${encodeURIComponent(uid)}`
-        );
-        const availableData = await apiGet<Connection[]>(
-          `/api/connections/available?userId=${encodeURIComponent(uid)}`
-        );
+        const data = await apiGet<Connection[]>(`/api/connections?userId=${encodeURIComponent(uid)}`);
+        const availableData = await apiGet<Connection[]>(`/api/connections/available?userId=${encodeURIComponent(uid)}`);
+        const pendingData = await apiGet<Connection[]>(`/api/connections/pending?userId=${encodeURIComponent(uid)}`);
 
         if (cancelled) return;
 
@@ -185,6 +211,13 @@ export default function Network() {
         // Save the available users to the state variable you already created
         setAvailableUsers(
           (availableData ?? []).map((c) => ({
+            ...c,
+            courses: c.courses ?? [],
+          }))
+        );
+
+        setPendingRequests(
+          (pendingData ?? []).map((c) => ({
             ...c,
             courses: c.courses ?? [],
           }))
@@ -224,7 +257,7 @@ export default function Network() {
     });
   }, [connections, search]);
 
-  const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.id) && !declined.includes(r.id));
+  const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.userId) && !declined.includes(r.userId));
 
   const onlineNow = filteredConnections.filter((c) => computePresence(c).isOnline);
   const offlineNow = filteredConnections.filter((c) => !computePresence(c).isOnline);
@@ -360,92 +393,56 @@ export default function Network() {
         </div>
       )}
 
-      {/* Requests Tab (UI placeholder) */}
+      {/* Requests Tab */}
       {activeTab === "requests" && (
         <div className="space-y-3">
           {pendingFiltered.length === 0 ? (
             <div className="text-center py-12">
               <UserPlus size={36} className="text-slate-200 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">No pending requests</p>
-              <p className="text-xs text-slate-400 mt-2">
-                (Requests aren’t wired to backend yet — this tab is UI-only for now.)
-              </p>
             </div>
           ) : (
-            pendingFiltered.map((r) => (
-              <div key={r.id} className="bg-white rounded-xl border border-slate-200 p-4">
+            pendingFiltered.map((r) => {
+              const displayName = r.fullName ?? r.userId;
+              return (
+              <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
                 <div className="flex items-start gap-4">
-                  <div
-                    className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0"
-                    style={{ fontWeight: 700, color: "#1D4ED8" }}
-                  >
-                    {r.name.charAt(0)}
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                    {r.profilePic ? (
+                      <img src={r.profilePic} alt={displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
+                        {displayName.charAt(0)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
-                      {r.name}
+                      {displayName}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {r.major} · {r.year}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">{r.mutualConnections} mutual connections</p>
+                    <p className="text-xs text-slate-500">{r.program ?? ""}</p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {r.courses.slice(0, 3).map((c) => (
-                        <span
-                          key={c}
-                          className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded"
-                          style={{ fontWeight: 500 }}
-                        >
+                        <span key={c} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded" style={{ fontWeight: 500 }}>
                           {c}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {r.studyVibes.map((v) => (
-                        <span
-                          key={v}
-                          className={`text-xs px-2 py-0.5 rounded ${vibeColors[v] || "bg-slate-50 text-slate-500"}`}
-                        >
-                          {v}
                         </span>
                       ))}
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
-                    <button
-                      onClick={() => setAccepted((prev) => [...prev, r.id])}
-                      className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1"
-                      style={{ fontWeight: 600 }}
-                    >
+                    <button className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1" style={{ fontWeight: 600 }}>
                       <Check size={12} />
                       Accept
                     </button>
-                    <button
-                      onClick={() => setDeclined((prev) => [...prev, r.id])}
-                      className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1"
-                    >
+                    <button className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1">
                       <X size={12} />
                       Decline
                     </button>
                   </div>
                 </div>
               </div>
-            ))
+            )})
           )}
-
-          {/* Show accepted notices */}
-          {accepted.map((id) => {
-            const r = pendingRequests.find((p) => p.id === id);
-            if (!r) return null;
-            return (
-              <div key={id} className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-                <Check size={16} className="text-green-600" />
-                <p className="text-sm text-green-700">
-                  You're now connected with <span style={{ fontWeight: 600 }}>{r.name}</span>
-                </p>
-              </div>
-            );
-          })}
         </div>
       )}
 
