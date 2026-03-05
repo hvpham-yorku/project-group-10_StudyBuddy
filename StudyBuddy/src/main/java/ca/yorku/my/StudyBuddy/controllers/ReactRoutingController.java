@@ -6,8 +6,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 public class ReactRoutingController {
 
-    // This regex catches all routes that do NOT have a file extension (like .js, .css, .png)
-    // Spring Boot will automatically prioritize your actual /api/ @RestControllers first!
+    // Catch all regex
+	// Note: You need to add this in your application.properties
+	//spring.mvc.pathmatch.matching-strategy=ant_path_matcher
     @RequestMapping(value = "/**/{path:[^\\.]*}")
     public String forward() {
         // Forward the request to the React app

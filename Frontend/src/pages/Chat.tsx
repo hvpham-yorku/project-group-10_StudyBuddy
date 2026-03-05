@@ -73,7 +73,34 @@ export default function Chat() {
     }
     return window.sessionStorage.getItem(DEV_ACTOR_KEY) || currentUser.id;
   });
-  const activeUser = (knownMembers.find((member: any) => member.id === devActorId) as any) || currentUser;
+
+  // Load the real user from your token
+  const [activeUser, setActiveUser] = useState<any>(currentUser);
+
+  useEffect(() => {
+    async function initUser() {
+      const token = localStorage.getItem("studyBuddyToken");
+      if (!token) return;
+      try {
+        const res = await fetch("/api/studentcontroller/profile", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveUser({
+            id: data.userId,
+            name: data.fullName || data.userId,
+            avatar: data.avatar || null,
+            isOnline: true
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    initUser();
+  }, []);
+
   const devActors = knownMembers.filter((member: any) => member.id === "u1" || member.id === "u2");
   const { id } = useParams<{ id?: string }>();
   const [selectedChatId, setSelectedChatId] = useState<string>(id || directChats[0]?.id || chats[0].id);
@@ -111,75 +138,52 @@ export default function Chat() {
     setIsTyping(false);
   }, [activeUser.id]);
 
+  // Pass the real JWT token to the chat endpoints
   const authHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${activeUser.id}`,
+    Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}`,
   };
 
-  const loadBackendGroupChats = async () => {
+  const loadRealChats = async () => {
+    if (!activeUser || activeUser.id === currentUser.id) return;
+    
     try {
-      const response = await fetch(apiUrl("/api/events"));
-      if (!response.ok) {
-        setLocalChats(chats);
-        return;
+      // Fetch accepted connections
+      const res = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
+      if (!res.ok) return;
+      
+      const connectionsData = await res.json();
+      
+      // Convert connections into Chat boxes for the sidebar
+      const directChatsList = connectionsData.map((c: any) => ({
+        id: `direct_${c.userId}`, 
+        name: c.fullName || c.userId,
+        type: "direct",
+        members: [
+          activeUser,
+          { id: c.userId, name: c.fullName || c.userId, avatar: c.profilePic, isOnline: c.activityStatus === "online" }
+        ],
+        lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
+        unreadCount: 0,
+        messages: []
+      }));
+
+      setLocalChats(directChatsList);
+      
+      // Select the right chat on load
+      if (id) {
+         setSelectedChatId(`direct_${id}`);
+      } else if (directChatsList.length > 0) {
+         setSelectedChatId(directChatsList[0].id);
       }
-
-      const backendEvents = await response.json();
-      const availableGroupChatsRaw = (backendEvents || [])
-        .filter((event: any) => {
-          const participants = Array.isArray(event?.participantIds) ? event.participantIds : [];
-          const hostId = event?.hostId;
-          return participants.includes(activeUser.id) || hostId === activeUser.id;
-        })
-        .map((event: any) => {
-          const participants = Array.isArray(event?.participantIds) ? event.participantIds : [];
-          const hostId = event?.hostId;
-          const memberIds = [...new Set([...(hostId ? [hostId] : []), ...participants])];
-          const members = memberIds.map((memberId: string) => toMemberProfile(memberId));
-
-          return {
-            id: `grp_${event.eventId}`,
-            name: event.title || event.course || "Event Chat",
-            type: "group",
-            eventId: event.eventId,
-            isLiveEvent: true,
-            members,
-            lastMessage: {
-              sender: "",
-              text: "",
-              timestamp: new Date().toISOString(),
-              read: true,
-            },
-            unreadCount: 0,
-            messages: [],
-          } as any;
-        });
-
-      const uniqueByGroupName = new Map<string, any>();
-      for (const groupChat of availableGroupChatsRaw) {
-        const normalizedName = String(groupChat.name || "").trim().toLowerCase();
-        if (!uniqueByGroupName.has(normalizedName)) {
-          uniqueByGroupName.set(normalizedName, groupChat);
-        }
-      }
-      const availableGroupChats = Array.from(uniqueByGroupName.values());
-
-      const fallbackGroupChats = chats.filter((chat) => chat.type === "group");
-      const backendGroupNames = new Set(
-        availableGroupChats.map((chat: any) => String(chat.name || "").trim().toLowerCase())
-      );
-      const missingFallbackGroups = fallbackGroupChats.filter(
-        (chat: any) => !backendGroupNames.has(String(chat.name || "").trim().toLowerCase())
-      );
-
-      setLocalChats([...directChats, ...availableGroupChats, ...missingFallbackGroups]);
-    } catch {
-      setLocalChats(chats);
+      
+    } catch (e) {
+      console.error("Failed to load connections for chat", e);
     }
   };
 
   useEffect(() => {
-    void loadBackendGroupChats();
+    void loadRealChats();
   }, [activeUser.id]);
 
   const mapMessageToUi = (chat: typeof chats[0], apiMessage: any) => {
@@ -188,11 +192,11 @@ export default function Chat() {
     const uiType: UiMessageType = rawType === "FILE" ? "file" : rawType === "LINK" ? "link" : "text";
     const fileMeta = apiMessage.file
       ? {
-          name: apiMessage.file.fileName,
-          sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
-          mimeType: apiMessage.file.mimeType,
-          storagePath: apiMessage.file.storagePath,
-        }
+        name: apiMessage.file.fileName,
+        sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
+        mimeType: apiMessage.file.mimeType,
+        storagePath: apiMessage.file.storagePath,
+      }
       : undefined;
 
     const baseMessage = {
@@ -299,15 +303,15 @@ export default function Chat() {
       prev.map((existing) =>
         existing.id === chatId
           ? {
-              ...existing,
-              messages: [...existing.messages, nextMessage],
-              lastMessage: {
-                sender: "You",
-                text: lastMessageText,
-                timestamp: nextMessage.timestamp,
-                read: true,
-              },
-            }
+            ...existing,
+            messages: [...existing.messages, nextMessage],
+            lastMessage: {
+              sender: "You",
+              text: lastMessageText,
+              timestamp: nextMessage.timestamp,
+              read: true,
+            },
+          }
           : existing
       )
     );
@@ -391,7 +395,7 @@ export default function Chat() {
       }
 
       const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages?${params.toString()}`), {
-        headers: { Authorization: `Bearer ${activeUser.id}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
       });
 
       if (!response.ok) {
@@ -575,10 +579,10 @@ export default function Chat() {
         prev.map((existing) =>
           existing.id === selectedChatId
             ? {
-                ...existing,
-                messages: [...existing.messages, newMsg],
-                lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
-              }
+              ...existing,
+              messages: [...existing.messages, newMsg],
+              lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
+            }
             : existing
         )
       );
@@ -656,10 +660,10 @@ export default function Chat() {
         prev.map((existing) =>
           existing.id === selectedChatId
             ? {
-                ...existing,
-                messages: [...existing.messages, newMsg],
-                lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
-              }
+              ...existing,
+              messages: [...existing.messages, newMsg],
+              lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
+            }
             : existing
         )
       );
@@ -736,10 +740,10 @@ export default function Chat() {
         prev.map((existing) =>
           existing.id === selectedChatId
             ? {
-                ...existing,
-                messages: [...existing.messages, newMsg],
-                lastMessage: { sender: "You", text: `[FILE] ${selectedFile.name}`, timestamp: newMsg.timestamp, read: true },
-              }
+              ...existing,
+              messages: [...existing.messages, newMsg],
+              lastMessage: { sender: "You", text: `[FILE] ${selectedFile.name}`, timestamp: newMsg.timestamp, read: true },
+            }
             : existing
         )
       );
@@ -1048,11 +1052,10 @@ export default function Chat() {
                   <div className={`max-w-xs lg:max-w-sm ${isMe ? "items-end" : "items-start"} flex flex-col`}>
                     {showSender && <p className="text-xs text-slate-400 mb-1 ml-1">{msg.senderName}</p>}
                     <div
-                      className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        isMe
+                      className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
                           ? "bg-blue-700 text-white rounded-br-sm"
                           : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"
-                      } ${msg.type === "file" ? "flex items-center gap-2" : ""}`}
+                        } ${msg.type === "file" ? "flex items-center gap-2" : ""}`}
                     >
                       {msg.type === "file" ? (
                         <>
@@ -1095,16 +1098,16 @@ export default function Chat() {
             })}
 
             {/* Typing Indicator (mock - shows occasionally) */}
-              {(typingUserIds.length > 0 || isTyping) && (
-                <div>
-                  <TypingIndicator />
-                  <p className="text-xs text-slate-400 px-4">
-                    {typingUserIds.length > 0
-                      ? formatTypingLabel(typingUserIds.map((userId) => toMemberProfile(userId).name.split(" ")[0]))
-                      : "You are typing..."}
-                  </p>
-                </div>
-              )}
+            {(typingUserIds.length > 0 || isTyping) && (
+              <div>
+                <TypingIndicator />
+                <p className="text-xs text-slate-400 px-4">
+                  {typingUserIds.length > 0
+                    ? formatTypingLabel(typingUserIds.map((userId) => toMemberProfile(userId).name.split(" ")[0]))
+                    : "You are typing..."}
+                </p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -1151,33 +1154,33 @@ export default function Chat() {
               </div>
             )}
             <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={(event) => void onChooseFile(event)}
-            />
-            <button
-              onClick={() => setShowAttach(!showAttach)}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showAttach ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}
-            >
-              <Paperclip size={16} />
-            </button>
-            <input
-              value={messageInput}
-              onChange={(e) => handleTyping(e.target.value)}
-              onBlur={() => void stopTypingAndNotify()}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendMessage()}
-              placeholder={`Message ${getChatDisplayName(selectedChat)}...`}
-              className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!messageInput.trim() || isSending}
-              className="w-9 h-9 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-            >
-              <Send size={15} className="text-white" />
-            </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(event) => void onChooseFile(event)}
+              />
+              <button
+                onClick={() => setShowAttach(!showAttach)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showAttach ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}
+              >
+                <Paperclip size={16} />
+              </button>
+              <input
+                value={messageInput}
+                onChange={(e) => handleTyping(e.target.value)}
+                onBlur={() => void stopTypingAndNotify()}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendMessage()}
+                placeholder={`Message ${getChatDisplayName(selectedChat)}...`}
+                className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!messageInput.trim() || isSending}
+                className="w-9 h-9 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+              >
+                <Send size={15} className="text-white" />
+              </button>
             </div>
           </div>
         </div>
