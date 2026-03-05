@@ -87,12 +87,44 @@ export default function Events() {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
 
-  const handleJoin = (eventId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setJoinedEvents((prev) =>
-      prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
-    );
-  };
+  const handleJoin = async (eventId: string, e: React.MouseEvent) => {
+  e.stopPropagation();
+  if (!student) return; // Safety check
+  
+  const isCurrentlyJoined = joinedEvents.includes(eventId);
+  const token = localStorage.getItem("studyBuddyToken");
+
+  try {
+    // 1. Decide which endpoint to hit based on their current status
+    const endpoint = isCurrentlyJoined ? "/api/events/leave" : "/api/events/join";
+    
+    // 2. Call Spring Boot backend
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({
+        eventId: eventId,
+        userId: student.userId
+      })
+    });
+
+    if (response.ok) {
+      // 3. If the database updated successfully, update the button UI
+      setJoinedEvents((prev) =>
+        isCurrentlyJoined ? prev.filter((id) => id !== eventId) : [...prev, eventId]
+      );
+
+    } else {
+      console.error("Backend failed to join/leave event");
+      alert("Failed to join the event. Please try again.");
+    }
+  } catch (err) {
+    console.error("Error joining/leaving event:", err);
+  }
+};
 
   const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
   e.stopPropagation(); // Prevents navigating to the event details page
