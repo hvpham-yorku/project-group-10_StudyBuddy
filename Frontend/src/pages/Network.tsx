@@ -1,15 +1,42 @@
 /*
  * Network.tsx
- * Manage user's network
-*/
+ * Manage user's network (REAL backend + Firebase Auth UID)
+ */
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Search, Users, UserCheck, UserPlus, MessageSquare, CalendarPlus,
-  MapPin, Circle, X, Check, Clock, BookOpen
+  Search,
+  Users,
+  UserCheck,
+  UserPlus,
+  UserMinus,
+  MessageSquare,
+  CalendarPlus,
+  X,
+  Check,
+  BookOpen,
 } from "lucide-react";
-import { connections, pendingRequests, currentUser } from "../data/mockData";
+
+type Connection = {
+  userId: string;
+  fullName: string | null;
+  program: string | null;
+  profilePic: string | null;
+  courses: string[];
+  lastActiveAt: number | null;
+  activityStatus?: "online" | "idle" | "offline";
+};
+
+type PendingRequest = {
+  id: string;
+  name: string;
+  major: string;
+  year: string;
+  mutualConnections: number;
+  courses: string[];
+  studyVibes: string[];
+};
 
 const vibeColors: Record<string, string> = {
   "Quiet Focus": "bg-blue-50 text-blue-600",
@@ -18,42 +45,280 @@ const vibeColors: Record<string, string> = {
   "Problem Solving": "bg-green-50 text-green-600",
 };
 
+// ✅ Production-ready: use relative base (works in Docker + same-origin)
+const API_BASE = "";
+
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return (await res.json()) as T;
+}
+
+async function apiPost(path: string): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST" });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+}
+
+function computePresence(c: Connection) {
+  // Prefer backend-provided status if present
+  if (c.activityStatus === "online") return { color: "bg-green-500", label: "Online", isOnline: true };
+  if (c.activityStatus === "idle") return { color: "bg-yellow-400", label: "Idle", isOnline: false };
+  if (c.activityStatus === "offline") return { color: "bg-slate-300", label: "Offline", isOnline: false };
+
+  // Fallback: compute from lastActiveAt
+  const last = c.lastActiveAt;
+  if (!last) return { color: "bg-slate-300", label: "Offline", isOnline: false };
+
+  const diff = Date.now() - last;
+  if (diff <= 2 * 60 * 1000) return { color: "bg-green-500", label: "Online", isOnline: true };
+  if (diff <= 10 * 60 * 1000) return { color: "bg-yellow-400", label: "Idle", isOnline: false };
+  return { color: "bg-slate-300", label: "Offline", isOnline: false };
+}
+
 export default function Network() {
   const navigate = useNavigate();
+
+  // Firebase Auth depending on local storage token, which depends on backend auth
+  const [uid, setUid] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    async function fetchRealUser() {
+      const token = localStorage.getItem("studyBuddyToken");
+
+      // If no token, stop loading and show the "Please sign in" screen
+      if (!token) {
+        setAuthReady(true);
+        return;
+      }
+
+      try {
+        // Basically how Layout.tsx does it
+        const res = await fetch("/api/studentcontroller/profile", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Save your database into uid variable
+          setUid(data.userId);
+        }
+      } catch (err) {
+        console.error("Failed to load user", err);
+      } finally {
+        setAuthReady(true);
+      }
+    }
+
+    fetchRealUser();
+  }, []);
+
+  // ✅ quick sanity log (remove later if you want)
+  console.log("authReady:", authReady, "uid:", uid);
+
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"connections" | "requests" | "find">("connections");
+
+  // Backend connections
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Requests tab (still UI-only for now)
+  const [pendingRequests, setPendingRequests] = useState<Connection[]>([]);
   const [accepted, setAccepted] = useState<string[]>([]);
   const [declined, setDeclined] = useState<string[]>([]);
+
+  // Keep track of users
+  const [availableUsers, setAvailableUsers] = useState<Connection[]>([]);
+
   const [inviteModal, setInviteModal] = useState<string | null>(null);
 
-  const filteredConnections = connections.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.major.toLowerCase().includes(search.toLowerCase()) ||
-      c.courses.some((co) => co.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.id) && !declined.includes(r.id));
-
-  const getStatusColor = (c: typeof connections[0]) => {
-    if (c.isOnline) return "bg-green-500";
-    if (c.status === "Idle") return "bg-yellow-400";
-    return "bg-slate-300";
+  // Handle connections
+  const handleConnect = async (targetId: string) => {
+    try {
+      await fetch(`/api/connections/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      });
+      alert("Connection request sent!");
+    } catch (e) {
+      console.error("Failed to send request", e);
+    }
   };
 
-  const getStatusLabel = (c: typeof connections[0]) => {
-    if (c.isOnline && c.location) return `Studying now · ${c.location}`;
-    if (c.isOnline) return "Online";
-    return c.status;
+  const handleAccept = async (senderId: string) => {
+    try {
+      await fetch(`/api/connections/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      });
+      // Move from pending to accepted UI
+      setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
+      setAccepted(prev => [...prev, senderId]);
+    } catch (e) {
+      console.error("Failed to accept request", e);
+    }
   };
+
+  const handleRemove = async (targetId: string) => {
+    if (!window.confirm("Are you sure you want to remove this connection?")) return;
+    
+    try {
+      await fetch(`/api/connections/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      });
+      
+      // Instantly remove them from the UI
+      setConnections(prev => prev.filter(c => c.userId !== targetId));
+    } catch (e) {
+      console.error("Failed to remove connection", e);
+    }
+  };
+
+  const handleDecline = async (senderId: string) => {
+    try {
+      await fetch(`/api/connections/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      });
+      // Remove from UI
+      setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
+    } catch (e) {
+      console.error("Failed to decline request", e);
+    }
+  };
+
+  // ✅ Load connections from backend ONLY after auth is ready, using UID
+  useEffect(() => {
+    if (!authReady) return;
+
+    // Not logged in
+    if (!uid) {
+      setConnections([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        // Update my own presence
+        await apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`);
+
+        // Fetch existing connections AND available users
+        const data = await apiGet<Connection[]>(`/api/connections?userId=${encodeURIComponent(uid)}`);
+        const availableData = await apiGet<Connection[]>(`/api/connections/available?userId=${encodeURIComponent(uid)}`);
+        const pendingData = await apiGet<Connection[]>(`/api/connections/pending?userId=${encodeURIComponent(uid)}`);
+
+        if (cancelled) return;
+
+        setConnections(
+          (data ?? []).map((c) => ({
+            ...c,
+            courses: c.courses ?? [],
+          }))
+        );
+
+        // Save the available users to the state variable you already created
+        setAvailableUsers(
+          (availableData ?? []).map((c) => ({
+            ...c,
+            courses: c.courses ?? [],
+          }))
+        );
+
+        setPendingRequests(
+          (pendingData ?? []).map((c) => ({
+            ...c,
+            courses: c.courses ?? [],
+          }))
+        );
+
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setConnections([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    // Keep heartbeat alive while logged in
+    const id = window.setInterval(() => {
+      apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`).catch(() => { });
+    }, 45_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [authReady, uid]);
+
+  const filteredConnections = useMemo(() => {
+    const q = search.toLowerCase().trim();
+
+    return connections.filter((c) => {
+      const name = (c.fullName ?? c.userId).toLowerCase();
+      const program = (c.program ?? "").toLowerCase();
+      const courses = (c.courses ?? []).some((co) => co.toLowerCase().includes(q));
+
+      if (!q) return true;
+      return name.includes(q) || program.includes(q) || courses;
+    });
+  }, [connections, search]);
+
+  const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.userId) && !declined.includes(r.userId));
+
+  const onlineNow = filteredConnections.filter((c) => computePresence(c).isOnline);
+  const offlineNow = filteredConnections.filter((c) => !computePresence(c).isOnline);
+
+  const getStatusColor = (c: Connection) => computePresence(c).color;
+  const getStatusLabel = (c: Connection) => computePresence(c).label;
+
+
+  // Optional: show auth loading state (keeps UI deterministic)
+  if (!authReady) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <Users size={36} className="text-slate-200 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">Loading account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Optional: user not signed in
+  if (!uid) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <Users size={36} className="text-slate-200 mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Please sign in to view your network.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-slate-900" style={{ fontWeight: 700, fontSize: "1.35rem" }}>My Network</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{connections.length} connections</p>
+          <h1 className="text-slate-900" style={{ fontWeight: 700, fontSize: "1.35rem" }}>
+            My Network
+          </h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {loading ? "Loading..." : `${connections.length} connections`}
+          </p>
         </div>
       </div>
 
@@ -63,7 +328,7 @@ export default function Network() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, major, or course..."
+          placeholder="Search by name, program, or course..."
           className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
       </div>
@@ -73,9 +338,10 @@ export default function Network() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors flex items-center gap-2 ${
-              activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
+            className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors flex items-center gap-2 ${activeTab === tab
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
             style={{ fontWeight: activeTab === tab ? 600 : 400 }}
           >
             {tab === "connections" && <UserCheck size={14} />}
@@ -94,28 +360,55 @@ export default function Network() {
       {/* Connections Tab */}
       {activeTab === "connections" && (
         <div className="space-y-3">
-          {/* Online header */}
-          {filteredConnections.filter((c) => c.isOnline).length > 0 && (
-            <>
-              <p className="text-xs text-slate-400 uppercase tracking-wide px-1" style={{ fontWeight: 600 }}>
-                Online Now ({filteredConnections.filter((c) => c.isOnline).length})
-              </p>
-              {filteredConnections.filter((c) => c.isOnline).map((c) => (
-                <ConnectionCard key={c.id} connection={c} navigate={navigate} setInviteModal={setInviteModal} getStatusColor={getStatusColor} getStatusLabel={getStatusLabel} vibeColors={vibeColors} />
-              ))}
-              <p className="text-xs text-slate-400 uppercase tracking-wide px-1 mt-4" style={{ fontWeight: 600 }}>
-                Offline ({filteredConnections.filter((c) => !c.isOnline).length})
-              </p>
-            </>
-          )}
-          {filteredConnections.filter((c) => !c.isOnline).map((c) => (
-            <ConnectionCard key={c.id} connection={c} navigate={navigate} setInviteModal={setInviteModal} getStatusColor={getStatusColor} getStatusLabel={getStatusLabel} vibeColors={vibeColors} />
-          ))}
-          {filteredConnections.length === 0 && (
+          {loading ? (
             <div className="text-center py-12">
               <Users size={36} className="text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">No connections found</p>
+              <p className="text-slate-400 text-sm">Loading connections...</p>
             </div>
+          ) : (
+            <>
+              {/* Online header */}
+              {onlineNow.length > 0 && (
+                <>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide px-1" style={{ fontWeight: 600 }}>
+                    Online Now ({onlineNow.length})
+                  </p>
+                  {onlineNow.map((c) => (
+                    <ConnectionCard
+                      key={c.userId}
+                      connection={c}
+                      navigate={navigate}
+                      setInviteModal={setInviteModal}
+                      getStatusColor={getStatusColor}
+                      getStatusLabel={getStatusLabel}
+                      onRemove={handleRemove}
+                    />
+                  ))}
+                  <p className="text-xs text-slate-400 uppercase tracking-wide px-1 mt-4" style={{ fontWeight: 600 }}>
+                    Offline ({offlineNow.length})
+                  </p>
+                </>
+              )}
+
+              {offlineNow.map((c) => (
+                <ConnectionCard
+                  key={c.userId}
+                  connection={c}
+                  navigate={navigate}
+                  setInviteModal={setInviteModal}
+                  getStatusColor={getStatusColor}
+                  getStatusLabel={getStatusLabel}
+                  onRemove={handleRemove}
+                />
+              ))}
+
+              {filteredConnections.length === 0 && (
+                <div className="text-center py-12">
+                  <Users size={36} className="text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">No connections found</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -129,101 +422,94 @@ export default function Network() {
               <p className="text-slate-400 text-sm">No pending requests</p>
             </div>
           ) : (
-            pendingFiltered.map((r) => (
-              <div key={r.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0" style={{ fontWeight: 700, color: "#1D4ED8" }}>
-                    {r.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>{r.name}</p>
-                    <p className="text-xs text-slate-500">{r.major} · {r.year}</p>
-                    <p className="text-xs text-slate-400 mt-1">{r.mutualConnections} mutual connections</p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {r.courses.slice(0, 3).map((c) => (
-                        <span key={c} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded" style={{ fontWeight: 500 }}>{c}</span>
-                      ))}
+            pendingFiltered.map((r) => {
+              const displayName = r.fullName ?? r.userId;
+              return (
+                <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                      {r.profilePic ? (
+                        <img src={r.profilePic} alt={displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
+                          {displayName.charAt(0)}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {r.studyVibes.map((v) => (
-                        <span key={v} className={`text-xs px-2 py-0.5 rounded ${vibeColors[v] || "bg-slate-50 text-slate-500"}`}>{v}</span>
-                      ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-slate-500">{r.program ?? ""}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {r.courses.slice(0, 3).map((c) => (
+                          <span key={c} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded" style={{ fontWeight: 500 }}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <button
-                      onClick={() => setAccepted((prev) => [...prev, r.id])}
-                      className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1"
-                      style={{ fontWeight: 600 }}
-                    >
-                      <Check size={12} />
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => setDeclined((prev) => [...prev, r.id])}
-                      className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1"
-                    >
-                      <X size={12} />
-                      Decline
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={() => handleAccept(r.userId)}
+                        className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1"
+                        style={{ fontWeight: 600 }}
+                      >
+                        <Check size={12} />
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleDecline(r.userId)}
+                        className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1"
+                      >
+                        <X size={12} />
+                        Decline
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
-
-          {/* Show accepted notices */}
-          {accepted.map((id) => {
-            const r = pendingRequests.find((p) => p.id === id)!;
-            return (
-              <div key={id} className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-                <Check size={16} className="text-green-600" />
-                <p className="text-sm text-green-700">
-                  You're now connected with <span style={{ fontWeight: 600 }}>{r.name}</span>
-                </p>
-              </div>
-            );
-          })}
         </div>
       )}
 
       {/* Find People Tab */}
       {activeTab === "find" && (
         <div className="space-y-3">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4">
-            <p className="text-sm text-blue-700 flex items-center gap-2">
-              <BookOpen size={15} />
-              Showing students who share your courses
-            </p>
-          </div>
-          {connections.map((c) => (
-            <div key={c.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
-                {c.avatar ? (
-                  <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
-                    {c.name.charAt(0)}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>{c.name}</p>
-                <p className="text-xs text-slate-500">{c.major} · {c.year}</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {c.courses.filter((co) => currentUser.courses.includes(co)).map((co) => (
-                    <span key={co} className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded border border-orange-100" style={{ fontWeight: 500 }}>
-                      {co} (shared)
-                    </span>
-                  ))}
+          {availableUsers.map((c) => {
+            const displayName = c.fullName ?? c.userId;
+            return (
+              <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                  {c.profilePic ? (
+                    <img src={c.profilePic} alt={displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-blue-600"
+                      style={{ fontWeight: 700 }}
+                    >
+                      {displayName.charAt(0)}
+                    </div>
+                  )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+                    {displayName}
+                  </p>
+                  <p className="text-xs text-slate-500">{c.program ?? ""}</p>
+                </div>
+                <button
+                  onClick={() => handleConnect(c.userId)}
+                  className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1 shrink-0"
+                  style={{ fontWeight: 600 }}
+                >
+                  <UserPlus size={12} />
+                  Connect
+                </button>
               </div>
-              <button className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1 shrink-0" style={{ fontWeight: 600 }}>
-                <UserPlus size={12} />
-                Connect
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -239,18 +525,39 @@ export default function Network() {
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
+
             <p className="text-xs text-slate-500 mb-4">Select a session to invite this person to:</p>
+
             <div className="space-y-2 mb-4">
-              {["EECS 3311 Design Patterns · Feb 21, 2:00 PM", "MATH 2030 Midterm Prep · Feb 22, 10:00 AM", "EECS 4080 Final Project · Feb 25, 3:00 PM"].map((session) => (
-                <label key={session} className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+              {[
+                "EECS 3311 Design Patterns · Feb 21, 2:00 PM",
+                "MATH 2030 Midterm Prep · Feb 22, 10:00 AM",
+                "EECS 4080 Final Project · Feb 25, 3:00 PM",
+              ].map((session) => (
+                <label
+                  key={session}
+                  className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50"
+                >
                   <input type="radio" name="session" className="accent-blue-600" />
                   <span className="text-sm text-slate-700">{session}</span>
                 </label>
               ))}
             </div>
+
             <div className="flex gap-2">
-              <button onClick={() => setInviteModal(null)} className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50">Cancel</button>
-              <button onClick={() => setInviteModal(null)} className="flex-1 py-2.5 bg-blue-700 text-white rounded-xl text-sm hover:bg-blue-800" style={{ fontWeight: 600 }}>Send Invite</button>
+              <button
+                onClick={() => setInviteModal(null)}
+                className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setInviteModal(null)}
+                className="flex-1 py-2.5 bg-blue-700 text-white rounded-xl text-sm hover:bg-blue-800"
+                style={{ fontWeight: 600 }}
+              >
+                Send Invite
+              </button>
             </div>
           </div>
         </div>
@@ -260,49 +567,66 @@ export default function Network() {
 }
 
 function ConnectionCard({
-  connection, navigate, setInviteModal, getStatusColor, getStatusLabel, vibeColors
+  connection,
+  navigate,
+  setInviteModal,
+  getStatusColor,
+  getStatusLabel,
+  onRemove,
 }: {
-  connection: typeof connections[0];
+  connection: Connection;
   navigate: (path: string) => void;
   setInviteModal: (id: string) => void;
-  getStatusColor: (c: typeof connections[0]) => string;
-  getStatusLabel: (c: typeof connections[0]) => string;
-  vibeColors: Record<string, string>;
+  getStatusColor: (c: Connection) => string;
+  getStatusLabel: (c: Connection) => string;
 }) {
+  const displayName = connection.fullName ?? connection.userId;
+  const program = connection.program ?? "";
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">
           <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100">
-            {connection.avatar ? (
-              <img src={connection.avatar} alt={connection.name} className="w-full h-full object-cover" />
+            {connection.profilePic ? (
+              <img src={connection.profilePic} alt={displayName} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
-                {connection.name.charAt(0)}
+                {displayName.charAt(0)}
               </div>
             )}
           </div>
-          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${getStatusColor(connection)}`}></div>
+          <div
+            className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${getStatusColor(
+              connection
+            )}`}
+          ></div>
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>{connection.name}</p>
+            <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+              {displayName}
+            </p>
           </div>
-          <p className="text-xs text-slate-500">{connection.major} · {connection.year}</p>
+
+          <p className="text-xs text-slate-500">{program}</p>
+
           <div className="flex items-center gap-1.5 mt-1">
             <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(connection)}`}></div>
             <span className="text-xs text-slate-400">{getStatusLabel(connection)}</span>
           </div>
+
           <div className="flex flex-wrap gap-1 mt-2">
-            {connection.studyVibes.map((v) => (
-              <span key={v} className={`text-xs px-2 py-0.5 rounded ${vibeColors[v] || "bg-slate-50 text-slate-500"}`}>
-                {v}
+            {(connection.courses ?? []).slice(0, 4).map((co) => (
+              <span
+                key={co}
+                className="text-xs bg-slate-50 text-slate-600 px-2 py-0.5 rounded border border-slate-100"
+                style={{ fontWeight: 500 }}
+              >
+                {co}
               </span>
             ))}
-          </div>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-slate-400">{connection.totalStudyHours}h studied · {connection.totalSessions} sessions</span>
           </div>
         </div>
 
@@ -315,11 +639,19 @@ function ConnectionCard({
             <MessageSquare size={15} />
           </button>
           <button
-            onClick={() => setInviteModal(connection.id)}
+            onClick={() => setInviteModal(connection.userId)}
             className="w-8 h-8 rounded-lg bg-orange-50 hover:bg-orange-100 flex items-center justify-center text-orange-500 transition-colors"
             title="Invite to session"
           >
             <CalendarPlus size={15} />
+            
+          </button>
+          <button
+            onClick={() => onRemove(connection.userId)}
+            className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
+            title="Remove Connection"
+          >
+            <UserMinus size={15} />
           </button>
         </div>
       </div>

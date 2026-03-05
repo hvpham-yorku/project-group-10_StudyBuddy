@@ -1,6 +1,5 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.services;
 import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.services.StudentService;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseToken;

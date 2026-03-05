@@ -1,8 +1,10 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.controllers;
+import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.StudentService;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.classes.StudentRepository;
 import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
+import ca.yorku.my.StudyBuddy.StubDatabase;
 import ca.yorku.my.StudyBuddy.classes.Event;
 
 import java.util.ArrayList;

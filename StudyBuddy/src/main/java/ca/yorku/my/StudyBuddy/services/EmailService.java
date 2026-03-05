@@ -1,4 +1,4 @@
-package ca.yorku.my.StudyBuddy;
+package ca.yorku.my.StudyBuddy.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
