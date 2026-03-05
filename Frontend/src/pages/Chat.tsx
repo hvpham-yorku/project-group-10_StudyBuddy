@@ -9,7 +9,7 @@ import {
   Search, Send, Paperclip, MoreVertical,
   Users, Circle, X, File, Image as ImageIcon, Link as LinkIcon
 } from "lucide-react";
-import { chats, currentUser } from "../data/mockData";
+import { currentUser } from "../data/mockData";
 
 type UiMessageType = "text" | "link" | "file";
 
@@ -48,8 +48,8 @@ function formatTypingLabel(names: string[]) {
 const DEV_ACTOR_KEY = "studybuddy.dev.actorId";
 
 export default function Chat() {
-  const directChats = chats.filter((chat) => chat.type === "direct");
-  const knownMembers = [currentUser, ...chats.flatMap((chat) => chat.members)].reduce((acc: any[], member: any) => {
+  const [localChats, setLocalChats] = useState<any[]>([]);
+  const knownMembers = [currentUser, ...localChats.flatMap((chat) => chat.members)].reduce((acc: any[], member: any) => {
     if (!acc.find((existing) => existing.id === member.id)) {
       acc.push(member);
     }
@@ -100,13 +100,11 @@ export default function Chat() {
     }
     initUser();
   }, []);
-
   const devActors = knownMembers.filter((member: any) => member.id === "u1" || member.id === "u2");
   const { id } = useParams<{ id?: string }>();
-  const [selectedChatId, setSelectedChatId] = useState<string>(id || directChats[0]?.id || chats[0].id);
+  const [selectedChatId, setSelectedChatId] = useState<string>(id || "");
   const [messageInput, setMessageInput] = useState("");
   const [search, setSearch] = useState("");
-  const [localChats, setLocalChats] = useState(chats);
   const [chatBackendIds, setChatBackendIds] = useState<Record<string, string>>({});
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -186,7 +184,7 @@ export default function Chat() {
     void loadRealChats();
   }, [activeUser.id]);
 
-  const mapMessageToUi = (chat: typeof chats[0], apiMessage: any) => {
+  const mapMessageToUi = (chat: any, apiMessage: any) => {
     const sender = chat.members.find((member) => member.id === apiMessage.senderId) as any;
     const rawType = String(apiMessage.type || "TEXT").toUpperCase();
     const uiType: UiMessageType = rawType === "FILE" ? "file" : rawType === "LINK" ? "link" : "text";
@@ -202,7 +200,7 @@ export default function Chat() {
     const baseMessage = {
       id: apiMessage.messageId,
       senderId: apiMessage.senderId,
-      senderName: apiMessage.senderName,
+      senderName: sender?.name || apiMessage.senderName,
       senderAvatar: sender?.avatar || null,
       text: apiMessage.content,
       timestamp: apiMessage.timestamp,
