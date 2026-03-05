@@ -1,67 +1,134 @@
-/* 
- * MapView.tsx
- * Interactive campus map showing building locations
- * TODO: Replace SVG map with Google Maps or OpenStreetMap.
- */
-
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  MapPin, Users, Clock, Navigation, Search, X, ZoomIn, ZoomOut,
-  Locate, BookOpen, ArrowRight
+  MapPin, Users, Clock, Navigation, Search, X, BookOpen, ArrowRight
 } from "lucide-react";
-import { mapSessions } from "../data/mockData";
+import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from "@vis.gl/react-google-maps";
 
-// Campus building layout data
-const buildings = [
-  { id: "scott", name: "Scott Library", x: 45, y: 28, w: 16, h: 14, color: "#1E40AF" },
-  { id: "vari", name: "Vari Hall", x: 32, y: 46, w: 14, h: 12, color: "#1E40AF" },
-  { id: "lassonde", name: "Lassonde", x: 62, y: 32, w: 15, h: 12, color: "#1E40AF" },
-  { id: "bennett", name: "Bennett Ctr", x: 60, y: 52, w: 14, h: 10, color: "#1E40AF" },
-  { id: "central", name: "Central Sq.", x: 44, y: 44, w: 10, h: 10, color: "#374151" },
-  { id: "tel", name: "TEL Bldg", x: 24, y: 33, w: 12, h: 10, color: "#1E40AF" },
-  { id: "atkinson", name: "Atkinson", x: 22, y: 56, w: 12, h: 10, color: "#1E40AF" },
-  { id: "rob", name: "Rob Intl", x: 72, y: 44, w: 12, h: 10, color: "#1E40AF" },
-];
+// Make sure to add VITE_GOOGLE_MAPS_API_KEY to your Frontend/.env file!
+const API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || "";
+const YORK_CENTER = { lat: 43.7735, lng: -79.5019 };
 
-const paths = [
-  { x1: 50, y1: 40, x2: 50, y2: 46 },
-  { x1: 46, y1: 44, x2: 34, y2: 44 },
-  { x1: 54, y1: 44, x2: 62, y2: 44 },
-  { x1: 50, y1: 46, x2: 50, y2: 56 },
-  { x1: 46, y1: 34, x2: 36, y2: 40 },
-  { x1: 61, y1: 38, x2: 61, y2: 46 },
-];
+// Translates your database string locations into real-world coordinates!
+const getCoords = (locationString: string) => {
+  if (!locationString) return null;
+  const str = locationString.toLowerCase();
+  if (str.includes("scott")) return { lat: 43.7731, lng: -79.5036 };
+  if (str.includes("vari")) return { lat: 43.7731, lng: -79.5018 };
+  if (str.includes("bennett")) return { lat: 43.7738, lng: -79.4975 };
+  if (str.includes("lassonde")) return { lat: 43.7733, lng: -79.5049 };
+  if (str.includes("bergeron")) return { lat: 43.7737, lng: -79.5052 };
+  if (str.includes("pond")) return { lat: 43.7690, lng: -79.5020 };
+  if (str.includes("tel") || str.includes("dahdaleh")) return { lat: 43.7725, lng: -79.5002 };
+  if (str.includes("curtis")) return { lat: 43.7730, lng: -79.5024 };
+  return null; // Ignore online events on the physical map
+};
 
 export default function MapView() {
   const navigate = useNavigate();
-  const [selectedSession, setSelectedSession] = useState<typeof mapSessions[0] | null>(null);
-  const [zoom, setZoom] = useState(1);
+  const [events, setEvents] = useState<any[]>([]);
+  const [student, setStudent] = useState<any>(null);
+  
+  // Storing IDs instead of objects prevents "stale state" bugs when data updates!
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedHubName, setSelectedHubName] = useState<string | null>(null);
+  
   const [search, setSearch] = useState("");
+  const [filterCourse, setFilterCourse] = useState("All");
   const [navigating, setNavigating] = useState(false);
   const [navTarget, setNavTarget] = useState<string | null>(null);
-  const [filterCourse, setFilterCourse] = useState("All");
 
-  // Current user location (mock pin)
-  const userLocation = { x: 50, y: 50 };
+  // 1. Fetch real events & user from your backend
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const token = localStorage.getItem("studyBuddyToken");
+        if (token) {
+          const userRes = await fetch("/api/studentcontroller/profile", {
+            headers: { "Authorization": "Bearer " + token }
+          });
+          if (userRes.ok) setStudent(await userRes.json());
+        }
 
-  const uniqueCourses = ["All", ...Array.from(new Set(mapSessions.map((s) => s.course)))];
+        const evRes = await fetch("/api/events");
+        if (evRes.ok) setEvents(await evRes.json());
+      } catch (e) {
+        console.error("Failed to load map data", e);
+      }
+    };
+    loadData();
+  }, []);
 
-  const filteredSessions = mapSessions.filter((s) => {
+  const uniqueCourses = ["All", ...Array.from(new Set(events.map((s) => s.course).filter(Boolean)))];
+
+  const filteredSessions = events.filter((s) => {
     const matchSearch =
-      s.title.toLowerCase().includes(search.toLowerCase()) ||
-      s.course.toLowerCase().includes(search.toLowerCase()) ||
-      s.location.toLowerCase().includes(search.toLowerCase());
+      s.title?.toLowerCase().includes(search.toLowerCase()) ||
+      s.course?.toLowerCase().includes(search.toLowerCase()) ||
+      s.location?.toLowerCase().includes(search.toLowerCase());
     const matchCourse = filterCourse === "All" || s.course === filterCourse;
     return matchSearch && matchCourse;
   });
 
-  const handleNavigate = (session: typeof mapSessions[0]) => {
+  // 2. Group the events into map pins ("Study Hubs") based on their coordinates
+  const hubs = useMemo(() => {
+    const map = new globalThis.Map(); // Use globalThis to avoid collision with Google Map
+    filteredSessions.forEach(e => {
+      const coords = getCoords(e.location);
+      if (!coords) return; 
+      
+      const key = `${coords.lat},${coords.lng}`;
+      if (!map.has(key)) {
+        const buildingName = e.location.split(",")[0];
+        map.set(key, { coords, locationName: buildingName, events: [] });
+      }
+      map.get(key).events.push(e);
+    });
+    return Array.from(map.values());
+  }, [filteredSessions]);
+
+  // Derived active state
+  const activeHub = hubs.find((h: any) => h.locationName === selectedHubName) as any;
+  const activeEvent = events.find(e => e.id === selectedEventId);
+
+  // 3. Join/Leave Logic (Just like Events.tsx!)
+  const handleJoin = async (eventId: string, isJoined: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!student) return; 
+    
+    const token = localStorage.getItem("studyBuddyToken");
+    try {
+      const endpoint = isJoined ? "/api/events/leave" : "/api/events/join";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ eventId: eventId, userId: student.userId })
+      });
+
+      if (response.ok) {
+        setEvents((prev) => prev.map((ev) => {
+          if (ev.id === eventId) {
+            const currentAttendees = ev.attendees || [];
+            const newAttendees = isJoined
+              ? currentAttendees.filter((id: string) => id !== student.userId)
+              : [...currentAttendees, student.userId];
+            return { ...ev, attendees: newAttendees };
+          }
+          return ev;
+        }));
+      }
+    } catch (err) {
+      console.error("Error joining/leaving event:", err);
+    }
+  };
+
+  const handleNavigate = (eventLocation: string) => {
     setNavigating(true);
-    setNavTarget(session.location);
-    setTimeout(() => {
-      setNavigating(false);
-    }, 2000);
+    setNavTarget(eventLocation);
+    setTimeout(() => setNavigating(false), 3000);
   };
 
   return (
@@ -77,12 +144,12 @@ export default function MapView() {
             className="w-full pl-8 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
           {uniqueCourses.map((c) => (
             <button
               key={c}
               onClick={() => setFilterCourse(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${filterCourse === c ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${filterCourse === c ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
               style={{ fontWeight: filterCourse === c ? 600 : 400 }}
             >
               {c}
@@ -94,212 +161,165 @@ export default function MapView() {
       <div className="flex flex-1 overflow-hidden">
         {/* Map Area */}
         <div className="flex-1 relative bg-slate-100 overflow-hidden">
-          {/* Zoom Controls */}
-          <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-            <button
-              onClick={() => setZoom((z) => Math.min(z + 0.2, 2))}
-              className="w-9 h-9 bg-white rounded-xl shadow border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-            >
-              <ZoomIn size={16} className="text-slate-600" />
-            </button>
-            <button
-              onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))}
-              className="w-9 h-9 bg-white rounded-xl shadow border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-            >
-              <ZoomOut size={16} className="text-slate-600" />
-            </button>
-            <button
-              onClick={() => setZoom(1)}
-              className="w-9 h-9 bg-white rounded-xl shadow border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-              title="My Location"
-            >
-              <Locate size={16} className="text-blue-600" />
-            </button>
-          </div>
-
-          {/* Navigation Banner */}
           {navigating && (
-            <div className="absolute top-4 left-4 right-14 z-10 bg-blue-700 text-white rounded-xl px-4 py-3 flex items-center gap-3 shadow-lg">
+            <div className="absolute top-4 left-4 right-4 z-10 bg-blue-700 text-white rounded-xl px-4 py-3 flex items-center gap-3 shadow-lg">
               <Navigation size={18} className="animate-pulse" />
               <div>
-                <p className="text-sm" style={{ fontWeight: 600 }}>Navigating to {navTarget}</p>
-                <p className="text-xs text-blue-200">Estimated walk: ~3 min · 250m</p>
+                <p className="text-sm font-semibold">Navigating to {navTarget}</p>
+                <p className="text-xs text-blue-200">Google Maps routing initiated...</p>
               </div>
               <button onClick={() => setNavigating(false)} className="ml-auto">
-                <X size={16} className="text-blue-200" />
+                <X size={16} className="text-blue-200 hover:text-white" />
               </button>
             </div>
           )}
 
-          {/* SVG Campus Map */}
-          <svg
-            viewBox="0 0 100 80"
-            className="w-full h-full"
-            style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
-          >
-            {/* Background */}
-            <rect width="100" height="80" fill="#e8f0f7" />
-
-            {/* Green spaces */}
-            <ellipse cx="50" cy="40" rx="18" ry="14" fill="#c8e6c9" opacity="0.6" />
-            <rect x="5" y="5" width="90" height="70" rx="4" fill="none" stroke="#cbd5e1" strokeWidth="0.5" />
-
-            {/* Paths */}
-            {paths.map((p, i) => (
-              <line key={i} x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2} stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-            ))}
-
-            {/* Navigation path (if active) */}
-            {navigating && (
-              <line
-                x1={userLocation.x}
-                y1={userLocation.y}
-                x2={mapSessions[0].x}
-                y2={mapSessions[0].y}
-                stroke="#1D4ED8"
-                strokeWidth="1.5"
-                strokeDasharray="2,1"
-                opacity="0.8"
-              />
-            )}
-
-            {/* Buildings */}
-            {buildings.map((b) => (
-              <g key={b.id}>
-                <rect
-                  x={b.x}
-                  y={b.y}
-                  width={b.w}
-                  height={b.h}
-                  rx={0.8}
-                  fill={b.color}
-                  fillOpacity={0.15}
-                  stroke={b.color}
-                  strokeWidth={0.5}
-                />
-                <text
-                  x={b.x + b.w / 2}
-                  y={b.y + b.h / 2 + 0.5}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="1.8"
-                  fill="#1e3a8a"
-                  fontWeight="600"
+          <APIProvider apiKey={API_KEY}>
+            <Map
+              defaultCenter={YORK_CENTER}
+              defaultZoom={15.5}
+              mapId="studybuddy-map"
+              gestureHandling="greedy"
+              disableDefaultUI={false}
+            >
+              {hubs.map((hub: any, i) => (
+                <AdvancedMarker 
+                  key={i} 
+                  position={hub.coords} 
+                  onClick={() => {
+                    setSelectedHubName(hub.locationName);
+                    // Automatically select the first event in this hub so the UI populates
+                    if (hub.events.length > 0) setSelectedEventId(hub.events[0].id);
+                  }}
                 >
-                  {b.name}
-                </text>
-              </g>
-            ))}
+                  <Pin 
+                    background={selectedHubName === hub.locationName ? "#EA580C" : "#215EBA"} 
+                    borderColor={selectedHubName === hub.locationName ? "#9A3412" : "#0f2e6b"} 
+                    glyphColor="white" 
+                    scale={selectedHubName === hub.locationName ? 1.2 : 1.0}
+                  />
+                </AdvancedMarker>
+              ))}
 
-            {/* "York University" label */}
-            <text x="50" y="8" textAnchor="middle" fontSize="3" fill="#64748b" fontWeight="700">
-              York University · Keele Campus
-            </text>
-
-            {/* User's current location */}
-            <g>
-              <circle cx={userLocation.x} cy={userLocation.y} r="2.5" fill="#1D4ED8" opacity="0.2" className="animate-pulse" />
-              <circle cx={userLocation.x} cy={userLocation.y} r="1.5" fill="#1D4ED8" />
-              <circle cx={userLocation.x} cy={userLocation.y} r="0.8" fill="white" />
-            </g>
-
-            {/* Session Pins */}
-            {filteredSessions.map((s) => {
-              const isSelected = selectedSession?.id === s.id;
-              return (
-                <g
-                  key={s.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedSession(isSelected ? null : s)}
-                  style={{ filter: isSelected ? "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" : "" }}
+              {activeHub && (
+                <InfoWindow
+                  position={activeHub.coords}
+                  onCloseClick={() => setSelectedHubName(null)}
                 >
-                  <circle cx={s.x} cy={s.y} r={isSelected ? 4 : 3} fill={isSelected ? "#EA580C" : "#F97316"} />
-                  <circle cx={s.x} cy={s.y} r={isSelected ? 4 : 3} fill="none" stroke="white" strokeWidth="0.8" />
-                  <text
-                    x={s.x}
-                    y={s.y - 4.5}
-                    textAnchor="middle"
-                    fontSize="1.6"
-                    fill="#1e3a8a"
-                    fontWeight="700"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {s.course}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+                  <div className="p-2 min-w-[220px] font-sans">
+                    <h3 className="font-bold text-slate-800 text-sm mb-1">{activeHub.locationName}</h3>
+                    <p className="text-xs text-slate-600 mb-3">📍 {activeHub.events.length} session{activeHub.events.length > 1 ? 's' : ''} here</p>
+                    
+                    {/* Selectable list of events in this hub */}
+                    <div className="flex flex-col gap-2 mb-3 max-h-40 overflow-y-auto pr-1">
+                       {activeHub.events.map((ev: any) => {
+                         const isSelected = activeEvent?.id === ev.id;
+                         return (
+                           <div 
+                             key={ev.id} 
+                             onClick={() => setSelectedEventId(ev.id)}
+                             className={`text-xs p-2 rounded border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-slate-50 border-slate-200 hover:bg-blue-50'}`}
+                           >
+                              <div className="font-semibold text-blue-700 mb-0.5">{ev.course}</div>
+                              <div className="text-slate-700 font-semibold truncate mb-1">{ev.title}</div>
+                              <div className="text-slate-500 flex justify-between items-center">
+                                <span>{ev.time}</span>
+                                <span className="flex items-center gap-1">{ev.attendees?.length || 1}/{ev.maxParticipants} <Users size={10} /></span>
+                              </div>
+                           </div>
+                         );
+                       })}
+                    </div>
 
-          {/* Map Legend */}
-          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl border border-slate-200 px-3 py-2.5 shadow">
-            <p className="text-xs text-slate-500 mb-1.5" style={{ fontWeight: 600 }}>Legend</p>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-700"></div>
-                <span className="text-xs text-slate-600">You</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                <span className="text-xs text-slate-600">Study Session</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-blue-900 opacity-20 border border-blue-900 border-opacity-50"></div>
-                <span className="text-xs text-slate-600">Building</span>
-              </div>
-            </div>
-          </div>
+                    {/* Dynamic Join/Leave Button for the Highlighted Event */}
+                    {activeEvent && activeHub.events.find((e: any) => e.id === activeEvent.id) && (() => {
+                      const isHost = activeEvent.host?.id === student?.userId;
+                      const isJoined = activeEvent.attendees?.includes(student?.userId);
+                      const isFull = (activeEvent.attendees?.length || 1) >= activeEvent.maxParticipants;
+
+                      if (isHost) {
+                         return (
+                           <button disabled className="w-full py-1.5 bg-slate-200 text-slate-500 rounded text-xs font-bold cursor-not-allowed">
+                             You are Hosting
+                           </button>
+                         );
+                      }
+                      if (isJoined) {
+                         return (
+                           <button onClick={(e) => handleJoin(activeEvent.id, true, e)} className="w-full py-1.5 bg-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-transparent text-slate-700 rounded text-xs font-bold transition-colors">
+                             Leave Session
+                           </button>
+                         );
+                      }
+                      if (isFull) {
+                         return (
+                           <button disabled className="w-full py-1.5 bg-slate-200 text-slate-500 rounded text-xs font-bold cursor-not-allowed">
+                             Session Full
+                           </button>
+                         );
+                      }
+                      return (
+                         <button onClick={(e) => handleJoin(activeEvent.id, false, e)} className="w-full py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs font-bold transition-colors shadow-sm">
+                           Join Session
+                         </button>
+                      );
+                    })()}
+                  </div>
+                </InfoWindow>
+              )}
+            </Map>
+          </APIProvider>
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-80 bg-white border-l border-slate-200 flex flex-col overflow-hidden shrink-0">
-          {selectedSession ? (
+        <div className="w-80 bg-white border-l border-slate-200 flex flex-col overflow-hidden shrink-0 z-10">
+          {activeEvent ? (
             /* Session Detail Panel */
             <div className="flex flex-col h-full">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-sm text-slate-800" style={{ fontWeight: 600 }}>Session Details</h2>
+                <h2 className="text-sm text-slate-800 font-semibold">Session Details</h2>
                 <button
-                  onClick={() => setSelectedSession(null)}
+                  onClick={() => setSelectedEventId(null)}
                   className="text-slate-400 hover:text-slate-600"
                 >
                   <X size={16} />
                 </button>
               </div>
               <div className="p-4 flex-1">
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
-                  {selectedSession.course}
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+                  {activeEvent.course}
                 </span>
-                <h3 className="text-slate-800 mt-2 mb-3 leading-snug" style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                  {selectedSession.title}
+                <h3 className="text-slate-800 mt-2 mb-3 leading-snug font-bold text-[0.95rem]">
+                  {activeEvent.title}
                 </h3>
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <MapPin size={15} className="text-orange-500 shrink-0" />
-                    {selectedSession.location}
+                    {activeEvent.location}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Clock size={15} className="text-blue-500 shrink-0" />
-                    Today at {selectedSession.time} · {selectedSession.duration} min
+                    {activeEvent.date} at {activeEvent.time}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Users size={15} className="text-blue-500 shrink-0" />
-                    {selectedSession.attendees}/{selectedSession.maxAttendees} attending
+                    {activeEvent.attendees?.length || 1}/{activeEvent.maxParticipants} attending
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <BookOpen size={15} className="text-blue-500 shrink-0" />
-                    Hosted by {selectedSession.host}
+                    Hosted by {activeEvent.host?.name || activeEvent.host?.id || "Student"}
                   </div>
                 </div>
 
                 <div className="mt-4 p-3 bg-blue-50 rounded-xl">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-blue-700" style={{ fontWeight: 600 }}>Capacity</span>
-                    <span className="text-xs text-blue-600">{selectedSession.attendees}/{selectedSession.maxAttendees}</span>
+                    <span className="text-xs text-blue-700 font-semibold">Capacity</span>
+                    <span className="text-xs text-blue-600">{activeEvent.attendees?.length || 1}/{activeEvent.maxParticipants}</span>
                   </div>
                   <div className="bg-blue-200 rounded-full h-1.5">
                     <div
                       className="bg-blue-600 h-full rounded-full"
-                      style={{ width: `${(selectedSession.attendees / selectedSession.maxAttendees) * 100}%` }}
+                      style={{ width: `${((activeEvent.attendees?.length || 1) / (activeEvent.maxParticipants || 10)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -307,16 +327,15 @@ export default function MapView() {
 
               <div className="p-4 border-t border-slate-100 space-y-2">
                 <button
-                  onClick={() => handleNavigate(selectedSession)}
-                  className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-                  style={{ fontWeight: 600 }}
+                  onClick={() => handleNavigate(activeEvent.location)}
+                  className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                 >
                   <Navigation size={15} />
                   Navigate Here
                 </button>
                 <button
-                  onClick={() => navigate(`/events/${selectedSession.eventId}`)}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/events/${activeEvent.id}`)}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 font-medium"
                 >
                   View Details
                   <ArrowRight size={14} />
@@ -327,7 +346,7 @@ export default function MapView() {
             /* Sessions List */
             <div className="flex flex-col h-full">
               <div className="px-4 py-3 border-b border-slate-100">
-                <h2 className="text-sm text-slate-800" style={{ fontWeight: 600 }}>
+                <h2 className="text-sm text-slate-800 font-semibold">
                   Nearby Sessions
                   <span className="ml-2 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
                     {filteredSessions.length}
@@ -340,7 +359,11 @@ export default function MapView() {
                   <div
                     key={s.id}
                     className="px-4 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
-                    onClick={() => setSelectedSession(s)}
+                    onClick={() => {
+                      setSelectedEventId(s.id);
+                      const coords = getCoords(s.location);
+                      if (coords) setSelectedHubName(s.location.split(",")[0]);
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
@@ -348,17 +371,17 @@ export default function MapView() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded" style={{ fontWeight: 600 }}>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-semibold">
                             {s.course}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-700 truncate" style={{ fontWeight: 600 }}>{s.title}</p>
+                        <p className="text-sm text-slate-700 truncate font-semibold">{s.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="flex items-center gap-1 text-xs text-slate-400">
                             <Clock size={11} />{s.time}
                           </span>
                           <span className="flex items-center gap-1 text-xs text-slate-400">
-                            <Users size={11} />{s.attendees}/{s.maxAttendees}
+                            <Users size={11} />{s.attendees?.length || 1}/{s.maxParticipants}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400 truncate mt-0.5">{s.location}</p>
@@ -369,7 +392,7 @@ export default function MapView() {
                 {filteredSessions.length === 0 && (
                   <div className="p-6 text-center">
                     <MapPin size={28} className="text-slate-200 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">No sessions found</p>
+                    <p className="text-sm text-slate-400">No active physical sessions found</p>
                   </div>
                 )}
               </div>
