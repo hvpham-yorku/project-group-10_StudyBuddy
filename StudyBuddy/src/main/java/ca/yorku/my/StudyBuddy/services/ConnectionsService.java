@@ -134,16 +134,33 @@ public class ConnectionsService {
         return new String[0];
     }
     
-    // Get all available students
+    // Get all available students other than pending and accepted
     public List<ConnectionDTO> getAvailableStudents(String myUserId) throws Exception {
         List<ConnectionDTO> out = new ArrayList<>();
+        
+        // 1. Find everyone that I'm already connected to
+        Set<String> connectedOrPendingIds = new HashSet<>();
+        QuerySnapshot q1 = db().collection("connections").whereEqualTo("userA", myUserId).get().get();
+        for (QueryDocumentSnapshot doc : q1.getDocuments()) {
+            connectedOrPendingIds.add(doc.getString("userB"));
+        }
+        QuerySnapshot q2 = db().collection("connections").whereEqualTo("userB", myUserId).get().get();
+        for (QueryDocumentSnapshot doc : q2.getDocuments()) {
+            connectedOrPendingIds.add(doc.getString("userA"));
+        }
+        
+        // Feetch the students (
         QuerySnapshot query = db().collection("students").get().get();
         
         for (QueryDocumentSnapshot doc : query.getDocuments()) {
-            if (doc.getId().equals(myUserId)) continue; 
+            String studentId = doc.getId();
+            
+            // If myself OR pending, ignore. 
+            if (studentId.equals(myUserId)) continue; 
+            if (connectedOrPendingIds.contains(studentId)) continue;
             
             ConnectionDTO dto = new ConnectionDTO();
-            dto.userId = doc.getId();
+            dto.userId = studentId;
             dto.fullName = doc.getString("fullName");
             dto.program = doc.getString("program");
             dto.profilePic = doc.getString("avatar");
