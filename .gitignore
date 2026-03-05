@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 StudyBuddy/src/main/resources/application.properties
+Frontend/.env.*
 
 ### STS ###
 .apt_generated
