@@ -84,7 +84,7 @@ export default function Network() {
   useEffect(() => {
     async function fetchRealUser() {
       const token = localStorage.getItem("studyBuddyToken");
-      
+
       // If no token, stop loading and show the "Please sign in" screen
       if (!token) {
         setAuthReady(true);
@@ -96,11 +96,11 @@ export default function Network() {
         const res = await fetch("/api/studentcontroller/profile", {
           headers: { "Authorization": "Bearer " + token }
         });
-        
+
         if (res.ok) {
           const data = await res.json();
           // Save your database into uid variable
-          setUid(data.userId); 
+          setUid(data.userId);
         }
       } catch (err) {
         console.error("Failed to load user", err);
@@ -321,8 +321,8 @@ export default function Network() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors flex items-center gap-2 ${activeTab === tab
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-500 hover:text-slate-700"
               }`}
             style={{ fontWeight: activeTab === tab ? 600 : 400 }}
           >
@@ -405,43 +405,51 @@ export default function Network() {
             pendingFiltered.map((r) => {
               const displayName = r.fullName ?? r.userId;
               return (
-              <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
-                    {r.profilePic ? (
-                      <img src={r.profilePic} alt={displayName} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
-                        {displayName.charAt(0)}
+                <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                      {r.profilePic ? (
+                        <img src={r.profilePic} alt={displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontWeight: 700 }}>
+                          {displayName.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-slate-500">{r.program ?? ""}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {r.courses.slice(0, 3).map((c) => (
+                          <span key={c} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded" style={{ fontWeight: 500 }}>
+                            {c}
+                          </span>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
-                      {displayName}
-                    </p>
-                    <p className="text-xs text-slate-500">{r.program ?? ""}</p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {r.courses.slice(0, 3).map((c) => (
-                        <span key={c} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded" style={{ fontWeight: 500 }}>
-                          {c}
-                        </span>
-                      ))}
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={() => handleAccept(r.userId)}
+                        className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1"
+                        style={{ fontWeight: 600 }}
+                      >
+                        <Check size={12} />
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleDecline(r.userId)}
+                        className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1"
+                      >
+                        <X size={12} />
+                        Decline
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <button className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs transition-colors flex items-center gap-1" style={{ fontWeight: 600 }}>
-                      <Check size={12} />
-                      Accept
-                    </button>
-                    <button className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition-colors flex items-center gap-1">
-                      <X size={12} />
-                      Decline
-                    </button>
-                  </div>
                 </div>
-              </div>
-            )})
+              )
+            })
           )}
         </div>
       )}
