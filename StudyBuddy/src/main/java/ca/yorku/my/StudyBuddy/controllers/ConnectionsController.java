@@ -54,4 +54,10 @@ public class ConnectionsController {
         return ResponseEntity.ok("Request declined");
     }
     
+    @PostMapping("/remove")
+    public ResponseEntity<String> removeConnection(@RequestBody Map<String, String> payload) throws Exception {
+        connectionsService.removeConnection(payload.get("myUserId"), payload.get("targetUserId"));
+        return ResponseEntity.ok("Connection removed");
+    }
+    
 }

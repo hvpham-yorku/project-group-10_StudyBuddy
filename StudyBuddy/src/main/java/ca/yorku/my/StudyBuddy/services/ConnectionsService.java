@@ -228,5 +228,26 @@ public class ConnectionsService {
         }
     }
     
+    public void removeConnection(String myUserId, String otherUserId) throws Exception {
+        // 1. Check if I was userA and they were userB
+        QuerySnapshot q1 = db().collection("connections")
+                .whereEqualTo("userA", myUserId)
+                .whereEqualTo("userB", otherUserId)
+                .get().get();
+                
+        for (QueryDocumentSnapshot doc : q1.getDocuments()) {
+            doc.getReference().delete();
+        }
+
+        // 2. Check if they were userA and I was userB
+        QuerySnapshot q2 = db().collection("connections")
+                .whereEqualTo("userA", otherUserId)
+                .whereEqualTo("userB", myUserId)
+                .get().get();
+                
+        for (QueryDocumentSnapshot doc : q2.getDocuments()) {
+            doc.getReference().delete();
+        }
+    }
     
 }

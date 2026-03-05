@@ -10,6 +10,7 @@ import {
   Users,
   UserCheck,
   UserPlus,
+  UserMinus,
   MessageSquare,
   CalendarPlus,
   X,
@@ -158,6 +159,23 @@ export default function Network() {
       setAccepted(prev => [...prev, senderId]);
     } catch (e) {
       console.error("Failed to accept request", e);
+    }
+  };
+
+  const handleRemove = async (targetId: string) => {
+    if (!window.confirm("Are you sure you want to remove this connection?")) return;
+    
+    try {
+      await fetch(`/api/connections/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      });
+      
+      // Instantly remove them from the UI
+      setConnections(prev => prev.filter(c => c.userId !== targetId));
+    } catch (e) {
+      console.error("Failed to remove connection", e);
     }
   };
 
@@ -363,6 +381,7 @@ export default function Network() {
                       setInviteModal={setInviteModal}
                       getStatusColor={getStatusColor}
                       getStatusLabel={getStatusLabel}
+                      onRemove={handleRemove}
                     />
                   ))}
                   <p className="text-xs text-slate-400 uppercase tracking-wide px-1 mt-4" style={{ fontWeight: 600 }}>
@@ -379,6 +398,7 @@ export default function Network() {
                   setInviteModal={setInviteModal}
                   getStatusColor={getStatusColor}
                   getStatusLabel={getStatusLabel}
+                  onRemove={handleRemove}
                 />
               ))}
 
@@ -552,6 +572,7 @@ function ConnectionCard({
   setInviteModal,
   getStatusColor,
   getStatusLabel,
+  onRemove,
 }: {
   connection: Connection;
   navigate: (path: string) => void;
@@ -623,6 +644,14 @@ function ConnectionCard({
             title="Invite to session"
           >
             <CalendarPlus size={15} />
+            
+          </button>
+          <button
+            onClick={() => onRemove(connection.userId)}
+            className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
+            title="Remove Connection"
+          >
+            <UserMinus size={15} />
           </button>
         </div>
       </div>
