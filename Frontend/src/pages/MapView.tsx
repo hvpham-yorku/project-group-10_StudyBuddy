@@ -339,13 +339,6 @@ export default function MapView() {
 
               <div className="p-4 border-t border-slate-100 space-y-2">
                 <button
-                  onClick={() => handleNavigate(activeEvent.location)}
-                  className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-                >
-                  <Navigation size={15} />
-                  Navigate Here
-                </button>
-                <button
                   onClick={() => navigate(`/events/${activeEvent.id}`)}
                   className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 font-medium"
                 >
