@@ -67,8 +67,53 @@ public class StubDatabase {
         e2.setTags(new ArrayList<>(Arrays.asList("Problem Solving", "Quiet Focus")));
         e2.setStatus("upcoming");
         e2.setReviews(new ArrayList<>());
+        
+        Event e3 = new Event();
+        e3.setId("e3");
+        e3.setTitle("EECS 3000 Ethics Essay Workshop");
+        e3.setCourse("EECS 3000");
+        e3.setLocation("Bennett Centre");
+        e3.setDate("2026-02-23"); // Note the older date!
+        e3.setTime("16:30");
+        e3.setHost("u3");
+        e3.setAttendees(new ArrayList<>(Arrays.asList("u3")));
+        e3.setMaxParticipants(10);
+        e3.setDescription("Peer review and feedback session for the upcoming ethics essay. Bring a printed draft if possible.");
+        e3.setTags(new ArrayList<>(Arrays.asList("Group Discussion")));
+        e3.setStatus("past"); // Marked as past!
+        e3.setReviews(new ArrayList<>());
 
-        EVENTS.addAll(Arrays.asList(e1, e2));
+        Event e4 = new Event();
+        e4.setId("e4");
+        e4.setTitle("EECS 2311 Lab 4 Help Session");
+        e4.setCourse("EECS 2311");
+        e4.setLocation("Lassonde Building");
+        e4.setDate("2026-02-19");
+        e4.setTime("13:00");
+        e4.setHost("u2");
+        e4.setAttendees(new ArrayList<>(Arrays.asList("u2", "u1")));
+        e4.setMaxParticipants(5);
+        e4.setDescription("Debugging and code review for Lab 4. Intermediate Java knowledge expected.");
+        e4.setTags(new ArrayList<>(Arrays.asList("Problem Solving", "Whiteboard Work")));
+        e4.setStatus("past");
+        e4.setReviews(new ArrayList<>()); // You can add mock reviews here later if you want to test the review system!
+
+        Event e5 = new Event();
+        e5.setId("e5");
+        e5.setTitle("EECS 4080 Final Project Brainstorm");
+        e5.setCourse("EECS 4080");
+        e5.setLocation("Scott Library");
+        e5.setDate("2026-02-25");
+        e5.setTime("15:00");
+        e5.setHost("u2"); // Sarah is hosting this one
+        e5.setAttendees(new ArrayList<>(Arrays.asList("u2")));
+        e5.setMaxParticipants(6);
+        e5.setDescription("Brainstorming and planning session for the EECS 4080 final project. All ideas welcome!");
+        e5.setTags(new ArrayList<>(Arrays.asList("Group Discussion", "Whiteboard Work")));
+        e5.setStatus("past");
+        e5.setReviews(new ArrayList<>());
+
+        EVENTS.addAll(Arrays.asList(e1, e2, e3, e4, e5));
     }
     
     public static void clearAll() {
