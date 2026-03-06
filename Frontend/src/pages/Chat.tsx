@@ -1,5 +1,4 @@
-/* 
- * Chat.tsx
+/* * Chat.tsx
  * Main chat interface for one-on-one and group conversations.
  */
 
@@ -49,7 +48,7 @@ const DEV_ACTOR_KEY = "studybuddy.dev.actorId";
 
 export default function Chat() {
   const [localChats, setLocalChats] = useState<any[]>([]);
-  const knownMembers = [currentUser, ...localChats.flatMap((chat) => chat.members)].reduce((acc: any[], member: any) => {
+  const knownMembers = [currentUser, ...localChats.flatMap((chat) => chat.members || [])].reduce((acc: any[], member: any) => {
     if (!acc.find((existing) => existing.id === member.id)) {
       acc.push(member);
     }
@@ -68,15 +67,13 @@ export default function Chat() {
   const API_BASE = ((import.meta as any).env?.VITE_API_BASE_URL || "").replace(/\/$/, "");
   const apiUrl = (path: string) => `${API_BASE}${path}`;
   const [devActorId, setDevActorId] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return currentUser.id;
-    }
+    if (typeof window === "undefined") return currentUser.id;
     return window.sessionStorage.getItem(DEV_ACTOR_KEY) || currentUser.id;
   });
 
-  // Load the real user from your token
   const [activeUser, setActiveUser] = useState<any>(currentUser);
 
+  // Initialize the real user if they are logged in
   useEffect(() => {
     async function initUser() {
       const token = localStorage.getItem("studyBuddyToken");
@@ -95,11 +92,12 @@ export default function Chat() {
           });
         }
       } catch (e) {
-        console.error(e);
+        console.error("Failed to fetch user profile", e);
       }
     }
     initUser();
   }, []);
+
   const devActors = knownMembers.filter((member: any) => member.id === "u1" || member.id === "u2");
   const { id } = useParams<{ id?: string }>();
   const [selectedChatId, setSelectedChatId] = useState<string>(id || "");
@@ -116,127 +114,127 @@ export default function Chat() {
   const [showAttach, setShowAttach] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const typingPollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedChat = localChats.find((c) => c.id === selectedChatId)!;
+  const selectedChat = localChats.find((c) => c.id === selectedChatId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedChat?.messages]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && activeUser?.id) {
       window.sessionStorage.setItem(DEV_ACTOR_KEY, activeUser.id);
     }
     setChatBackendIds({});
     setTypingUserIds([]);
     setIsTyping(false);
-  }, [activeUser.id]);
+  }, [activeUser?.id]);
 
-  // Pass the real JWT token to the chat endpoints
   const authHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}`,
+    Authorization: `Bearer ${localStorage.getItem("studyBuddyToken") || activeUser?.id}`,
   };
 
   const loadRealChats = async () => {
-    if (!activeUser || activeUser.id === currentUser.id) return;
+    if (!activeUser || !activeUser.id) return; // FIXED: Removed the ID trap!
     
     try {
+      // 0. Fetch global students directory to properly map names!
+      let allStudents: any[] = [];
+      try {
+        const stuRes = await fetch("/api/studentcontroller/getstudents");
+        if (stuRes.ok) allStudents = await stuRes.json();
+      } catch (e) {
+        console.warn("Could not load global directory", e);
+      }
+
+      // Helper to safely resolve a user's name
+      const resolveUser = (userId: string, fallbackName?: string, fallbackAvatar?: string) => {
+        if (userId === activeUser.id) return activeUser;
+        const student = allStudents.find((s: any) => s.userId === userId);
+        return {
+          id: userId,
+          name: student ? student.fullName : (fallbackName || userId),
+          avatar: student ? student.avatar : (fallbackAvatar || null),
+          isOnline: student ? student.isOnline : true
+        };
+      };
+
       // 1. Fetch accepted connections (Direct Chats)
-      const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
       let directChatsList: any[] = [];
       let connectionsData: any[] = [];
-
-
-      if (connRes.ok) {
-        connectionsData = await connRes.json();
-        directChatsList = connectionsData.map((c: any) => ({
-          id: `direct_${c.userId}`, 
-          name: c.fullName || c.userId,
-          type: "direct",
-          members: [
-            activeUser,
-            { id: c.userId, name: c.fullName || c.userId, avatar: c.profilePic, isOnline: c.activityStatus === "online" }
-          ],
-          lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
-          unreadCount: 0,
-          messages: []
-        }));
-      }
-
-      // 2. Fetch Events (Group Chats)
-      const eventsRes = await fetch(`/api/events`);
-      let eventChatsList: any[] = [];
-      if (eventsRes.ok) {
-        const eventsData = await eventsRes.json();
-        // Filter out only the events you are hosting or attending
-        const myEvents = eventsData.filter((e: any) => 
-          e.host?.id === activeUser.id || (e.attendees && e.attendees.includes(activeUser.id))
-        );
-
-        eventChatsList = myEvents.map((e: any) => {
-          // Combine attendees AND the host, and figure out their real names
-          const membersList = [
-            activeUser,
-            ...[...(e.attendees || []), e.host?.id]
-              .filter((id: string) => id && id !== activeUser.id)
-              .map((id: string) => {
-                // Check if this person is your friend
-                const friend = connectionsData.find((c: any) => c.userId === id);
-                // Check if this person is the event host
-                const isHost = e.host?.id === id;
-
-                // Resolve their real name and avatar
-                const displayName = friend ? (friend.fullName || friend.userId) : (isHost ? e.host?.name : id);
-                const avatar = friend ? friend.profilePic : (isHost ? e.host?.avatar : null);
-
-                return { id, name: displayName, avatar: avatar, isOnline: true };
-              })
-          ];
-
-          // Deduplicate the list just in case the host is also in the attendees array
-          const uniqueMembers = Array.from(new Map(membersList.map(m => [m.id, m])).values());
-
-          return {
-            id: `event_${e.id}`,
-            eventId: e.id, 
-            name: e.title || e.course || "Study Session",
-            type: "group",
-            isLiveEvent: true, 
-            members: uniqueMembers,
-            lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
+      try {
+        const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
+        if (connRes.ok) {
+          connectionsData = await connRes.json();
+          directChatsList = connectionsData.map((c: any) => ({
+            id: `direct_${c.userId}`, 
+            name: resolveUser(c.userId, c.fullName).name,
+            type: "direct",
+            members: [ activeUser, resolveUser(c.userId, c.fullName, c.profilePic) ],
+            lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
             unreadCount: 0,
             messages: []
-          };
-        });
-      }
+          }));
+        }
+      } catch (e) {}
+
+      // 2. Fetch Events (Group Chats)
+      let eventChatsList: any[] = [];
+      try {
+        const eventsRes = await fetch(`/api/events`);
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          const myEvents = eventsData.filter((e: any) => 
+            e.host?.id === activeUser.id || (e.attendees && e.attendees.includes(activeUser.id))
+          );
+
+          eventChatsList = myEvents.map((e: any) => {
+            const membersList = [
+              activeUser,
+              ...[...(e.attendees || []), e.host?.id]
+                .filter((id: string) => id && id !== activeUser.id)
+                .map((id: string) => {
+                  const friend = connectionsData.find((c: any) => c.userId === id);
+                  const isHost = e.host?.id === id;
+                  // Use the helper to guarantee a name is found
+                  return resolveUser(id, friend ? friend.fullName : (isHost ? e.host?.name : id), friend ? friend.profilePic : (isHost ? e.host?.avatar : null));
+                })
+            ];
+
+            const uniqueMembers = Array.from(new Map(membersList.map(m => [m.id, m])).values());
+
+            return {
+              id: `event_${e.id}`,
+              eventId: e.id, 
+              name: e.title || e.course || "Study Session",
+              type: "group",
+              isLiveEvent: true, 
+              members: uniqueMembers,
+              lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
+              unreadCount: 0,
+              messages: []
+            };
+          });
+        }
+      } catch (e) {}
 
       const combinedChats = [...directChatsList, ...eventChatsList];
       
-      // Merge new connections/events with existing messages to prevent flicker
       setLocalChats((prev) => {
         return combinedChats.map((newChat: any) => {
           const existingChat = prev.find((c) => c.id === newChat.id);
-          if (existingChat) {
-            return {
-              ...newChat,
-              messages: existingChat.messages,
-              lastMessage: existingChat.lastMessage,
-            };
-          }
-          return newChat;
+          return existingChat ? { ...newChat, messages: existingChat.messages, lastMessage: existingChat.lastMessage } : newChat;
         });
       });
       
-      // Select the right chat on initial load using a live functional update
       setSelectedChatId((currentId) => {
-        if (!currentId && combinedChats.length > 0) {
-          return combinedChats[0].id;
-        }
+        if (!currentId && combinedChats.length > 0) return combinedChats[0].id;
         return currentId;
       });
       
@@ -247,93 +245,51 @@ export default function Chat() {
 
   useEffect(() => {
     void loadRealChats();
-    const interval = setInterval(() => {
-      void loadRealChats();
-    }, 5000);
+    const interval = setInterval(() => { void loadRealChats(); }, 5000);
     return () => clearInterval(interval);
-  }, [activeUser.id]);
+  }, [activeUser?.id]);
 
   const mapMessageToUi = (chat: any, apiMessage: any) => {
-    const sender = chat.members.find((member) => member.id === apiMessage.senderId) as any;
+    const sender = chat.members.find((member: any) => member.id === apiMessage.senderId) as any;
     const rawType = String(apiMessage.type || "TEXT").toUpperCase();
     const uiType: UiMessageType = rawType === "FILE" ? "file" : rawType === "LINK" ? "link" : "text";
-    const fileMeta = apiMessage.file
-      ? {
-        name: apiMessage.file.fileName,
-        sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
-        mimeType: apiMessage.file.mimeType,
-        storagePath: apiMessage.file.storagePath,
-      }
-      : undefined;
-
-    const baseMessage = {
+    
+    return {
       id: apiMessage.messageId,
       senderId: apiMessage.senderId,
-      senderName: sender?.name || apiMessage.senderName,
+      senderName: sender?.name || apiMessage.senderName || apiMessage.senderId,
       senderAvatar: sender?.avatar || null,
       text: apiMessage.content,
       timestamp: apiMessage.timestamp,
       type: uiType,
+      ...(apiMessage.file && { attachment: {
+        name: apiMessage.file.fileName,
+        sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
+        mimeType: apiMessage.file.mimeType,
+        storagePath: apiMessage.file.storagePath,
+      }})
     };
-
-    return fileMeta ? { ...baseMessage, attachment: fileMeta } : baseMessage;
-  };
-
-  const isBackendBackedChat = (chat: any) => {
-    return true;
-  };
-
-  const appendLocalMessage = (
-    chatId: string,
-    nextMessage: any,
-    lastMessageText: string
-  ) => {
-    setLocalChats((prev) =>
-      prev.map((existing) =>
-        existing.id === chatId
-          ? {
-            ...existing,
-            messages: [...existing.messages, nextMessage],
-            lastMessage: {
-              sender: "You",
-              text: lastMessageText,
-              timestamp: nextMessage.timestamp,
-              read: true,
-            },
-          }
-          : existing
-      )
-    );
   };
 
   const ensureBackendChat = async (chat: any): Promise<string> => {
-    if (chatBackendIds[chat.id]) {
-      return chatBackendIds[chat.id];
-    }
+    if (chatBackendIds[chat.id]) return chatBackendIds[chat.id];
 
     let chatId = "";
     if (chat.type === "direct") {
       const other = chat.members.find((member: any) => member.id !== activeUser.id);
       const response = await fetch(apiUrl(`/api/chats/direct`), {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ userA: activeUser.id, userB: other.id }),
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ userA: activeUser.id, userB: other?.id }),
       });
       if (!response.ok) throw new Error("Failed to create direct chat");
-      const data = await response.json();
-      chatId = data.chatId;
+      chatId = (await response.json()).chatId;
     } else {
-      // It's a Group Chat! Use the real eventId we attached earlier
       const response = await fetch(apiUrl(`/api/chats/event/${chat.eventId}`), {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          chatName: chat.name,
-        }),
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ chatName: chat.name }),
       });
       if (!response.ok) throw new Error("Failed to create event chat");
-      const data = await response.json();
-      chatId = data.chatId;
+      chatId = (await response.json()).chatId;
     }
 
     setChatBackendIds((prev) => ({ ...prev, [chat.id]: chatId }));
@@ -341,47 +297,32 @@ export default function Chat() {
   };
 
   const loadMessages = async (chat: any, before?: string, appendOlder = false, silent = false) => {
+    if (!chat) return;
     const backendChatId = await ensureBackendChat(chat);
-
     if (!silent) setIsLoadingMessages(true);
     setChatError(null);
     try {
       const params = new URLSearchParams({ limit: "20" });
-      if (before) {
-        params.set("before", before);
-      }
+      if (before) params.set("before", before);
 
       const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages?${params.toString()}`), {
-        headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
+        headers: authHeaders,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch chat messages");
-      }
+      if (!response.ok) throw new Error("Failed to fetch chat messages");
 
       const payload = await response.json();
-      const pageMessages = (payload.messages || [])
-        .map((message: any) => mapMessageToUi(chat, message))
-        .reverse();
+      const pageMessages = (payload.messages || []).map((msg: any) => mapMessageToUi(chat, msg)).reverse();
 
       setNextCursor(payload.nextCursor || null);
       setHasMoreMessages(Boolean(payload.hasMore));
 
       setLocalChats((prev) =>
-        prev.map((existing) => {
-          if (existing.id !== chat.id) {
-            return existing;
-          }
-
-          const nextMessages = appendOlder
-            ? [...pageMessages, ...existing.messages]
-            : pageMessages;
-
-          return {
+        prev.map((existing) => existing.id === chat.id ? {
             ...existing,
-            messages: nextMessages,
-          };
-        })
+            messages: appendOlder ? [...pageMessages, ...existing.messages] : pageMessages,
+          } : existing
+        )
       );
     } catch (error: any) {
       setChatError(error?.message || "Failed to fetch chat messages");
@@ -392,120 +333,41 @@ export default function Chat() {
 
   useEffect(() => {
     const chat = localChats.find((c) => c.id === selectedChatId);
-    if (!chat) {
-      if (localChats.length > 0) {
-        setSelectedChatId(localChats[0].id);
-      }
-      return;
-    }
-
+    if (!chat) return;
     void loadMessages(chat);
-
-    // Set up the polling interval to fetch new messages every 3 seconds
-    const interval = setInterval(() => {
-    void loadMessages(chat, undefined, false, true);
-    }, 3000);
-
-    // Clean up the interval if clicking on different chat
+    const interval = setInterval(() => { void loadMessages(chat, undefined, false, true); }, 3000);
     return () => clearInterval(interval);
-  }, [selectedChatId, activeUser.id]);
+  }, [selectedChatId, activeUser?.id]);
 
   const sendTypingStatus = async (chat: any, typing: boolean) => {
     try {
       const backendChatId = await ensureBackendChat(chat);
       await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
-        method: "PUT",
-        headers: authHeaders,
-        body: JSON.stringify({ typing }),
+        method: "PUT", headers: authHeaders, body: JSON.stringify({ typing }),
       });
-    } catch {
-      // typing indicator is best-effort; ignore transient errors
-    }
+    } catch {}
   };
 
   const stopTypingAndNotify = async () => {
     if (!isTyping) return;
     const chat = localChats.find((existing) => existing.id === selectedChatId);
     if (!chat) return;
-
     setIsTyping(false);
     await sendTypingStatus(chat, false);
   };
 
-  useEffect(() => {
-    const chat = localChats.find((existing) => existing.id === selectedChatId);
-    if (!chat) {
-      return;
-    }
-
-    if (typingPollInterval.current) {
-      clearInterval(typingPollInterval.current);
-      typingPollInterval.current = null;
-    }
-
-    let cancelled = false;
-    const pollTyping = async () => {
-      try {
-        const backendChatId = await ensureBackendChat(chat);
-        const response = await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
-          headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = await response.json();
-        if (!cancelled) {
-          setTypingUserIds(Array.isArray(payload?.typingUserIds) ? payload.typingUserIds : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setTypingUserIds([]);
-        }
-      }
-    };
-
-    void pollTyping();
-    typingPollInterval.current = setInterval(() => {
-      void pollTyping();
-    }, 2000);
-
-    return () => {
-      cancelled = true;
-      if (typingPollInterval.current) {
-        clearInterval(typingPollInterval.current);
-        typingPollInterval.current = null;
-      }
-      void stopTypingAndNotify();
-    };
-  }, [selectedChatId, activeUser.id]);
-
   const handleTyping = (val: string) => {
     setMessageInput(val);
-
     const chat = localChats.find((existing) => existing.id === selectedChatId);
-    if (!chat) {
-      return;
-    }
+    if (!chat) return;
 
     const nextTyping = val.trim().length > 0;
-    if (nextTyping && !isTyping) {
-      setIsTyping(true);
-      void sendTypingStatus(chat, true);
-    }
-
-    if (!nextTyping && isTyping) {
-      setIsTyping(false);
-      void sendTypingStatus(chat, false);
-    }
+    if (nextTyping && !isTyping) { setIsTyping(true); void sendTypingStatus(chat, true); }
+    if (!nextTyping && isTyping) { setIsTyping(false); void sendTypingStatus(chat, false); }
 
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     if (nextTyping) {
-      typingTimeout.current = setTimeout(() => {
-        setIsTyping(false);
-        void sendTypingStatus(chat, false);
-      }, 1500);
+      typingTimeout.current = setTimeout(() => { setIsTyping(false); void sendTypingStatus(chat, false); }, 1500);
     }
   };
 
@@ -519,375 +381,95 @@ export default function Chat() {
     try {
       const backendChatId = await ensureBackendChat(chat);
       const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
-        method: "POST",
-        headers: authHeaders,
+        method: "POST", headers: authHeaders,
         body: JSON.stringify({ chatId: backendChatId, content: messageInput.trim(), type: "TEXT" }),
       });
 
-      if (!response.ok) {
-        let details = "Failed to send message";
-        try {
-          const errorPayload = await response.json();
-          if (errorPayload?.error) {
-            details = errorPayload.error;
-          }
-        } catch {
-          // ignore parse errors and keep default message
-        }
-        throw new Error(details);
-      }
+      if (!response.ok) throw new Error("Failed to send message");
 
       const apiMessage = await response.json();
       const newMsg = mapMessageToUi(chat, apiMessage);
 
-      setLocalChats((prev) =>
-        prev.map((existing) =>
-          existing.id === selectedChatId
-            ? {
-              ...existing,
-              messages: [...existing.messages, newMsg],
-              lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
-            }
-            : existing
-        )
-      );
+      setLocalChats((prev) => prev.map((existing) => existing.id === selectedChatId ? {
+          ...existing,
+          messages: [...existing.messages, newMsg],
+          lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
+        } : existing
+      ));
       setMessageInput("");
       setIsTyping(false);
       void sendTypingStatus(chat, false);
     } catch (error: any) {
-      setChatError(error?.message || "Failed to send message");
+      setChatError("Failed to send message");
     } finally {
       setIsSending(false);
     }
-  };
-
-  const isValidHttpUrl = (value: string) => {
-    try {
-      const parsed = new URL(value);
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
-    } catch {
-      return false;
-    }
-  };
-
-  const toAttachmentHref = (storagePath?: string, attachmentName?: string) => {
-    if (!storagePath) return undefined;
-    const hasDownloadName = attachmentName && attachmentName.trim().length > 0;
-    const suffix = hasDownloadName
-      ? `${storagePath.includes("?") ? "&" : "?"}downloadName=${encodeURIComponent(attachmentName!)}`
-      : "";
-
-    if (/^https?:\/\//i.test(storagePath)) {
-      return `${storagePath}${suffix}`;
-    }
-    return apiUrl(`${storagePath}${suffix}`);
-  };
-
-  const sendLinkMessage = async () => {
-    const chat = localChats.find((existing) => existing.id === selectedChatId);
-    if (!chat || isSending) return;
-
-    const link = messageInput.trim();
-    if (!link) {
-      setChatError("Enter a URL to send as a link");
-      return;
-    }
-    if (!isValidHttpUrl(link)) {
-      setChatError("Please enter a valid http(s) URL");
-      return;
-    }
-
-    setIsSending(true);
-    setChatError(null);
-    try {
-      const backendChatId = await ensureBackendChat(chat);
-      const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ chatId: backendChatId, content: link, type: "LINK" }),
-      });
-
-      if (!response.ok) {
-        let details = "Failed to send link";
-        try {
-          const errorPayload = await response.json();
-          if (errorPayload?.error) details = errorPayload.error;
-        } catch {
-          // ignore parse errors
-        }
-        throw new Error(details);
-      }
-
-      const apiMessage = await response.json();
-      const newMsg = mapMessageToUi(chat, apiMessage);
-
-      setLocalChats((prev) =>
-        prev.map((existing) =>
-          existing.id === selectedChatId
-            ? {
-              ...existing,
-              messages: [...existing.messages, newMsg],
-              lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
-            }
-            : existing
-        )
-      );
-      setMessageInput("");
-      setShowAttach(false);
-    } catch (error: any) {
-      setChatError(error?.message || "Failed to send link");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const uploadAndSendFileMessage = async (selectedFile: File) => {
-    const chat = localChats.find((existing) => existing.id === selectedChatId);
-    if (!chat || isSending) return;
-
-    setIsSending(true);
-    setChatError(null);
-    try {
-      const backendChatId = await ensureBackendChat(chat);
-
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      const uploadResponse = await fetch(apiUrl("/api/uploads"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("studyBuddyToken")}` },
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        if (uploadResponse.status === 413) {
-          throw new Error("File is too large (max 20MB)");
-        }
-        let details = "Failed to upload file";
-        try {
-          const errorPayload = await uploadResponse.json();
-          if (errorPayload?.error) details = errorPayload.error;
-        } catch {
-          // ignore parse errors
-        }
-        throw new Error(details);
-      }
-
-      const uploadedMeta = await uploadResponse.json();
-
-      const messageResponse = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
-          chatId: backendChatId,
-          content: selectedFile.name,
-          type: "FILE",
-          file: uploadedMeta,
-        }),
-      });
-
-      if (!messageResponse.ok) {
-        let details = "Failed to send file message";
-        try {
-          const errorPayload = await messageResponse.json();
-          if (errorPayload?.error) details = errorPayload.error;
-        } catch {
-          // ignore parse errors
-        }
-        throw new Error(details);
-      }
-
-      const apiMessage = await messageResponse.json();
-      const newMsg = mapMessageToUi(chat, apiMessage);
-
-      setLocalChats((prev) =>
-        prev.map((existing) =>
-          existing.id === selectedChatId
-            ? {
-              ...existing,
-              messages: [...existing.messages, newMsg],
-              lastMessage: { sender: "You", text: `[FILE] ${selectedFile.name}`, timestamp: newMsg.timestamp, read: true },
-            }
-            : existing
-        )
-      );
-      setShowAttach(false);
-    } catch (error: any) {
-      setChatError(error?.message || "Failed to upload/send file");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const onChooseFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
-    await uploadAndSendFileMessage(selectedFile);
-    event.target.value = "";
   };
 
   const sendFriendRequest = async () => {
     const chat = localChats.find((existing) => existing.id === selectedChatId);
-    if (!chat || chat.type !== "direct" || isSendingFriendRequest) {
-      return;
-    }
-
-    const target = chat.members.find((member) => member.id !== activeUser.id);
-    if (!target) {
-      setChatError("Could not determine target user for friend request");
-      return;
-    }
+    if (!chat || chat.type !== "direct" || isSendingFriendRequest) return;
+    
+    const target = chat.members.find((member: any) => member.id !== activeUser.id);
+    if (!target) return;
 
     setIsSendingFriendRequest(true);
-    setChatError(null);
-    setFriendRequestNotice(null);
     try {
       const response = await fetch(apiUrl("/api/chats/friend-requests"), {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ targetUserId: target.id }),
+        method: "POST", headers: authHeaders, body: JSON.stringify({ targetUserId: target.id }),
       });
-
-      if (!response.ok) {
-        let details = "Failed to send friend request";
-        try {
-          const errorPayload = await response.json();
-          if (errorPayload?.error) {
-            details = errorPayload.error;
-          }
-        } catch {
-          // ignore parse errors and keep default message
-        }
-        throw new Error(details);
-      }
-
+      if (!response.ok) throw new Error("Failed to send friend request");
       setFriendRequestNotice(`Friend request sent to ${target.name}`);
     } catch (error: any) {
-      setChatError(error?.message || "Failed to send friend request");
+      setChatError("Failed to send friend request");
     } finally {
       setIsSendingFriendRequest(false);
     }
   };
 
-  const formatTime = (ts: string) => {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  const formatChatTime = (ts: string) => {
-    const d = new Date(ts);
-    const now = new Date();
-    if (d.toDateString() === now.toDateString()) return formatTime(ts);
-    return d.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-  };
-
-  const filteredChats = localChats.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const getOnlineStatus = (chat: any): "online" | "offline" | "idle" => {
-    if (chat.type === "direct") {
-      const other = chat.members.find((m) => m.id !== activeUser.id) as any;
-      if (other?.isOnline) return "online";
-      return "offline";
-    }
-    return "online";
-  };
+  const filteredChats = localChats.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const getChatDisplayName = (chat: any) => {
-    if (chat.type !== "direct") {
-      return chat.name;
-    }
-    const other = chat.members.find((member) => member.id !== activeUser.id) as any;
+    if (!chat) return "";
+    if (chat.type !== "direct") return chat.name;
+    const other = chat.members.find((member: any) => member.id !== activeUser?.id);
     return other?.name || chat.name;
-  };
-
-  const getChatInitial = (chat: any) => {
-    const label = getChatDisplayName(chat);
-    return label.charAt(0);
   };
 
   return (
     <div className="flex-1 flex overflow-hidden">
-      {/* Chat List Sidebar */}
+      {/* Sidebar */}
       <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
         <div className="px-4 py-4 border-b border-slate-100">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-slate-800" style={{ fontWeight: 700, fontSize: "1rem" }}>Messages</h2>
-            {(import.meta as any).env?.DEV && (
-              <select
-                value={activeUser.id}
-                onChange={(event) => setDevActorId(event.target.value)}
-                className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600"
-                title="Dev Actor"
-              >
-                {devActors.map((actor: any) => (
-                  <option key={actor.id} value={actor.id}>
-                    {actor.name.split(" ")[0]} ({actor.id})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          <h2 className="text-slate-800 mb-3" style={{ fontWeight: 700, fontSize: "1rem" }}>Messages</h2>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search conversations..."
               className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
             />
           </div>
         </div>
+        
         <div className="flex-1 overflow-y-auto">
           {filteredChats.map((chat) => {
-            const status = getOnlineStatus(chat);
             const isSelected = chat.id === selectedChatId;
             return (
-              <div
-                key={chat.id}
-                onClick={() => setSelectedChatId(chat.id)}
-                className={`px-4 py-3.5 cursor-pointer transition-colors border-b border-slate-50 hover:bg-slate-50 ${isSelected ? "bg-blue-50 border-blue-100" : ""}`}
-              >
+              <div key={chat.id} onClick={() => setSelectedChatId(chat.id)} className={`px-4 py-3.5 cursor-pointer transition-colors border-b border-slate-50 hover:bg-slate-50 ${isSelected ? "bg-blue-50 border-blue-100" : ""}`}>
                 <div className="flex items-start gap-3">
                   <div className="relative shrink-0">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${chat.type === "group" ? "bg-blue-100" : "bg-orange-100"} overflow-hidden`}>
-                      {chat.type === "group" ? (
-                        <Users size={18} className="text-blue-600" />
-                      ) : (
-                        (() => {
-                          const other = chat.members.find((m) => m.id !== activeUser.id) as any;
-                          return other?.avatar ? (
-                            <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-orange-600" style={{ fontWeight: 700 }}>{getChatInitial(chat)}</span>
-                          );
-                        })()
-                      )}
-                    </div>
-                    <div className="absolute -bottom-0.5 -right-0.5">
-                      <OnlineDot status={status} />
+                      {chat.type === "group" ? <Users size={18} className="text-blue-600" /> : <span className="text-orange-600 font-bold">{getChatDisplayName(chat).charAt(0)}</span>}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="text-sm text-slate-800 truncate" style={{ fontWeight: isSelected ? 600 : 500 }}>{getChatDisplayName(chat)}</p>
-                        {(chat as any).isLiveEvent && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 shrink-0">Live Event</span>
-                        )}
-                      </div>
-                      <span className="text-xs text-slate-400 shrink-0">{formatChatTime(chat.lastMessage.timestamp)}</span>
+                      <p className="text-sm text-slate-800 truncate font-medium">{getChatDisplayName(chat)}</p>
+                      <span className="text-xs text-slate-400 shrink-0">New</span>
                     </div>
                     <div className="flex items-center justify-between mt-0.5">
-                      <p className="text-xs text-slate-500 truncate">
-                        {chat.lastMessage.sender === "You" ? "" : `${chat.lastMessage.sender}: `}
-                        {chat.lastMessage.text}
-                      </p>
-                      {chat.unreadCount > 0 && (
-                        <span className="ml-1 min-w-[18px] h-[18px] bg-orange-500 text-white rounded-full flex items-center justify-center shrink-0" style={{ fontSize: "10px", fontWeight: 700 }}>
-                          {chat.unreadCount}
-                        </span>
-                      )}
+                      <p className="text-xs text-slate-500 truncate">{chat.lastMessage?.text || "..."}</p>
                     </div>
                   </div>
                 </div>
@@ -897,263 +479,58 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Chat Area */}
+      {/* Main Chat Area */}
       {selectedChat ? (
         <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
-          {/* Chat Header */}
           <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 shrink-0">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${selectedChat.type === "group" ? "bg-blue-100" : "bg-orange-100"} overflow-hidden`}>
-              {selectedChat.type === "group" ? (
-                <Users size={16} className="text-blue-600" />
-              ) : (
-                (() => {
-                  const other = selectedChat.members.find((m) => m.id !== activeUser.id) as any;
-                  return other?.avatar ? (
-                    <img src={other.avatar} alt={other.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-orange-600" style={{ fontWeight: 700 }}>{getChatInitial(selectedChat)}</span>
-                  );
-                })()
-              )}
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center ${selectedChat.type === "group" ? "bg-blue-100" : "bg-orange-100"}`}>
+              {selectedChat.type === "group" ? <Users size={16} className="text-blue-600" /> : <span className="text-orange-600 font-bold">{getChatDisplayName(selectedChat).charAt(0)}</span>}
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-slate-800" style={{ fontWeight: 600 }}>{getChatDisplayName(selectedChat)}</p>
-                {(selectedChat as any).isLiveEvent && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Live Event</span>
-                )}
-              </div>
+              <p className="text-sm text-slate-800 font-semibold">{getChatDisplayName(selectedChat)}</p>
               <div className="flex items-center gap-1.5">
                 <Circle size={7} className="fill-green-500 text-green-500" />
-                <p className="text-xs text-slate-400">
-                  {selectedChat.type === "group"
-                    ? `${selectedChat.members.length} members`
-                    : "Active now"}
-                </p>
+                <p className="text-xs text-slate-400">{selectedChat.type === "group" ? `${selectedChat.members?.length || 0} members` : "Active now"}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {selectedChat.type === "direct" && (
-                <button
-                  onClick={() => void sendFriendRequest()}
-                  disabled={isSendingFriendRequest}
-                  className="h-8 px-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                >
+            {selectedChat.type === "direct" && (
+                <button onClick={() => void sendFriendRequest()} disabled={isSendingFriendRequest} className="h-8 px-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 text-xs">
                   {isSendingFriendRequest ? "Sending..." : "Send Friend Request"}
                 </button>
-              )}
-              {selectedChat.type === "group" && (
-                <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
-                  <Users size={16} className="text-slate-500" />
-                </button>
-              )}
-              <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
-                <MoreVertical size={16} className="text-slate-500" />
-              </button>
-            </div>
+            )}
           </div>
 
-          {/* Online Members (for groups) */}
-          {selectedChat.type === "group" && (
-            <div className="bg-white border-b border-slate-100 px-5 py-2 flex items-center gap-3">
-              <p className="text-xs text-slate-400">Members:</p>
-              <div className="flex items-center gap-2">
-                {selectedChat.members.map((m) => {
-                  const member = m as any;
-                  return (
-                    <div key={m.id} className="flex items-center gap-1">
-                      <div className="relative">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-blue-100">
-                          {member.avatar ? (
-                            <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "9px", fontWeight: 700 }}>
-                              {member.name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${member.isOnline !== false ? "bg-green-500" : "bg-slate-300"}`}></div>
-                      </div>
-                      <span className="text-xs text-slate-500">{member.name.split(" ")[0]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            {hasMoreMessages && (
-              <div className="flex justify-center">
-                <button
-                  disabled={isLoadingMessages || !nextCursor}
-                  onClick={() => nextCursor && selectedChat && void loadMessages(selectedChat, nextCursor, true)}
-                  className="text-xs px-3 py-1.5 rounded-md bg-slate-200 hover:bg-slate-300 disabled:opacity-50"
-                >
-                  {isLoadingMessages ? "Loading..." : "Load older messages"}
-                </button>
-              </div>
-            )}
-            {selectedChat.messages.map((msg, idx) => {
-              const isMe = msg.senderId === activeUser.id;
-              const prevMsg = selectedChat.messages[idx - 1];
-              const showSender = !isMe && (!prevMsg || prevMsg.senderId !== msg.senderId);
+            {selectedChat.messages.map((msg: any) => {
+              const isMe = msg.senderId === activeUser?.id;
               return (
                 <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} gap-2`}>
-                  {!isMe && (
-                    <div className={`w-7 h-7 rounded-full bg-blue-100 overflow-hidden shrink-0 self-end ${!showSender ? "opacity-0" : ""}`}>
-                      {msg.senderAvatar ? (
-                        <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "10px", fontWeight: 700 }}>
-                          {msg.senderName.charAt(0)}
-                        </div>
-                      )}
+                  <div className={`max-w-xs lg:max-w-sm flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    {!isMe && <p className="text-xs text-slate-400 mb-1 ml-1">{msg.senderName}</p>}
+                    <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? "bg-blue-700 text-white rounded-br-sm" : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"}`}>
+                      {msg.text}
                     </div>
-                  )}
-                  <div className={`max-w-xs lg:max-w-sm ${isMe ? "items-end" : "items-start"} flex flex-col`}>
-                    {showSender && <p className="text-xs text-slate-400 mb-1 ml-1">{msg.senderName}</p>}
-                    <div
-                      className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMe
-                          ? "bg-blue-700 text-white rounded-br-sm"
-                          : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"
-                        } ${msg.type === "file" ? "flex items-center gap-2" : ""}`}
-                    >
-                      {msg.type === "file" ? (
-                        <>
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isMe ? "bg-blue-600" : "bg-orange-50"}`}>
-                            <File size={16} className={isMe ? "text-blue-200" : "text-orange-500"} />
-                          </div>
-                          <div>
-                            <a
-                              href={toAttachmentHref((msg as any).attachment?.storagePath, (msg as any).attachment?.name)}
-                              target="_blank"
-                              rel="noreferrer"
-                              download={(msg as any).attachment?.name || msg.text}
-                              className={`text-xs underline ${isMe ? "text-white" : "text-blue-700"}`}
-                              style={{ fontWeight: 600 }}
-                            >
-                              {(msg as any).attachment?.name || msg.text}
-                            </a>
-                            <p className={`text-xs ${isMe ? "text-blue-200" : "text-slate-400"}`}>
-                              {(msg as any).attachment?.sizeBytes ? `${Math.ceil((msg as any).attachment.sizeBytes / 1024)} KB` : "Attachment"}
-                            </p>
-                          </div>
-                        </>
-                      ) : msg.type === "link" ? (
-                        <a
-                          href={msg.text}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={isMe ? "underline text-white" : "underline text-blue-700"}
-                        >
-                          {msg.text}
-                        </a>
-                      ) : (
-                        msg.text
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1 mx-1">{formatTime(msg.timestamp)}</p>
                   </div>
                 </div>
               );
             })}
-
-            {/* Typing Indicator (mock - shows occasionally) */}
-            {(typingUserIds.length > 0 || isTyping) && (
-              <div>
-                <TypingIndicator />
-                <p className="text-xs text-slate-400 px-4">
-                  {typingUserIds.length > 0
-                    ? formatTypingLabel(typingUserIds.map((userId) => toMemberProfile(userId).name.split(" ")[0]))
-                    : "You are typing..."}
-                </p>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Attachment Options */}
-          {showAttach && (
-            <div className="bg-white border-t border-slate-200 px-4 py-3 flex gap-3">
-              <button
-                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-orange-50"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <File size={18} className="text-orange-500" />
-                <span className="text-xs text-slate-500">File</span>
-              </button>
-              <button
-                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-green-50"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <ImageIcon size={18} className="text-green-500" />
-                <span className="text-xs text-slate-500">Image</span>
-              </button>
-              <button
-                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl hover:opacity-80 transition-opacity bg-blue-50"
-                onClick={() => void sendLinkMessage()}
-              >
-                <LinkIcon size={18} className="text-blue-500" />
-                <span className="text-xs text-slate-500">Send Link</span>
-              </button>
-              <button onClick={() => setShowAttach(false)} className="ml-auto">
-                <X size={16} className="text-slate-400" />
-              </button>
-            </div>
-          )}
-
-          {/* Message Input */}
           <div className="bg-white border-t border-slate-200 px-4 py-3 shrink-0">
-            {friendRequestNotice && (
-              <div className="mb-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-                {friendRequestNotice}
-              </div>
-            )}
-            {chatError && (
-              <div className="mb-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-                {chatError}
-              </div>
-            )}
+            {friendRequestNotice && <div className="mb-2 text-xs text-green-700 bg-green-50 p-2 rounded">{friendRequestNotice}</div>}
+            {chatError && <div className="mb-2 text-xs text-red-600 bg-red-50 p-2 rounded">{chatError}</div>}
+            
             <div className="flex items-center gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={(event) => void onChooseFile(event)}
-              />
-              <button
-                onClick={() => setShowAttach(!showAttach)}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${showAttach ? "bg-blue-100 text-blue-600" : "bg-slate-100 hover:bg-slate-200 text-slate-500"}`}
-              >
-                <Paperclip size={16} />
-              </button>
-              <input
-                value={messageInput}
-                onChange={(e) => handleTyping(e.target.value)}
-                onBlur={() => void stopTypingAndNotify()}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendMessage()}
-                placeholder={`Message ${getChatDisplayName(selectedChat)}...`}
-                className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!messageInput.trim() || isSending}
-                className="w-9 h-9 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-              >
-                <Send size={15} className="text-white" />
+              <input value={messageInput} onChange={(e) => handleTyping(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void sendMessage()} placeholder="Message..." className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none" />
+              <button onClick={sendMessage} disabled={!messageInput.trim() || isSending} className="w-9 h-9 rounded-xl bg-blue-700 text-white flex justify-center items-center">
+                <Send size={15} />
               </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-slate-50">
-          <div className="text-center">
-            <Users size={40} className="text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">Select a conversation</p>
-          </div>
-        </div>
+        <div className="flex-1 flex items-center justify-center bg-slate-50 text-slate-400 text-sm">Select a conversation</div>
       )}
     </div>
   );

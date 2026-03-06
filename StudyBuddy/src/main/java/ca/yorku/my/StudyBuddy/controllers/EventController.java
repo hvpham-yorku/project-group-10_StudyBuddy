@@ -115,7 +115,7 @@ public class EventController {
     		
     		Student hostStudent = studentService.getStudent(event.getHost());
             
-            // 2. Create the HostDTO
+            // Create the HostDTO
             HostDTO hostDTO = new HostDTO(
                 hostStudent.getUserId(),
                 hostStudent.getFullName(),
@@ -133,10 +133,11 @@ public class EventController {
                 	event.getDuration(),
                 	event.getDescription(),
                 	event.getMaxParticipants(),
-                	event.getAttendees(),
-                	event.getTags(),
-                	event.getStatus(),
-                	event.getReviews()
+                	// NULL-SAFETY CHECKS: Never send null arrays to the frontend!
+                	event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
+                	event.getTags() != null ? event.getTags() : new ArrayList<>(),
+                	event.getStatus() != null ? event.getStatus() : "upcoming",
+                	event.getReviews() != null ? event.getReviews() : new ArrayList<>()
                 );
     		
     		return ResponseEntity.ok(dto);
@@ -145,8 +146,6 @@ public class EventController {
     	}
     }
 
-    // This mapping endpoint allows clients to retrieve a list of all events by sending a GET request. It returns the list of events if successful, or an error status if there was an issue.
-
     @GetMapping
     public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
         try {
@@ -154,24 +153,27 @@ public class EventController {
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
             for (Event event : events) {
-                // 1. Fetch the host student details
+                // Fetch the host student details
                 Student hostStudent = studentService.getStudent(event.getHost());
                 
-                // 2. Create the HostDTO
+                // Create the HostDTO
                 HostDTO hostDTO = new HostDTO(
                     hostStudent.getUserId(),
                     hostStudent.getFullName(),
                     hostStudent.getAvatar()
                 );
 
-                // 3. Create the EventResponseDTO with the new hostDTO
+                // Create the EventResponseDTO with null-safety
                 EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(), event.getTitle(), event.getCourse(),
                 	hostDTO,
                 	event.getLocation(), event.getDate(), event.getTime(),
                 	event.getDuration(), event.getDescription(),
-                	event.getMaxParticipants(), event.getAttendees(),
-                	event.getTags(), event.getStatus(), event.getReviews()
+                	event.getMaxParticipants(), 
+                    event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
+                	event.getTags() != null ? event.getTags() : new ArrayList<>(), 
+                    event.getStatus() != null ? event.getStatus() : "upcoming", 
+                    event.getReviews() != null ? event.getReviews() : new ArrayList<>()
                 );
                 eventDTOs.add(dto);
             }

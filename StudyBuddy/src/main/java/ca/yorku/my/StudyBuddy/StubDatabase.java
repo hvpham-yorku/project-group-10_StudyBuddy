@@ -47,6 +47,10 @@ public class StubDatabase {
         e1.setAttendees(new ArrayList<>(Arrays.asList("u2", "u1")));
         e1.setMaxParticipants(5);
         e1.setDescription("Studying factory and singleton patterns.");
+        // Add these three lines:
+        e1.setTags(new ArrayList<>(Arrays.asList("Group Discussion", "Whiteboard Work")));
+        e1.setStatus("upcoming");
+        e1.setReviews(new ArrayList<>());
 
         Event e2 = new Event();
         e2.setId("e2");
@@ -59,6 +63,10 @@ public class StubDatabase {
         e2.setAttendees(new ArrayList<>(Arrays.asList("u3")));
         e2.setMaxParticipants(4);
         e2.setDescription("Going over past midterms.");
+        // Add these three lines:
+        e2.setTags(new ArrayList<>(Arrays.asList("Problem Solving", "Quiet Focus")));
+        e2.setStatus("upcoming");
+        e2.setReviews(new ArrayList<>());
 
         EVENTS.addAll(Arrays.asList(e1, e2));
     }
