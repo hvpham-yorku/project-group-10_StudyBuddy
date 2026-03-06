@@ -144,11 +144,16 @@ export default function Layout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
+        {/* Top Bar */}
         <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            {/* Added dynamic color for the dot as well! */}
+            <div className={`w-2 h-2 rounded-full ${student.isOnline ? "bg-green-500" : "bg-slate-300"}`}></div>
             <span className="text-sm text-slate-500">
-              {student.isOnline ? `Online · ${student.location}` : "Offline"}
+              {/* Only render the location if it actually exists */}
+              {student.isOnline 
+                ? `Online${student.location ? ` · ${student.location}` : ""}` 
+                : "Offline"}
             </span>
           </div>
         </header>
