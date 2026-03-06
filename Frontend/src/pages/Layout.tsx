@@ -14,6 +14,7 @@ const navItems = [
   { to: "/map", icon: MapPin, label: "Campus Map" },
   { to: "/chat", icon: MessageSquare, label: "Chat" },
   { to: "/network", icon: Users, label: "My Network" },
+  { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export default function Layout() {
@@ -104,11 +105,7 @@ export default function Layout() {
                 <>
                   <Icon size={20} className={isActive ? "text-white" : "text-blue-300 group-hover:text-white"} />
                   {!collapsed && <span className="text-sm truncate">{label}</span>}
-                  {!collapsed && label === "Chat" && unreadCount > 0 && (
-                    <span className="ml-auto bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
+                 
                 </>
               )}
             </NavLink>
