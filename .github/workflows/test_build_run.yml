@@ -52,3 +52,5 @@ jobs:
         tags: |
           tenaciousvirtue/studybuddy:latest
           tenaciousvirtue/studybuddy:${{ vars.VERSION }}
+        build-args: |
+          VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
