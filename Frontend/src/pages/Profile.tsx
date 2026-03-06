@@ -256,19 +256,18 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
           {/* Avatar */}
           <div className="relative w-24 h-24">
-            <img
-              src={avatar || "/default-avatar.png"}
+            <div 
               onClick={handleAvatarClick}
-              className="w-24 h-24 rounded-full object-cover cursor-pointer hover:opacity-80 transition"
-            />
-
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleAvatarChange}
-              className="hidden"
-            />
+              className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 cursor-pointer hover:opacity-80 transition flex items-center justify-center border-4 border-white shadow-sm"
+            >
+              {avatar ? (
+                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "2rem" }}>
+                  {(student?.fullName || student?.userId || "?").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

@@ -110,9 +110,15 @@ export default function Layout() {
 
         {/* User & Logout */}
         <div className={`border-t border-blue-800 px-3 py-3 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-          <div className="w-8 h-8 rounded-full bg-blue-600 shrink-0 overflow-hidden">
-            <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
-          </div>
+          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-blue-600 bg-blue-100 flex items-center justify-center shrink-0">
+              {student.avatar ? (
+                <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "14px" }}>
+                  {(student.fullName || student.userId || "?").charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs text-white truncate" style={{ fontWeight: 600 }}>{student.fullName}</p>
