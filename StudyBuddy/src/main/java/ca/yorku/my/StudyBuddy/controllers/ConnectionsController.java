@@ -1,6 +1,8 @@
 package ca.yorku.my.StudyBuddy.controllers;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import ca.yorku.my.StudyBuddy.services.ConnectionsRepository;
@@ -32,8 +34,26 @@ public class ConnectionsController {
     
     @PostMapping("/request")
     public ResponseEntity<String> sendRequest(@RequestBody Map<String, String> payload) throws Exception {
-        connectionsService.sendRequest(payload.get("myUserId"), payload.get("targetUserId"));
+        String myUserId = payload.get("myUserId");
+        String targetUserId = payload.get("targetUserId");
+        // Validate userId
+        if (!userExists(myUserId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid userId");
+        }
+        connectionsService.sendRequest(myUserId, targetUserId);
         return ResponseEntity.ok("Request sent");
+    }
+
+    // Helper method to check user existence
+    private boolean userExists(String userId) {
+        try {
+            // Firestore lookup
+            com.google.cloud.firestore.DocumentSnapshot doc = com.google.firebase.cloud.FirestoreClient.getFirestore()
+                .collection("students").document(userId).get().get();
+            return doc.exists();
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     @GetMapping("/pending")

@@ -32,15 +32,19 @@ public class AuthController {
     public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         try {
             String firebaseUid = authService.registerUser(
-            		body.get("email"), 
-            		body.get("password"),
-            		body.get("firstName"),
-            		body.get("lastName"),
-            		body.get("major"),
-            		body.get("year"));
+                body.get("email"), 
+                body.get("password"),
+                body.get("firstName"),
+                body.get("lastName"),
+                body.get("major"),
+                body.get("year"));
             return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("EMAIL_EXISTS")) {
+                return ResponseEntity.status(409).body("Registration Failed: " + msg);
+            }
+            return ResponseEntity.badRequest().body("Registration Failed: " + msg);
         }
     }
 

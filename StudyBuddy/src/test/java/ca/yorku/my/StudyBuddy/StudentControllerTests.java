@@ -21,6 +21,8 @@ class StudentControllerTests {
 
     @InjectMocks
     private StudentController studentController;
+        @Mock
+        private ca.yorku.my.StudyBuddy.services.AuthRepository authService;
 
     @BeforeEach
     void setup() {
@@ -60,8 +62,8 @@ class StudentControllerTests {
 
     @Test
     void updateAvatar_callsRepository() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn("123");
         studentController.updateAvatar("123", Map.of("avatar", "url"));
-
         verify(studentRepository).updateAvatar("123", "url");
     }
 
@@ -99,8 +101,8 @@ class StudentControllerTests {
 
     @Test
     void updateAvatar_ignoresMissingAvatarKey() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn("123");
         studentController.updateAvatar("123", Map.of("wrongKey", "value"));
-
         verify(studentRepository).updateAvatar("123", null);
     }
 
