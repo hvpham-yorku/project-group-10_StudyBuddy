@@ -1,4 +1,5 @@
 package ca.yorku.my.StudyBuddy.services;
+import ca.yorku.my.StudyBuddy.services.EventRepository;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentReference;
@@ -12,6 +13,7 @@ import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
 
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -28,8 +30,9 @@ import java.util.concurrent.ExecutionException;
  */
 
 @Service
+@Profile("firestore")
 @DependsOn("firebaseConfig")
-public class EventService {
+public class EventService implements EventRepository  {
 
     private static final String COLLECTION_NAME = "events";
 
@@ -40,7 +43,8 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    public Event createEvent(Event event) throws ExecutionException, InterruptedException {
+    @Override
+    public Event createEvent(Event event) throws Exception{
         Firestore db = FirestoreClient.getFirestore();
 
         // Adding event to Firestore (auto-generates document ID)
@@ -62,6 +66,7 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
+    @Override
     public List<Event> getAllEvents() throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -85,6 +90,7 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
+    @Override
     public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
     	Firestore db = FirestoreClient.getFirestore();
     	
@@ -107,6 +113,7 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
+    @Override
     public boolean deleteEvent(String eventId, String userId) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
@@ -137,6 +144,7 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
+    @Override
     public boolean joinEvent(String currentUserId, String eventId) throws Exception, ExecutionException, InterruptedException {
         StudentService ss = new StudentService();
         Student s;
@@ -175,6 +183,7 @@ public class EventService {
      * @throws ExecutionException
      * @throws InterruptedException
      */
+    @Override
     public boolean leaveEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
     	try {
 			StudentService ss = new StudentService();
@@ -229,6 +238,7 @@ public class EventService {
      * @return
      * @throws Exception
      */
+    @Override
     public boolean addAttendee(String eventId, String studentId) throws Exception {
         StudentService ss = new StudentService();
         try {
@@ -262,6 +272,7 @@ public class EventService {
      * @return
      * @throws Exception
      */
+    @Override
     public boolean removeAttendee(String eventId, String studentId) throws Exception {
     	
     	StudentService ss = new StudentService();

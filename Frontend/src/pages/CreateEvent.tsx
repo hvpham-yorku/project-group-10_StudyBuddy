@@ -9,7 +9,7 @@ import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, BookOpen,
   FileText, Tag, ChevronDown, Check
 } from "lucide-react";
-import { campusLocations, courseOptions, studyVibeOptions } from "../data/mockData";
+import { YORK_BUILDINGS, courseOptions, studyVibeOptions } from "../data/mockData";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -258,7 +258,12 @@ export default function CreateEvent() {
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 appearance-none pr-8"
                 >
                   <option value="">Select a location on campus...</option>
-                  {campusLocations.map((l) => <option key={l} value={l}>{l}</option>)}
+                  {YORK_BUILDINGS.map((building) => (
+                    <option key={building.acronym} value={building.name}>
+                      {building.acronym} - {building.name}
+                    </option>
+                  ))}
+                  <option value="Online (Zoom)">🌐 Online (Zoom)</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>

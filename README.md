@@ -2,96 +2,111 @@
 
 A collaborative study platform that connects students to organize and participate in group study sessions. StudyBuddy allows users to create study events, view nearby sessions on an interactive grid, and manage their study calendar—all in one place.
 
-## Quick Start
+---
 
-Choose your preferred deployment method below:
+## StudyBuddy Setup & Installation Guide
+
+### Prerequisites
+
+- Docker *(Recommended for deployment)*
+- Java 21 (JDK)
+- Node.js (v22+)
+- Maven
+- Git
+- PostgreSQL *(for stub database option)*
 
 ---
 
-## Option 1: Docker Deployment (Recommended)
+## 1. Clone the Repository
 
-### Prerequisites
-- **Docker** ([Install Docker](https://www.docker.com/products/docker-desktop))
-- **Git**
-
-### Steps
-
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/hvpham-yorku/project-group-10_StudyBuddy.git
-   cd project-group-10_StudyBuddy
-   ```
-
-2. **Configure Firebase Firestore (Required)**
-   - Get your Firebase service account key (Firestore credentials) from [Firebase Console](https://console.firebase.google.com)
-   - Create a Firebase project and Firestore database if you haven't already
-   - Export the full JSON as environment variable `FIREBASE_CREDENTIALS` before running Docker
-   - Optional fallback (local only): place the JSON file as `StudyBuddy/src/main/resources/serviceAccountKey.json`
-
-3. **Build and Run**
-   ```bash
-   docker build -t studybuddy .
-   docker run -p 8080:8080 studybuddy
-   ```
-
-4. **Access the Application**
-   - Open your browser and go to: **[http://localhost:8080](http://localhost:8080)**
-
----
-
-## Option 2: Manual Setup (Windows & Mac)
-
-### Prerequisites
-- **Java 21** ([Download JDK 21](https://adoptium.net/))
-- **Node.js** (v22 or higher) ([Download Node.js](https://nodejs.org/))
-- **Maven** (included with Spring Boot, or [download Maven](https://maven.apache.org/download.cgi))
-- **Git**
-
-### Setup Instructions
-
-#### Step 1: Clone the Repository
 ```bash
 git clone https://github.com/hvpham-yorku/project-group-10_StudyBuddy.git
 cd project-group-10_StudyBuddy
 ```
 
-#### Step 2: Configure Firebase Firestore (Required)
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create a new Firebase project (if you don't have one)
-3. Create a Firestore database in your project
-4. Navigate to **Project Settings** → **Service Accounts**
-5. Click **"Generate New Private Key"** to download the service account JSON file
-6. Set environment variable `FIREBASE_CREDENTIALS` to the full JSON content before starting backend
+---
 
-Linux/Mac example:
+## 2. Backend Configuration
+
+### Firebase Firestore (Default)
+
+1. Obtain your Firebase service account key from [Firebase Console](https://console.firebase.google.com/).
+2. Place the file as: `serviceAccountKey.json`
+3. **Do not commit this file**; it is confidential and already in `.gitignore`.
+
+### Stub Database (PostgreSQL)
+
+**Install PostgreSQL:**
+
 ```bash
-export FIREBASE_CREDENTIALS="$(cat path/to/serviceAccountKey.json)"
+sudo apt update
+sudo apt install postgresql postgresql-contrib
 ```
 
-Windows PowerShell example:
-```powershell
-$env:FIREBASE_CREDENTIALS = Get-Content -Raw "path/to/serviceAccountKey.json"
+**Start PostgreSQL and create a database:**
+
+```sql
+sudo service postgresql start
+sudo -u postgres psql
+
+CREATE DATABASE studybuddy_stub;
+CREATE USER studybuddy_user WITH PASSWORD 'studybuddy_pass';
+GRANT ALL PRIVILEGES ON DATABASE studybuddy_stub TO studybuddy_user;
+\q
 ```
 
-Optional local fallback: save the file to `StudyBuddy/src/main/resources/serviceAccountKey.json`.
+**Update `application.properties`:**
 
-#### Step 3: Start the Backend (Terminal 1)
+```properties
+spring.profiles.active=stub
+spring.datasource.url=jdbc:postgresql://localhost:5432/studybuddy_stub
+spring.datasource.username=studybuddy_user
+spring.datasource.password=studybuddy_pass
+```
 
-**Windows:**
+> Place `application.properties` in `resources` — **do not commit; confidential.**
+
+**Populate the stub database** *(run this script after DB setup)*:
+
+```sql
+-- populate_stub_db.sql
+INSERT INTO users (email, name) VALUES
+  ('alex@my.yorku.ca', 'Alex'),
+  ('sarah@my.yorku.ca', 'Sarah'),
+  ('marcus@my.yorku.ca', 'Marcus');
+-- Add more sample data as needed
+```
+
+**To run:**
+
 ```bash
-cd StudyBuddy
-mvnw.cmd spring-boot:run
+psql -U studybuddy_user -d studybuddy_stub -f populate_stub_db.sql
 ```
 
-**Mac/Linux:**
+---
+
+## 3. Build & Run
+
+### Option 1: Docker *(Recommended)*
+
 ```bash
-cd StudyBuddy
-./mvnw spring-boot:run
+docker build -t studybuddy .
+docker run -p 8080:8080 studybuddy
 ```
 
-The backend will start at [http://localhost:8080](http://localhost:8080)
+### Option 2: Manual Setup
 
-#### Step 4: Start the Frontend (Terminal 2)
+**Backend:**
+
+```bash
+# Windows
+cd StudyBuddy && mvnw.cmd spring-boot:run
+
+# Mac/Linux
+cd StudyBuddy && ./mvnw spring-boot:run
+```
+
+**Frontend:**
 
 ```bash
 cd Frontend
@@ -99,88 +114,58 @@ npm install
 npm run server
 ```
 
-The frontend will start at [http://localhost:5173](http://localhost:5173)
+---
+
+## 4. Access the Application
+
+| Service  | URL                       |
+|----------|---------------------------|
+| Backend  | http://localhost:8080     |
+| Frontend | http://localhost:5173     |
 
 ---
 
-## Project Structure
+## 5. Confidential Files
 
-```
-project-group-10_StudyBuddy/
-├── StudyBuddy/              # Backend (Spring Boot)
-│   ├── src/main/java/       # Java source code
-│   ├── src/main/resources/  # Configuration & Firebase key
-│   ├── pom.xml              # Maven dependencies
-│   └── mvnw / mvnw.cmd      # Maven wrapper (Windows/Mac/Linux)
-│
-├── Frontend/                # Frontend (React + Vite)
-│   ├── src/                 # React components & pages
-│   ├── package.json         # Node dependencies
-│   └── vite.config.js       # Vite configuration
-│
-├── Dockerfile               # Docker configuration
-└── README.md                # This file
-```
+> ⚠️ **Do not commit** `serviceAccountKey.json` or `application.properties` — both are already in `.gitignore`.
+>
+> **TAs:** Request these files from the project maintainers if needed.
 
 ---
 
-## Technology Stack
+## 6. Switching Between Firestore and Stub DB
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19, Vite, React Router |
-| **Backend** | Spring Boot 3.4, Java 21, Maven |
-| **Database** | Firebase Firestore |
-| **Authentication** | Firebase Auth |
-| **Deployment** | Docker |
+Edit `spring.profiles.active` in `application.properties`:
 
----
-
-## API Endpoints
-
-The backend provides the following REST endpoints:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/events` | Create a new study event |
-| `GET` | `/api/events` | Get all events |
-| `DELETE` | `/api/events/{eventId}?userId={userId}` | Delete event (host only) |
-
-For detailed API documentation, see [StudyBuddy/BACKEND_SETUP.md](StudyBuddy/BACKEND_SETUP.md)
+| Value     | Database             |
+|-----------|----------------------|
+| `firebase` | Firebase Firestore  |
+| `stub`     | PostgreSQL Stub DB  |
 
 ---
 
-## Important Notes
+## 7. Stub DB Test Accounts
 
-### Firebase Firestore Configuration
-**Firebase Firestore is required** to run this application. Primary credential source is the `FIREBASE_CREDENTIALS` environment variable.
+Login with any of the following accounts using **any password**:
 
-**Setup:**
-- Create a Firebase project with Firestore database at [Firebase Console](https://console.firebase.google.com)
-- Download the service account key from **Project Settings** → **Service Accounts** → **Generate New Private Key**
-- Set `FIREBASE_CREDENTIALS` to the JSON contents before running backend
-- Optional fallback: place key file in `StudyBuddy/src/main/resources/serviceAccountKey.json`
-- Do not commit credential files to version control (already in `.gitignore`)
-
-### Email Service
-The app uses Gmail SMTP for email notifications. Email credentials are configured in `StudyBuddy/src/main/resources/application.properties`
-
-### Ports
-- **Backend**: Port 8080
-- **Frontend**: Port 5173 (development) or served by backend (production)
+- `alex@my.yorku.ca`
+- `sarah@my.yorku.ca`
+- `marcus@my.yorku.ca`
 
 ---
 
-## Running Tests
+## 8. Running Tests
 
-### Backend Tests
+**Backend:**
+
 ```bash
 cd StudyBuddy
-./mvnw test              # Linux/Mac
-mvnw.cmd test            # Windows
+./mvnw test        # Linux/Mac
+mvnw.cmd test      # Windows
 ```
 
-### Frontend Tests
+**Frontend** *(new terminal)*:
+
 ```bash
 cd Frontend
 npm run test
@@ -188,60 +173,22 @@ npm run test
 
 ---
 
-## Troubleshooting
+## 9. Troubleshooting
 
-### Port 8080 Already in Use
-```bash
-# Find and kill the process using port 8080
-# Mac/Linux:
-lsof -ti:8080 | xargs kill -9
-
-# Windows:
-netstat -ano | findstr :8080
-taskkill /PID <PID> /F
-```
-
-### Firebase Key Error
-- Ensure `FIREBASE_CREDENTIALS` is exported in the same terminal/session that starts backend
-- If using fallback file, ensure `serviceAccountKey.json` exists in `StudyBuddy/src/main/resources/`
-- Verify the JSON is valid and from the correct Firebase project
-
-### Node Modules Issues
-```bash
-cd Frontend
-rm -rf node_modules package-lock.json
-npm install
-```
+See the original README for help with port conflicts, Firebase errors, and node module issues.
 
 ---
 
-## Documentation
+## 10. Documentation
 
-- [Frontend Tasks](VAUGHN_FRONTEND_TASKS.md)
-- [Backend Setup Guide](StudyBuddy/BACKEND_SETUP.md)
-- [Event Schema](StudyBuddy/EVENT_SCHEMA.md)
-- [Sample Test Data](SAMPLE_TEST_DATA.md)
+See the `Documents` folder for guides, sample data, and schema.
 
 ---
 
-## Contributing
+## 11. Support
 
-1. Clone the repository
-2. Create a feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes (`git commit -m 'Add YourFeature'`)
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Open a Pull Request
+For confidential files or setup help, contact the project maintainers.
 
 ---
 
-## License
-
-This project is part of York University's EECS 2311 Software Development Project.
-
----
-
-## Support
-
-For issues or questions, please refer to the documentation in the `Documents/` folder or contact the project maintainers.
-
-**Happy studying :)**
+*Happy studying! 🎓*

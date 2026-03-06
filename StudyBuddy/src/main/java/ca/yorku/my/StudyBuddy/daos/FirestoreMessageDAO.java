@@ -6,6 +6,7 @@ import com.google.firebase.cloud.FirestoreClient;
 import ca.yorku.my.StudyBuddy.Message;
 import ca.yorku.my.StudyBuddy.ValidationException;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * This class is a firestore-backed persistence for chat messages.
  */
+@Profile("firestore")
 public class FirestoreMessageDAO implements MessageDAO {
 
     private static final String CHATS_COLLECTION = "chat2";

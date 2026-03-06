@@ -8,6 +8,7 @@ import com.google.firebase.cloud.FirestoreClient;
 
 import ca.yorku.my.StudyBuddy.daos.FriendRequestDAO;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * This is a class containing Firestore-backed storage for friend request records.
  */
+@Profile("firestore")
 public class FirestoreFriendRequestDAO implements FriendRequestDAO {
 
     private static final String COLLECTION = "friendRequests";

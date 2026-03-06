@@ -37,9 +37,11 @@ export default function EventDetails() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
   useEffect(() => {
-    const fetchEvent = async () => {
+    const fetchEventAndStudents = async () => {
       try {
         const token = localStorage.getItem("studyBuddyToken");
+        
+        // 1. Fetch Student Profile
         if (token) {
           const userRes = await fetch("/api/studentcontroller/profile", {
             headers: { "Authorization": "Bearer " + token }
@@ -50,6 +52,18 @@ export default function EventDetails() {
           }
         }
 
+        // 2. Fetch Global Student Directory (so we can map names!)
+        let allStudents: any[] = [];
+        try {
+          const stuRes = await fetch("/api/studentcontroller/getstudents");
+          if (stuRes.ok) {
+            allStudents = await stuRes.json();
+          }
+        } catch (e) {
+          console.warn("Could not load student directory");
+        }
+
+        // 3. Fetch Event Details
         const response = await fetch(`/api/events/${id}`);
         
         if (!response.ok) {
@@ -59,23 +73,32 @@ export default function EventDetails() {
         
         const data = await response.json();
 
-        // Apply the same temporary host in Events.txt
+        // 4. Map the data safely!
         const formattedEvent = {
           ...data,
+          // Format the Host
           host: typeof data.host === 'string'
             ? { id: "unknown_id", name: data.host, avatar: null }
             : data.host,
-          attendees: data.attendees 
-          ? data.attendees.map((att: any) => 
-              typeof att === 'string' 
-                ? { id: att, name: "Student", avatar: null } // Fallback object
-                : att
-            )
-          : []
+            
+          // Map Attendee IDs -> Real Student Objects
+          attendees: (data.attendees || []).map((attendeeId: any) => {
+            // If it's already an object for some reason, leave it
+            if (typeof attendeeId !== 'string') return attendeeId;
+            
+            // Otherwise, look up their real name in the directory
+            const matchedStudent = allStudents.find((s: any) => s.userId === attendeeId);
+            
+            return { 
+              id: attendeeId, 
+              name: matchedStudent ? (matchedStudent.fullName || "Unnamed Student") : attendeeId, 
+              avatar: matchedStudent ? matchedStudent.avatar : null 
+            };
+          })
         };
 
         setEvent(formattedEvent);
-        setLocalReviews(formattedEvent.reviews || []); // Populate reviews after fetching
+        setLocalReviews(formattedEvent.reviews || []); 
 
       } catch (err: any) {
         console.error("Failed to fetch event:", err);
@@ -84,10 +107,11 @@ export default function EventDetails() {
         setIsLoading(false);
       };
     };
-      if (id) {
-        fetchEvent();
+    
+    if (id) {
+      fetchEventAndStudents();
     }
-    }, [id]);
+  }, [id]);
 
   if (isLoading) return <div className="p-10 text-center text-slate-500 mt-10">Loading session details...</div>;
   if (error) return <div className="p-10 text-center text-red-500 mt-10">{error}</div>;
@@ -184,7 +208,10 @@ export default function EventDetails() {
             {/* Host */}
             <div className="shrink-0 text-right">
               <p className="text-xs text-slate-400 mb-1">Hosted by</p>
-              <div className="flex flex-col items-end gap-1">
+              <div 
+                className="flex flex-col items-end gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); navigate(`/profile/${event.host.id}`); }}
+              >
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-100">
                   {event.host.avatar ? (
                     <img src={event.host.avatar} alt={event.host.name} className="w-full h-full object-cover" />
@@ -274,21 +301,23 @@ export default function EventDetails() {
           Attendees ({event.attendees.length}/{event.maxParticipants})
         </h2>
         <div className="flex flex-wrap gap-3">
-          {event.attendees.map((a) => (
-            <div key={a.id} className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2">
+          {event.attendees.map((a: any) => (
+            <div 
+              key={a.id} 
+              className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
+              onClick={() => navigate(`/profile/${a.id}`)}
+            >
               <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
                 {a.avatar ? (
                   <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
-                    {a.name.charAt(0)}
+                    {a.name.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
-              <button className="ml-1 text-slate-400 hover:text-blue-500 transition-colors">
-                <UserPlus size={13} />
-              </button>
+              {/* Removed the UserPlus button! */}
             </div>
           ))}
           {event.attendees.length === 0 && (

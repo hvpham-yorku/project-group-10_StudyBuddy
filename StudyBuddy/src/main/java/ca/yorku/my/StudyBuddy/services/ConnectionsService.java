@@ -2,13 +2,16 @@ package ca.yorku.my.StudyBuddy.services;
 
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @Service
-public class ConnectionsService {
+@Profile("firestore")
+public class ConnectionsService implements ConnectionsRepository {
 
     public static class ConnectionDTO {
         public String userId;
@@ -249,5 +252,17 @@ public class ConnectionsService {
             doc.getReference().delete();
         }
     }
+
+	@Override
+	public List<ConnectionDTO> getPendingConnections(String myUserId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<ConnectionDTO> getSentRequests(String myUserId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
     
 }

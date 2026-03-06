@@ -2,13 +2,16 @@ package ca.yorku.my.StudyBuddy.services;
 
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class PresenceService {
+@Profile("firestore")
+public class PresenceService implements PresenceRepository {
 
     public static class PresenceRecord {
         public Long lastActiveAt; // epoch ms

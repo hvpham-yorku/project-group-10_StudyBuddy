@@ -428,7 +428,10 @@ export default function Network() {
               return (
                 <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                    <div 
+                      className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => navigate(`/profile/${r.userId}`)}
+                    >
                       {r.profilePic ? (
                         <img src={r.profilePic} alt={displayName} className="w-full h-full object-cover" />
                       ) : (
@@ -438,7 +441,11 @@ export default function Network() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+                      <p 
+                        className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block" 
+                        style={{ fontWeight: 600 }}
+                        onClick={() => navigate(`/profile/${r.userId}`)}
+                      >
                         {displayName}
                       </p>
                       <p className="text-xs text-slate-500">{r.program ?? ""}</p>
@@ -482,7 +489,10 @@ export default function Network() {
             const displayName = c.fullName ?? c.userId;
             return (
               <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
-                <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0">
+                <div 
+                  className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate(`/profile/${c.userId}`)}
+                >
                   {c.profilePic ? (
                     <img src={c.profilePic} alt={displayName} className="w-full h-full object-cover" />
                   ) : (
@@ -495,10 +505,13 @@ export default function Network() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+                  <p 
+                    className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block" 
+                    style={{ fontWeight: 600 }}
+                    onClick={() => navigate(`/profile/${c.userId}`)}
+                  >
                     {displayName}
                   </p>
-                  <p className="text-xs text-slate-500">{c.program ?? ""}</p>
                 </div>
                 <button
                   onClick={() => handleConnect(c.userId)}
@@ -587,7 +600,10 @@ function ConnectionCard({
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-4">
-        <div className="relative shrink-0">
+        <div 
+          className="relative shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => navigate(`/profile/${connection.userId}`)}
+        >
           <div className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100">
             {connection.profilePic ? (
               <img src={connection.profilePic} alt={displayName} className="w-full h-full object-cover" />
@@ -606,7 +622,11 @@ function ConnectionCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-slate-800 text-sm" style={{ fontWeight: 600 }}>
+            <p 
+              className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors" 
+              style={{ fontWeight: 600 }}
+              onClick={() => navigate(`/profile/${connection.userId}`)}
+            >
               {displayName}
             </p>
           </div>

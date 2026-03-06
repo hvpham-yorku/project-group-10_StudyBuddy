@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ import org.springframework.http.ResponseEntity;
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
+    private AuthRepository authService;
 
     /**
      * Registers a new student account and triggers an email verification flow.
@@ -31,15 +32,19 @@ public class AuthController {
     public ResponseEntity<String> register(@RequestBody Map<String, String> body) {
         try {
             String firebaseUid = authService.registerUser(
-            		body.get("email"), 
-            		body.get("password"),
-            		body.get("firstName"),
-            		body.get("lastName"),
-            		body.get("major"),
-            		body.get("year"));
+                body.get("email"), 
+                body.get("password"),
+                body.get("firstName"),
+                body.get("lastName"),
+                body.get("major"),
+                body.get("year"));
             return ResponseEntity.ok("Verification email sent! UID: " + firebaseUid);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Registration Failed: " + e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("EMAIL_EXISTS")) {
+                return ResponseEntity.status(409).body("Registration Failed: " + msg);
+            }
+            return ResponseEntity.badRequest().body("Registration Failed: " + msg);
         }
     }
 

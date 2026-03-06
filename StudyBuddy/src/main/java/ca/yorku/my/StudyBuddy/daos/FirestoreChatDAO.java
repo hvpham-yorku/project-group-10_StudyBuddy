@@ -8,6 +8,7 @@ import ca.yorku.my.StudyBuddy.Chat;
 import ca.yorku.my.StudyBuddy.ChatType;
 import ca.yorku.my.StudyBuddy.ValidationException;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -19,9 +20,10 @@ import java.util.concurrent.ExecutionException;
 /**
  * This class contains Firestore-backed ChatDAO implementation.
  */
+@Profile("firestore")
 public class FirestoreChatDAO implements ChatDAO {
 
-    private static final String CHATS_COLLECTION = "chat2";
+    private static final String CHATS_COLLECTION = "chats";
 
     @Override
     /**

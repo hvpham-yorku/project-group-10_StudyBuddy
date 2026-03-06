@@ -3,6 +3,7 @@ package ca.yorku.my.StudyBuddy.controllers;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.services.PresenceRepository;
 import ca.yorku.my.StudyBuddy.services.PresenceService;
 
 import java.util.Map;
@@ -12,9 +13,9 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class PresenceController {
 
-    private final PresenceService presenceService;
+    private final PresenceRepository presenceService;
 
-    public PresenceController(PresenceService presenceService) {
+    public PresenceController(PresenceRepository presenceService) {
         this.presenceService = presenceService;
     }
 

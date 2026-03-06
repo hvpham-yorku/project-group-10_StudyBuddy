@@ -18,11 +18,13 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 
 import java.time.LocalDate;
 
 @Service
-public class AuthService {
+@Profile("firestore")
+public class AuthService implements AuthRepository {
 
     @Autowired
     private EmailService emailService;
