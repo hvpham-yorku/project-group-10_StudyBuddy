@@ -493,11 +493,6 @@ export default function Chat() {
                 <p className="text-xs text-slate-400">{selectedChat.type === "group" ? `${selectedChat.members?.length || 0} members` : "Active now"}</p>
               </div>
             </div>
-            {selectedChat.type === "direct" && (
-                <button onClick={() => void sendFriendRequest()} disabled={isSendingFriendRequest} className="h-8 px-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 text-xs">
-                  {isSendingFriendRequest ? "Sending..." : "Send Friend Request"}
-                </button>
-            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
