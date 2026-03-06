@@ -10,7 +10,6 @@ import CreateEvent from "./pages/CreateEvent";
 import Chat from "./pages/Chat";
 import MapView from "./pages/MapView";
 import Network from "./pages/Network";
-import Settings from "./pages/Settings";
 import TwoFA from "./pages/TwoFA";
 import NotFound from "./pages/NotFound";
 import EventDetails from "./pages/EventDetails";
@@ -92,10 +91,6 @@ export const router = createBrowserRouter([
         {
           path: "network",
           element: <Network />,
-        },
-        {
-          path: "settings",
-          element: <Settings />,
         },
       ],
     }],
