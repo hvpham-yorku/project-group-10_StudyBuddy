@@ -14,7 +14,6 @@ const navItems = [
   { to: "/map", icon: MapPin, label: "Campus Map" },
   { to: "/chat", icon: MessageSquare, label: "Chat" },
   { to: "/network", icon: Users, label: "My Network" },
-  { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export default function Layout() {
