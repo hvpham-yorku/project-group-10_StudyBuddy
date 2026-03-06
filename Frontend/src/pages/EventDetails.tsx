@@ -184,7 +184,10 @@ export default function EventDetails() {
             {/* Host */}
             <div className="shrink-0 text-right">
               <p className="text-xs text-slate-400 mb-1">Hosted by</p>
-              <div className="flex flex-col items-end gap-1">
+              <div 
+                className="flex flex-col items-end gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); navigate(`/profile/${event.host.id}`); }}
+              >
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-blue-100">
                   {event.host.avatar ? (
                     <img src={event.host.avatar} alt={event.host.name} className="w-full h-full object-cover" />
