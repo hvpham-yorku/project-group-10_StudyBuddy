@@ -94,6 +94,13 @@ export default function Dashboard() {
   const upcomingEvents = events.filter((e) => e.status === "upcoming").slice(0, 3);
   const userCourses = userProfile.courses || [];
 
+  // Calculate how many events the logged-in user is hosting or attending
+  const myTotalSessions = events.filter((e: any) => 
+    e.host?.id === userProfile.userId || 
+    e.host?.userId === userProfile.userId || 
+    (e.attendees && e.attendees.includes(userProfile.userId))
+  ).length;
+
   const formatDate = (d: string) => {
     if (!d) return "";
     const date = new Date(d);
@@ -142,7 +149,7 @@ export default function Dashboard() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-x">
         <StatCard icon={BookOpen} label="Study Hours" value="Coming Soon..." color="bg-blue-600" />
-        <StatCard icon={CalendarDays} label="Sessions" value="12" color="bg-orange-500" />
+        <StatCard icon={CalendarDays} label="Joined Sessions" value={myTotalSessions} color="bg-orange-500" />
         <StatCard icon={Users} label="Connections" value={totalConnectionsCount} color="bg-blue-700" />
         <StatCard icon={Star} label="Courses" value={userCourses.length} color="bg-orange-600" />
       </div>
