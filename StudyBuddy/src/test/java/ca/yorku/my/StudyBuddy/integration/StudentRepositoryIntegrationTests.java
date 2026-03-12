@@ -1,4 +1,4 @@
-package integration;
+package ca.yorku.my.StudyBuddy.integration;
 
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.SpringBootTest;
