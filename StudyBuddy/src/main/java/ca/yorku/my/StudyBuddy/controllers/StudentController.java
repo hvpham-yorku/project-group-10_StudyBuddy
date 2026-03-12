@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import ca.yorku.my.StudyBuddy.StubDatabase;
@@ -26,7 +25,7 @@ import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
-@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT})
+@CrossOrigin(origins = "*")
 
 // This class allows for the student information to be accessed and modified through API calls
 public class StudentController {
@@ -145,17 +144,59 @@ public class StudentController {
 		studentRepository.updateCourses(studentID, courses);
 	}
 
+	@PostMapping("/{studentID}/study-vibes")
+	public ResponseEntity<?> blockStudyVibesPOST() {
+    	return ResponseEntity.status(405).build();
+	}
+
 	// This method allows for a student's study vibe to be updated in the database through an API call
 	@PutMapping("/{studentID}/study-vibes")
-	public void updateStudyVibes(@PathVariable String studentID, @RequestBody List<String> studyVibes) throws Exception {
-		studentRepository.updateStudyVibes(studentID, studyVibes);
+	public ResponseEntity<?> updateStudyVibes(@PathVariable String studentID, @RequestBody(required = false) List<String> vibes) {
+    	if (vibes == null || vibes.isEmpty() || vibes.stream().anyMatch(v -> v == null || v.isBlank())) {
+    		return ResponseEntity.badRequest().build();
+		}
+
+    	try {
+        	studentRepository.updateStudyVibes(studentID, vibes);
+        	return ResponseEntity.ok().build();
+    	} catch (Exception e) {
+        	return ResponseEntity.internalServerError().build();
+    	}
 	}
 	
+	
+	@GetMapping("/{studentID}/privacy-settings")
+	public ResponseEntity<?> blockPrivacySettingsGET() {
+    	return ResponseEntity.status(405).build();
+	}
+
 	// This method allows for a student's privacy settings to be updated in the database through an API call
 	@PutMapping("/{studentID}/privacy-settings")
-	public void updatePrivacySettings(@PathVariable String studentID, @RequestBody Map<String, Boolean> privacySettings) throws Exception {
-		studentRepository.updatePrivacySettings(studentID, privacySettings);
+	public ResponseEntity<?> updatePrivacySettings(@PathVariable String studentID, @RequestBody(required = false) Map<String, Boolean> privacySettings) {
+    	// Missing body
+    	if (privacySettings == null) {
+        	return ResponseEntity.badRequest().build();
+    	}
+
+    	// Missing field
+    	if (!privacySettings.containsKey("privacy")) {
+        	return ResponseEntity.badRequest().build();
+    	}
+
+    	// Wrong type (Spring already rejects strings, but this is safe)
+    	if (!(privacySettings.get("privacy") instanceof Boolean)) {
+        	return ResponseEntity.badRequest().build();
+   	 	}
+
+    	try {
+        	studentRepository.updatePrivacySettings(studentID, privacySettings);
+        	return ResponseEntity.ok().build();
+    	} catch (Exception e) {
+        	return ResponseEntity.internalServerError().build();
+    	}
 	}
+
+	
 
 	
 	// Get a student's session log (all events they have attended)
