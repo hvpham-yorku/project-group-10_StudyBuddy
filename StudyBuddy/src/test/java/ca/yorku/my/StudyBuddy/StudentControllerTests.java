@@ -1,18 +1,20 @@
 package ca.yorku.my.StudyBuddy;
-import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.controllers.StudentController;
-import ca.yorku.my.StudyBuddy.services.StudentRepository;
-
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
+
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.controllers.StudentController;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 class StudentControllerTests {
 
@@ -129,6 +131,7 @@ class StudentControllerTests {
         assert result == null;
     }
 
+    
     @Test
     void updateCourses_doesNotMutateInputList() throws Exception {
         List<String> courses = List.of("EECS 2311");
@@ -137,5 +140,56 @@ class StudentControllerTests {
 
         assert courses.size() == 1;
         verify(studentRepository).updateCourses("123", courses);
+    }
+
+    @Test
+    void updateAvatar_rejectsInvalidToken() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn(null);
+
+        studentController.updateAvatar("123", Map.of("avatar", "url"));
+
+        verify(studentRepository, never()).updateAvatar(any(), any());    
+}
+
+    @Test
+    void updateAvatar_handlesNullBody() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn("123");
+
+        studentController.updateAvatar("123", null);
+
+        verify(studentRepository).updateAvatar("123", null);
+    }
+
+    @Test
+    void getStudent_handlesNullId() throws Exception {
+        Student result = studentController.getStudent(null);
+        assert result == null;
+    }
+
+    @Test
+    void saveStudent_handlesNullStudent() throws Exception {
+        studentController.saveStudent(null);
+        verify(studentRepository).saveStudent(null);
+    }
+
+    @Test
+    void updateCourses_handlesNullId() throws Exception {
+        studentController.updateCourses(null, List.of("EECS 2311"));
+        verify(studentRepository).updateCourses(null, List.of("EECS 2311"));
+    }
+
+    @Test
+    void updatePrivacySettings_handlesNullMap() throws Exception {
+        studentController.updatePrivacySettings("123", null);
+        verify(studentRepository).updatePrivacySettings("123", null);
+    }
+
+    @Test
+    void updateAvatar_doesNotCallRepositoryOnInvalidToken() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn(null);
+
+        studentController.updateAvatar("123", Map.of("avatar", "url"));
+
+        verify(studentRepository, never()).updateAvatar(any(), any());
     }
 }

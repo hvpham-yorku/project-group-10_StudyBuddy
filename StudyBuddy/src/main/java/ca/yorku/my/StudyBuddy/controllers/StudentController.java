@@ -1,13 +1,4 @@
 package ca.yorku.my.StudyBuddy.controllers;
-import ca.yorku.my.StudyBuddy.services.AuthRepository;
-import ca.yorku.my.StudyBuddy.services.AuthService;
-import ca.yorku.my.StudyBuddy.services.StudentRepository;
-import ca.yorku.my.StudyBuddy.services.StudentService;
-import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
-import ca.yorku.my.StudyBuddy.StubDatabase;
-import ca.yorku.my.StudyBuddy.classes.Event;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +16,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import ca.yorku.my.StudyBuddy.StubDatabase;
+import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
@@ -234,8 +232,18 @@ public class StudentController {
 	// This method allows for a student's profile picture to be updated in the database through an API call
 	@PutMapping("/profile/avatar")
 	public void updateAvatar(@RequestHeader("Authorization") String authHeader, @RequestBody Map<String, String> body) throws Exception {
-	    String studentID = authService.verifyFrontendToken(authHeader);
-	    String newUrl = body.get("avatar");
-	    studentRepository.updateAvatar(studentID, newUrl);
-	}
+
+    String verifiedId = authService.verifyFrontendToken(authHeader);
+
+    if (verifiedId == null) {
+        return;
+    }
+
+    String avatar = null;
+    if (body != null) {
+        avatar = body.get("avatar");
+    }
+
+    studentRepository.updateAvatar(verifiedId, avatar);
+}
 }
