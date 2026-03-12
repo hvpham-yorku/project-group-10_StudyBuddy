@@ -9,6 +9,7 @@ import com.google.firebase.cloud.FirestoreClient;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for Firestore-backed ChatDAO and MessageDAO behavior.
  */
+@ActiveProfiles("firestore")
 @SpringBootTest
 class FirestoreChatMessageDAOIntegrationTest {
 
