@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = ConnectionsController.class)
-class ConnectionsControllerTest {
+class ConnectionsControllerUnitTest {
 
     @Autowired
     private MockMvc mvc;
