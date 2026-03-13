@@ -1,21 +1,29 @@
 package ca.yorku.my.StudyBuddy;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.MockitoAnnotations;
+
 import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StubEventRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class EventServiceTests {
 
@@ -200,5 +208,146 @@ class EventServiceTests {
         assertTrue(result);
         assertEquals(1, e.getAttendees().size());
         assertFalse(e.getAttendees().contains("student_a"));
+    }
+
+    /**
+     * tests that creating multiple events each gets a unique stub ID.
+     */
+    @Test
+    void createEvent_multipleEventsGetUniqueIds() throws Exception {
+        Event e1 = new Event(); e1.setTitle("Event One");
+        Event e2 = new Event(); e2.setTitle("Event Two");
+
+        Event created1 = eventRepository.createEvent(e1);
+        Event created2 = eventRepository.createEvent(e2);
+
+        assertNotEquals(created1.getId(), created2.getId());
+        assertEquals(2, StubDatabase.EVENTS.size());
+    }
+
+    /**
+     * tests that getAllEvents returns an empty list when the stub database has no events.
+     */
+    @Test
+    void getAllEvents_returnsEmptyListWhenNoEvents() throws Exception {
+        List<Event> results = eventRepository.getAllEvents();
+
+        assertNotNull(results);
+        assertTrue(results.isEmpty());
+    }
+
+    /**
+     * tests that deleting a non-existent event returns false without throwing.
+     */
+    @Test
+    void deleteEvent_returnsFalseWhenEventDoesNotExist() throws Exception {
+        boolean result = eventRepository.deleteEvent("nonexistent_id", "user123");
+
+        assertFalse(result);
+        assertTrue(StubDatabase.EVENTS.isEmpty());
+    }
+
+    /**
+     * tests that joining an event that does not exist returns false.
+     */
+    @Test
+    void joinEvent_returnsFalseWhenEventNotFound() throws Exception {
+        Student mockStudent = new Student();
+        mockStudent.setAttendedEventIds(new ArrayList<>());
+        when(studentRepository.getStudent("student1")).thenReturn(mockStudent);
+
+        boolean result = eventRepository.joinEvent("student1", "ghost_event");
+
+        assertFalse(result);
+    }
+
+    /**
+     * tests that leaving an event that does not exist returns false.
+     */
+    @Test
+    void leaveEvent_returnsFalseWhenEventNotFound() throws Exception {
+        Student mockStudent = new Student();
+        mockStudent.setAttendedEventIds(new ArrayList<>(List.of("ghost_event")));
+        when(studentRepository.getStudent("student1")).thenReturn(mockStudent);
+
+        boolean result = eventRepository.leaveEvent("student1", "ghost_event");
+
+        assertFalse(result);
+    }
+
+    /**
+     * tests that a student who already joined cannot join the same event twice
+     * (attendees list should not contain duplicates).
+     */
+    @Test
+    void joinEvent_doesNotAddDuplicateAttendee() throws Exception {
+        Student mockStudent = new Student();
+        mockStudent.setAttendedEventIds(new ArrayList<>(List.of("event1")));
+        when(studentRepository.getStudent("student1")).thenReturn(mockStudent);
+
+        Event e = new Event();
+        e.setId("event1");
+        e.setAttendees(new ArrayList<>(List.of("student1"))); // already in
+        StubDatabase.EVENTS.add(e);
+
+        eventRepository.joinEvent("student1", "event1");
+
+        long count = e.getAttendees().stream().filter(a -> a.equals("student1")).count();
+        assertEquals(1, count);
+    }
+
+    /**
+     * tests addAttendee on an event that does not exist returns false.
+     */
+    @Test
+    void addAttendee_returnsFalseWhenEventNotFound() throws Exception {
+        boolean result = eventRepository.addAttendee("nonexistent_event", "student1");
+
+        assertFalse(result);
+    }
+
+    /**
+     * tests removeAttendee on an event that does not exist returns false.
+     */
+    @Test
+    void removeAttendee_returnsFalseWhenEventNotFound() throws Exception {
+        boolean result = eventRepository.removeAttendee("nonexistent_event", "student1");
+
+        assertFalse(result);
+    }
+
+    /**
+     * tests that addAttendee on an event with a null attendees list
+     * initializes the list and successfully adds the attendee.
+     */
+    @Test
+    void addAttendee_handlesNullAttendeesList() throws Exception {
+        Event e = new Event();
+        e.setId("event_null_list");
+        e.setAttendees(null); // explicitly null
+        StubDatabase.EVENTS.add(e);
+
+        boolean result = eventRepository.addAttendee("event_null_list", "student1");
+
+        assertTrue(result);
+        assertNotNull(e.getAttendees());
+        assertTrue(e.getAttendees().contains("student1"));
+    }
+
+    /**
+     * tests that the host of an event can delete it even when other attendees are present.
+     */
+    @Test
+    void deleteEvent_hostCanDeleteEventWithAttendees() throws Exception {
+        Event e = new Event();
+        e.setId("busy_event");
+        e.setHost("organizer");
+        e.setAttendees(new ArrayList<>(List.of("student_a", "student_b", "student_c")));
+        StubDatabase.EVENTS.add(e);
+
+        boolean result = eventRepository.deleteEvent("busy_event", "organizer");
+
+        assertTrue(result);
+        assertTrue(StubDatabase.EVENTS.isEmpty());
     }
 }
