@@ -22,7 +22,7 @@ import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 @ExtendWith(MockitoExtension.class)
-class StudentControllerUnitTests {
+class StudentControllerTests {
 
     @Mock
     private StudentRepository studentRepository;

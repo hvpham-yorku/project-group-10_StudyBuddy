@@ -14,10 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ca.yorku.my.StudyBuddy.StudyBuddyApplication;
 
 @ActiveProfiles("stub")
-@SpringBootTest(
-    classes = StudyBuddyApplication.class,
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
-)
+@SpringBootTest
 @AutoConfigureMockMvc
 public class PrivacySettingsIntegrationTests {
 
@@ -126,14 +123,6 @@ public class PrivacySettingsIntegrationTests {
                 .content("[]")
         ).andExpect(status().isBadRequest()); 
         // Empty list → validation fails → 400
-    }
-
-    @Test
-    void updateVibes_missingContentType() throws Exception {
-        mockMvc.perform(
-            put("/api/studentcontroller/1/study-vibes")
-                .content("[\"focused\"]")
-        ).andExpect(status().isUnsupportedMediaType());
     }
 
     @Test

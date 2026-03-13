@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.http.MediaType;
 import ca.yorku.my.StudyBuddy.StubDatabase;
 import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
@@ -150,19 +151,20 @@ public class StudentController {
 	}
 
 	// This method allows for a student's study vibe to be updated in the database through an API call
-	@PutMapping("/{studentID}/study-vibes")
+	@PutMapping(value = "/{studentID}/study-vibes", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<?> updateStudyVibes(@PathVariable String studentID, @RequestBody(required = false) List<String> vibes) {
-    	if (vibes == null || vibes.isEmpty() || vibes.stream().anyMatch(v -> v == null || v.isBlank())) {
-    		return ResponseEntity.badRequest().build();
-		}
+    if (vibes == null || vibes.isEmpty() || vibes.stream().anyMatch(v -> v == null || v.isBlank())) {
+        return ResponseEntity.badRequest().build();
+    }
 
-    	try {
-        	studentRepository.updateStudyVibes(studentID, vibes);
-        	return ResponseEntity.ok().build();
-    	} catch (Exception e) {
-        	return ResponseEntity.internalServerError().build();
-    	}
-	}
+    try {
+        studentRepository.updateStudyVibes(studentID, vibes);
+        return ResponseEntity.ok().build();
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
 	
 	
 	@GetMapping("/{studentID}/privacy-settings")
@@ -171,30 +173,33 @@ public class StudentController {
 	}
 
 	// This method allows for a student's privacy settings to be updated in the database through an API call
-	@PutMapping("/{studentID}/privacy-settings")
-	public ResponseEntity<?> updatePrivacySettings(@PathVariable String studentID, @RequestBody(required = false) Map<String, Boolean> privacySettings) {
-    	// Missing body
-    	if (privacySettings == null) {
-        	return ResponseEntity.badRequest().build();
-    	}
+	@PutMapping(value = "/{studentID}/privacy-settings", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> updatePrivacySettings(
+        @PathVariable String studentID,
+        @RequestBody(required = false) Map<String, Boolean> privacySettings) {
 
-    	// Missing field
-    	if (!privacySettings.containsKey("privacy")) {
-        	return ResponseEntity.badRequest().build();
-    	}
+    // Missing body
+    if (privacySettings == null) {
+        return ResponseEntity.badRequest().build();
+    }
 
-    	// Wrong type (Spring already rejects strings, but this is safe)
-    	if (!(privacySettings.get("privacy") instanceof Boolean)) {
-        	return ResponseEntity.badRequest().build();
-   	 	}
+    // Empty JSON object
+    if (privacySettings.isEmpty()) {
+        return ResponseEntity.badRequest().build();
+    }
 
-    	try {
-        	studentRepository.updatePrivacySettings(studentID, privacySettings);
-        	return ResponseEntity.ok().build();
-    	} catch (Exception e) {
-        	return ResponseEntity.internalServerError().build();
-    	}
-	}
+    // Ensure all values are booleans
+    if (privacySettings.values().stream().anyMatch(v -> v == null)) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    try {
+        studentRepository.updatePrivacySettings(studentID, privacySettings);
+        return ResponseEntity.ok().build();
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
 
 	
 
