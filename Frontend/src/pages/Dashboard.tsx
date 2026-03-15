@@ -6,6 +6,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, Clock, Users, MapPin, Plus, ArrowRight, BookOpen, Star, TrendingUp } from "lucide-react";
 
+interface SessionLogResponse {
+  summary?: {
+    totalMinutes?: number;
+  };
+}
+
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
     <div className="bg-white rounded-xl p-4 border border-slate-200 flex items-center gap-4">
@@ -27,6 +33,7 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeConnections, setActiveConnections] = useState<any[]>([]);
   const [totalConnectionsCount, setTotalConnectionsCount] = useState(0);
+  const [totalStudyMinutes, setTotalStudyMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +55,15 @@ export default function Dashboard() {
         if (!profileRes.ok) throw new Error("Failed to load profile");
         const profileData = await profileRes.json();
         setUserProfile(profileData);
+
+        // 1.5 Fetch Session Log Summary for total study time
+        const sessionLogRes = await fetch("/api/studentcontroller/profile/session-log", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (sessionLogRes.ok) {
+          const sessionData: SessionLogResponse = await sessionLogRes.json();
+          setTotalStudyMinutes(sessionData?.summary?.totalMinutes ?? 0);
+        }
 
         // 2. Fetch Events
         const eventsRes = await fetch("/api/events");
@@ -107,6 +123,14 @@ export default function Dashboard() {
     return date.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
   };
 
+  const formatStudyTime = () => {
+    if (totalStudyMinutes <= 0) return "0 min";
+    const totalHours = Math.floor(totalStudyMinutes / 60);
+    const remainingMinutes = totalStudyMinutes % 60;
+    if (totalHours <= 0) return `${totalStudyMinutes} min`;
+    return `${totalHours}h ${remainingMinutes}m`;
+  };
+
   const displayName = userProfile.fullName || `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || userProfile.userId;
 
   return (
@@ -148,7 +172,7 @@ export default function Dashboard() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-x">
-        <StatCard icon={BookOpen} label="Study Hours" value="Coming Soon..." color="bg-blue-600" />
+        <StatCard icon={BookOpen} label="Study Hours" value={formatStudyTime()} color="bg-blue-600" />
         <StatCard icon={CalendarDays} label="Joined Sessions" value={myTotalSessions} color="bg-orange-500" />
         <StatCard icon={Users} label="Connections" value={totalConnectionsCount} color="bg-blue-700" />
         <StatCard icon={Star} label="Courses" value={userCourses.length} color="bg-orange-600" />
@@ -282,8 +306,12 @@ export default function Dashboard() {
               <TrendingUp size={18} />
               <span className="text-sm" style={{ fontWeight: 600 }}>Study Streak</span>
             </div>
-            <p style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>Coming Soon....</p>
-            <p className="text-orange-100 text-xs mt-1"> 🔥</p>
+            <p style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>
+              {userProfile.loginStreak ?? 0}
+            </p>
+            <p className="text-orange-100 text-xs mt-1">
+              🔥 {(userProfile.loginStreak ?? 0) === 1 ? "day" : "days"} in a row
+            </p>
           </div>
         </div>
       </div>

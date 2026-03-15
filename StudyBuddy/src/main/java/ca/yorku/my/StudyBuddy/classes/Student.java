@@ -25,6 +25,8 @@ public class Student {
     private String location;
     private boolean twoFAEnabled;
     private int autoTimeout;
+    private int loginStreak;
+    private String lastLoginDate;
     
 	private List<String> courses = new ArrayList<>();
     private List<String> studyVibes = new ArrayList<>();
@@ -160,6 +162,12 @@ public class Student {
 
     public Map<String, Boolean> getNotifications() { return notifications; }
     public void setNotifications(Map<String, Boolean> notifications) { this.notifications = notifications; }
+
+    public int getLoginStreak() { return loginStreak; }
+    public void setLoginStreak(int loginStreak) { this.loginStreak = loginStreak; }
+
+    public String getLastLoginDate() { return lastLoginDate; }
+    public void setLastLoginDate(String lastLoginDate) { this.lastLoginDate = lastLoginDate; }
 
     
 }

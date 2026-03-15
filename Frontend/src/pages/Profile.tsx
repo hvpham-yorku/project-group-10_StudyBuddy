@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Edit2, X, BookOpen, Clock, CalendarDays,
-  Mail, GraduationCap, MapPin, Star
+  Mail, GraduationCap, MapPin, Star, Flame
 } from "lucide-react";
 import { studyVibeOptions, courseOptions } from "../data/mockData";
 
@@ -40,6 +40,7 @@ export default function Profile() {
   const [joinedDate, setJoinedDate] = useState("");
   const [sessionLog, setSessionLog] = useState<SessionLogResponse | null>(null);
   const [sessionLogError, setSessionLogError] = useState("");
+  const [loginStreak, setLoginStreak] = useState(0);
 
   // BIO
   const [editingBio, setEditingBio] = useState(false);
@@ -155,6 +156,7 @@ export default function Profile() {
         setTwoFAEnabled(data.twoFAEnabled ?? false);
         setAutoTimeout(data.autoTimeout ?? 0);
         setJoinedDate(data.joinedDate || "");
+        setLoginStreak(data.loginStreak ?? 0);
       
         const defaultNotifications = {
           chatMessages: false,
@@ -316,19 +318,33 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         <div className="px-6 pb-6">
 
-          {/* Avatar */}
-          <div className="relative w-24 h-24">
-            <div 
-              onClick={handleAvatarClick}
-              className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 cursor-pointer hover:opacity-80 transition flex items-center justify-center border-4 border-white shadow-sm"
-            >
-              {avatar ? (
-                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "2rem" }}>
-                  {(student?.fullName || student?.userId || "?").charAt(0).toUpperCase()}
-                </span>
-              )}
+          {/* Avatar + Streak Badge */}
+          <div className="flex items-end gap-4">
+            <div className="relative w-24 h-24">
+              <div 
+                onClick={handleAvatarClick}
+                className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 cursor-pointer hover:opacity-80 transition flex items-center justify-center border-4 border-white shadow-sm"
+              >
+                {avatar ? (
+                  <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "2rem" }}>
+                    {(student?.fullName || student?.userId || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Streak Badge */}
+            <div className="mb-1 flex flex-col items-center px-4 py-2 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-2xl shadow-sm min-w-[70px]">
+              <Flame size={22} className="text-orange-500 mb-0.5" />
+              <span className="text-orange-700 leading-none" style={{ fontWeight: 700, fontSize: "1.4rem" }}>
+                {loginStreak}
+              </span>
+              <span className="text-orange-400 text-xs mt-0.5" style={{ fontWeight: 500 }}>
+                {loginStreak === 1 ? "day" : "days"}
+              </span>
+              <span className="text-orange-300 text-xs">streak</span>
             </div>
           </div>
 
