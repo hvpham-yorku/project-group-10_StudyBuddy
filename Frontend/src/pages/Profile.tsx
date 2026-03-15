@@ -1,22 +1,45 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
+  Edit2, X, BookOpen, Clock, CalendarDays,
   Mail, GraduationCap, MapPin, Star
 } from "lucide-react";
-import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "../data/mockData";
-import { set } from "date-fns";
-import { Avatar } from "@radix-ui/react-avatar";
+import { studyVibeOptions, courseOptions } from "../data/mockData";
+
+interface SessionLogEvent {
+  id: string;
+  title: string;
+  course: string;
+  location: string;
+  date: string;
+  time: string;
+  duration: number;
+  status: string;
+  role: string;
+}
+
+interface SessionLogSummary {
+  totalMinutes: number;
+  totalEvents: number;
+  hostedCount: number;
+  attendedCount: number;
+}
+
+interface SessionLogResponse {
+  summary: SessionLogSummary;
+  events: SessionLogEvent[];
+}
 
 export default function Profile() {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem("studyBuddyToken");
   const [loading, setLoading] = useState(true);
 
   // STUDENT DATA
   const [student, setStudent] = useState<any>(null);
   const [joinedDate, setJoinedDate] = useState("");
+  const [sessionLog, setSessionLog] = useState<SessionLogResponse | null>(null);
+  const [sessionLogError, setSessionLogError] = useState("");
 
   // BIO
   const [editingBio, setEditingBio] = useState(false);
@@ -76,11 +99,6 @@ export default function Profile() {
     sessionUpdates: true,
     connectionRequests: true,
   });
-
-  const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
-
-  const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
-  const totalHours = Math.floor(totalMinutes / 60);
 
   const removeCourse = (c: string) => setCourses((prev) => prev.filter((x) => x !== c));
   const addCourse = (c: string) => {
@@ -149,8 +167,22 @@ export default function Profile() {
           typeof data.notifications === "object" &&
           Object.keys(data.notifications).length > 0 ? data.notifications: defaultNotifications);
 
+        const sessionRes = await fetch(`/api/studentcontroller/profile/session-log`, {
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
+
+        if (!sessionRes.ok) {
+          throw new Error("Failed to load study session log");
+        }
+
+        const sessionData: SessionLogResponse = await sessionRes.json();
+        setSessionLog(sessionData);
+
       } catch (err) {
         console.error("Failed to load profile", err);
+        setSessionLogError("Could not load study session history.");
       } finally {
         setLoading(false);
       }
@@ -239,6 +271,36 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     reader.readAsDataURL(file);
   }
 
+  const totalMinutes = sessionLog?.summary.totalMinutes ?? 0;
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  const formatStudyTime = () => {
+    if (totalMinutes <= 0) return "0 min";
+    if (totalHours <= 0) return `${totalMinutes} min`;
+    return `${totalHours}h ${remainingMinutes}m`;
+  };
+
+  const formatEventDate = (date: string, time: string) => {
+    const parsed = new Date(`${date}T${time}`);
+    if (Number.isNaN(parsed.getTime())) {
+      return `${date || "Unknown date"} ${time || ""}`.trim();
+    }
+    return parsed.toLocaleString("en-CA", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+
+  const roleStyles: Record<string, string> = {
+    "Hosted": "bg-blue-100 text-blue-700 border-blue-200",
+    "Attended": "bg-emerald-100 text-emerald-700 border-emerald-200",
+    "Hosted & Attended": "bg-amber-100 text-amber-700 border-amber-200"
+  };
+
   if (loading) return <p className="p-6">Loading profile...</p>;
 
   return (
@@ -319,7 +381,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                 <span>{location}</span>
               </div>
 
-              <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
+              <p className="text-xs text-slate-400 mt-1">Member since {joinedDate || "Recently"}</p>
             </div>
             {/* Edit Profile Button */}
             <div className="flex gap-2">
@@ -502,6 +564,78 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                 Cancel
               </button>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* STUDY SESSION LOG */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Study Session Log</h2>
+            <p className="text-sm text-slate-500">Your hosted and attended past sessions</p>
+          </div>
+          <div className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            Past events only
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="text-xs text-blue-700 mb-1" style={{ fontWeight: 600 }}>Total Study Time</div>
+            <div className="flex items-center gap-2 text-blue-900">
+              <Clock size={16} />
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{formatStudyTime()}</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="text-xs text-emerald-700 mb-1" style={{ fontWeight: 600 }}>Total Events</div>
+            <div className="flex items-center gap-2 text-emerald-900">
+              <CalendarDays size={16} />
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{sessionLog?.summary.totalEvents ?? 0}</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+            <div className="text-xs text-orange-700 mb-1" style={{ fontWeight: 600 }}>Hosted / Attended</div>
+            <div className="text-orange-900" style={{ fontWeight: 700, fontSize: "1.1rem" }}>
+              {sessionLog?.summary.hostedCount ?? 0} / {sessionLog?.summary.attendedCount ?? 0}
+            </div>
+          </div>
+        </div>
+
+        {sessionLogError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {sessionLogError}
+          </div>
+        ) : (
+          <div className="max-h-80 overflow-y-auto pr-1 space-y-3">
+            {sessionLog?.events && sessionLog.events.length > 0 ? (
+              sessionLog.events.map((session) => (
+                <div key={session.id} className="rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-slate-800" style={{ fontWeight: 600 }}>{session.title || "Untitled Session"}</h3>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500">
+                        <span className="flex items-center gap-1.5"><BookOpen size={14} />{session.course || "No course"}</span>
+                        <span className="flex items-center gap-1.5"><MapPin size={14} />{session.location || "No location"}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full border text-xs ${roleStyles[session.role] || "bg-slate-100 text-slate-700 border-slate-200"}`}>
+                      {session.role}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                    <span className="flex items-center gap-1.5"><CalendarDays size={14} />{formatEventDate(session.date, session.time)}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={14} />{session.duration} min</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500 text-center">
+                No past hosted or attended sessions yet.
+              </div>
+            )}
           </div>
         )}
       </div>
