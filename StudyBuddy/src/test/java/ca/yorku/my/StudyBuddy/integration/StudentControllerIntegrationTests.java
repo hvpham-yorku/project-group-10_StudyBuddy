@@ -17,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ca.yorku.my.StudyBuddy.SessionLogService;
 import ca.yorku.my.StudyBuddy.daos.ChatDAO;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
@@ -38,6 +39,9 @@ class StudentControllerIntegrationTests {
 
     @MockBean
     private AuthRepository authService;
+
+    @MockBean
+    private SessionLogService sessionLogService;
 
     @MockBean
     private ChatDAO chatDAO;
