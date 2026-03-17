@@ -40,7 +40,7 @@ export default function EventDetails() {
     const fetchEventAndStudents = async () => {
       try {
         const token = localStorage.getItem("studyBuddyToken");
-        
+
         // 1. Fetch Student Profile
         let currentStudent = null;
         if (token) {
@@ -48,8 +48,8 @@ export default function EventDetails() {
             headers: { "Authorization": "Bearer " + token }
           });
           if (userRes.ok) {
-             currentStudent = await userRes.json();
-             setStudent(currentStudent);
+            currentStudent = await userRes.json();
+            setStudent(currentStudent);
           }
         }
 
@@ -65,13 +65,15 @@ export default function EventDetails() {
         }
 
         // 3. Fetch Event Details
-        const response = await fetch(`/api/events/${id}`);
-        
+        const response = await fetch(`/api/events/${id}`, {
+          headers: token ? { "Authorization": "Bearer " + token } : {}
+        });
+
         if (!response.ok) {
           if (response.status === 404) throw new Error("Event not found");
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
 
         // 4. Map the data safely!
@@ -81,25 +83,25 @@ export default function EventDetails() {
           host: typeof data.host === 'string'
             ? { id: "unknown_id", name: data.host, avatar: null }
             : data.host,
-            
+
           // Map Attendee IDs -> Real Student Objects
           attendees: (data.attendees || []).map((attendeeId: any) => {
             // If it's already an object for some reason, leave it
             if (typeof attendeeId !== 'string') return attendeeId;
-            
+
             // Otherwise, look up their real name in the directory
             const matchedStudent = allStudents.find((s: any) => s.userId === attendeeId);
-            
-            return { 
-              id: attendeeId, 
-              name: matchedStudent ? (matchedStudent.fullName || "Unnamed Student") : attendeeId, 
-              avatar: matchedStudent ? matchedStudent.avatar : null 
+
+            return {
+              id: attendeeId,
+              name: matchedStudent ? (matchedStudent.fullName || "Unnamed Student") : attendeeId,
+              avatar: matchedStudent ? matchedStudent.avatar : null
             };
           })
         };
 
         setEvent(formattedEvent);
-        setLocalReviews(formattedEvent.reviews || []); 
+        setLocalReviews(formattedEvent.reviews || []);
 
         if (currentStudent) {
           const isAlreadyJoined = formattedEvent.attendees.some(
@@ -115,7 +117,7 @@ export default function EventDetails() {
         setIsLoading(false);
       };
     };
-    
+
     if (id) {
       fetchEventAndStudents();
     }
@@ -126,11 +128,11 @@ export default function EventDetails() {
   if (!event) return <div className="p-10 text-center text-slate-500 mt-10">Event not found.</div>;
 
   const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const isMyEvent = student && event.host.id === student.userId;
 
   const isParticipating = isMyEvent || joined;
-  
+
   const submitReview = () => {
     if (!reviewText.trim()) return;
     const newReview = {
@@ -165,27 +167,30 @@ export default function EventDetails() {
     if (!student || !event) return;
 
     const wasJoined = joined;
-    const previousAttendees = [...event.attendees]; 
+    const previousAttendees = [...event.attendees];
+    const previousCount = event.attendeeCount ?? event.attendees.length ?? 0;
+    const newCount = wasJoined ? Math.max(0, previousCount - 1) : previousCount + 1;
 
-    // 2. Optimistically update both the button state  the attendees list
+    // 2. Optimistically update button state, the array, AND the explicit count
     setJoined(!wasJoined);
     setEvent((prev: any) => ({
       ...prev,
-      attendees: wasJoined 
+      attendeeCount: newCount,
+      attendees: wasJoined
         // If leaving: filter signed-in ID out of the array
-        ? prev.attendees.filter((a: any) => a.id !== student.userId) 
+        ? prev.attendees.filter((a: any) => a.id !== student.userId)
         // Otherwise, inject the mock "You"
-        : [...prev.attendees, { 
-            id: student.userId, 
-            name: student.fullName || student.name || "You", // Fallback if for some reason fullName isn't showing
-            avatar: student.avatar 
-          }] 
+        : [...prev.attendees, {
+          id: student.userId,
+          name: student.fullName || student.name || "You",
+          avatar: student.avatar
+        }]
     }));
 
     try {
       const token = localStorage.getItem("studyBuddyToken");
       const endpoint = wasJoined ? `/api/events/leave` : `/api/events/join`;
-      
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -199,19 +204,18 @@ export default function EventDetails() {
       });
 
       if (!response.ok) {
-        // 3. If the server fails, revert BOTH the button and the array back to normal
+        // 3. Revert everything if the backend fails
         setJoined(wasJoined);
-        setEvent((prev: any) => ({ ...prev, attendees: previousAttendees }));
+        setEvent((prev: any) => ({ ...prev, attendees: previousAttendees, attendeeCount: previousCount }));
         console.error("Failed to update attendance status");
       }
     } catch (err) {
-      // 4. Revert if the network crashes completely
+      // 4. Revert if the network crashes
       setJoined(wasJoined);
-      setEvent((prev: any) => ({ ...prev, attendees: previousAttendees }));
+      setEvent((prev: any) => ({ ...prev, attendees: previousAttendees, attendeeCount: previousCount }));
       console.error("Error updating attendance:", err);
     }
   };
-
   return (
     <div className="p-6 max-w-3xl mx-auto">
       {/* Back */}
@@ -256,11 +260,11 @@ export default function EventDetails() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Users size={15} className="text-blue-500 shrink-0" />
-                  {event.attendees.length} / {event.maxParticipants} attending
+                  {event.attendeeCount ?? event.attendees?.length ?? 0} / {event.maxParticipants} attending
                   <div className="flex-1 max-w-24 bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-blue-500 h-full rounded-full"
-                      style={{ width: `${(event.attendees.length / event.maxParticipants) * 100}%` }}
+                      style={{ width: `${((event.attendeeCount ?? event.attendees?.length ?? 0) / event.maxParticipants) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -270,7 +274,7 @@ export default function EventDetails() {
             {/* Host */}
             <div className="shrink-0 text-right">
               <p className="text-xs text-slate-400 mb-1">Hosted by</p>
-              <div 
+              <div
                 className="flex flex-col items-end gap-1 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={(e) => { e.stopPropagation(); navigate(`/profile/${event.host.id}`); }}
               >
@@ -305,11 +309,10 @@ export default function EventDetails() {
             {event.status === "upcoming" && !isMyEvent && (
               <button
                 onClick={handleJoinToggle}
-                className={`flex-1 py-2.5 rounded-xl text-sm transition-colors ${
-                  joined
+                className={`flex-1 py-2.5 rounded-xl text-sm transition-colors ${joined
                     ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
                     : "bg-blue-700 hover:bg-blue-800 text-white"
-                }`}
+                  }`}
                 style={{ fontWeight: 600 }}
               >
                 {joined ? "Cancel Attendance" : "Join Session"}
@@ -360,14 +363,14 @@ export default function EventDetails() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
         <h2 className="text-slate-800 text-sm mb-4 flex items-center gap-2" style={{ fontWeight: 600 }}>
           <Users size={16} className="text-blue-500" />
-          Attendees ({event.attendees?.length || 0}/{event.maxParticipants})
+          Attendees ({event.attendeeCount ?? event.attendees?.length ?? 0}/{event.maxParticipants})
         </h2>
-        
+
         {isParticipating ? (
           <div className="flex flex-wrap gap-3">
             {event.attendees.map((a: any) => (
-              <div 
-                key={a.id} 
+              <div
+                key={a.id}
                 className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
                 onClick={() => navigate(`/profile/${a.id}`)}
               >

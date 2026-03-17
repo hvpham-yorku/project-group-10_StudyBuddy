@@ -109,18 +109,39 @@ public class EventController {
     }
     
     @GetMapping("/{eventId}")
-    public ResponseEntity<EventResponseDTO> getEvent(@PathVariable String eventId) {
+    public ResponseEntity<EventResponseDTO> getEvent(
+            @PathVariable String eventId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
     	try {
     		Event event = eventService.getEventById(eventId);
     		
     		Student hostStudent = studentService.getStudent(event.getHost());
-            
-            // Create the HostDTO
             HostDTO hostDTO = new HostDTO(
                 hostStudent.getUserId(),
                 hostStudent.getFullName(),
                 hostStudent.getAvatar()
             );
+
+            // 1. Identify the user making the request
+            String requesterId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                try {
+                    requesterId = authService.verifyFrontendToken(authHeader);
+                } catch (Exception e) {
+                    // Invalid token, treat as anonymous
+                }
+            }
+
+            // 2. Safely get the raw attendees list and count
+            List<String> rawAttendees = event.getAttendees() != null ? event.getAttendees() : new ArrayList<>();
+            int attendeeCount = rawAttendees.size();
+            
+            // 3. Check if the requester has permission to see the attendees
+            boolean isParticipating = requesterId != null && 
+                (requesterId.equals(event.getHost()) || rawAttendees.contains(requesterId));
+
+            // 4. Filter the list: send the real list if participating, otherwise send empty array
+            List<String> visibleAttendees = isParticipating ? rawAttendees : new ArrayList<>();
     		
     		EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(),
@@ -133,8 +154,8 @@ public class EventController {
                 	event.getDuration(),
                 	event.getDescription(),
                 	event.getMaxParticipants(),
-                	// NULL-SAFETY CHECKS: Never send null arrays to the frontend!
-                	event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
+                    attendeeCount,
+                    visibleAttendees,
                 	event.getTags() != null ? event.getTags() : new ArrayList<>(),
                 	event.getStatus() != null ? event.getStatus() : "upcoming",
                 	event.getReviews() != null ? event.getReviews() : new ArrayList<>()
@@ -146,31 +167,49 @@ public class EventController {
     	}
     }
 
+    // This mapping endpoint allows clients to delete a specific event by sending a DELETE request with the event ID in the URL path and the user ID as a request parameter. 
+    // It returns a no content status if deletion was successful, a forbidden status if the user is not authorized to delete the event, or an error status if there was an issue.
     @GetMapping
-    public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
+    public ResponseEntity<List<EventResponseDTO>> getAllEvents(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
+            // 1. Identify the user making the request
+            String requesterId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                try {
+                    requesterId = authService.verifyFrontendToken(authHeader);
+                } catch (Exception e) {
+                    // Invalid token, treat as anonymous
+                }
+            }
+
             for (Event event : events) {
-                // Fetch the host student details
                 Student hostStudent = studentService.getStudent(event.getHost());
-                
-                // Create the HostDTO
                 HostDTO hostDTO = new HostDTO(
                     hostStudent.getUserId(),
                     hostStudent.getFullName(),
                     hostStudent.getAvatar()
                 );
 
-                // Create the EventResponseDTO with null-safety
+                List<String> rawAttendees = event.getAttendees() != null ? event.getAttendees() : new ArrayList<>();
+                int attendeeCount = rawAttendees.size();
+                
+                boolean isParticipating = requesterId != null && 
+                    (requesterId.equals(event.getHost()) || rawAttendees.contains(requesterId));
+
+                List<String> visibleAttendees = isParticipating ? rawAttendees : new ArrayList<>();
+
                 EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(), event.getTitle(), event.getCourse(),
                 	hostDTO,
                 	event.getLocation(), event.getDate(), event.getTime(),
                 	event.getDuration(), event.getDescription(),
                 	event.getMaxParticipants(), 
-                    event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
+                    attendeeCount,
+                    visibleAttendees,
                 	event.getTags() != null ? event.getTags() : new ArrayList<>(), 
                     event.getStatus() != null ? event.getStatus() : "upcoming", 
                     event.getReviews() != null ? event.getReviews() : new ArrayList<>()
@@ -183,7 +222,6 @@ public class EventController {
         }
     }
 
-    // This mapping endpoint allows clients to delete a specific event by sending a DELETE request with the event ID in the URL path and the user ID as a request parameter. It returns a no content status if deletion was successful, a forbidden status if the user is not authorized to delete the event, or an error status if there was an issue.
 
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
