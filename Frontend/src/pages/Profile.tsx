@@ -4,7 +4,7 @@ import {
   Edit2, X, BookOpen, Clock, CalendarDays,
   Mail, GraduationCap, MapPin, Star, Flame
 } from "lucide-react";
-import { studyVibeOptions, courseOptions } from "../data/mockData";
+import { studyVibeOptions } from "../data/mockData";
 
 interface SessionLogEvent {
   id: string;
@@ -51,6 +51,9 @@ export default function Profile() {
   const [editingCourses, setEditingCourses] = useState(false);
   const [courses, setCourses] = useState<string[]>([]);
   const [courseInput, setCourseInput] = useState("");
+  const [courseSuggestions, setCourseSuggestions] = useState<string[]>([]);
+  const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+  const [courseInputError, setCourseInputError] = useState("");
 
   // STUDY VIBES
   const [vibes, setVibes] = useState<string[]>([]);
@@ -101,10 +104,42 @@ export default function Profile() {
     connectionRequests: true,
   });
 
+  const normalizeCourseValue = (value: string) =>
+    value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
   const removeCourse = (c: string) => setCourses((prev) => prev.filter((x) => x !== c));
   const addCourse = (c: string) => {
-    if (c && !courses.includes(c)) setCourses((prev) => [...prev, c]);
+    const normalizedCourse = c.trim();
+    if (normalizedCourse && !courses.includes(normalizedCourse)) {
+      setCourses((prev) => [...prev, normalizedCourse]);
+    }
     setCourseInput("");
+    setCourseSuggestions([]);
+    setCourseInputError("");
+  };
+
+  const addCourseFromInput = () => {
+    const typed = courseInput.trim();
+    if (!typed) {
+      return;
+    }
+
+    const normalizedTyped = normalizeCourseValue(typed);
+    const exactMatch = courseSuggestions.find(
+      (course) => normalizeCourseValue(course) === normalizedTyped
+    );
+
+    if (exactMatch) {
+      addCourse(exactMatch);
+      return;
+    }
+
+    if (courseSuggestions.length === 1) {
+      addCourse(courseSuggestions[0]);
+      return;
+    }
+
+    setCourseInputError("Select a York course from the suggestions.");
   };
 
   const removeVibe = (v: string) => setVibes((prev) => prev.filter((x) => x !== v));
@@ -191,6 +226,45 @@ export default function Profile() {
     }
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    const query = courseInput.trim();
+    if (!query) {
+      setCourseSuggestions([]);
+      setCourseSearchLoading(false);
+      setCourseInputError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      setCourseSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/courses/search?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load course suggestions");
+        }
+
+        const suggestions: string[] = await response.json();
+        setCourseSuggestions(suggestions);
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          setCourseSuggestions([]);
+        }
+      } finally {
+        setCourseSearchLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [courseInput]);
 
   // Save profile to backend
  async function saveProfile(payload: {
@@ -802,31 +876,59 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           ))}
         </div>
 
-        {/* Add course (preset + custom) */}
-        <div className="flex items-center gap-3">
-          <select
-            onChange={(e) => addCourse(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
-          >
-            <option value="">Add preset course...</option>
-            {courseOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+        {/* Add course (York catalog autocomplete) */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-3">
+            <div className="relative w-full max-w-xs">
+              <input
+                value={courseInput}
+                onChange={(e) => {
+                  setCourseInput(e.target.value);
+                  setCourseInputError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCourseFromInput();
+                  }
+                }}
+                placeholder="Type a York course (e.g. EECS 1021)..."
+                className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+              />
 
-          <input
-            value={courseInput}
-            onChange={(e) => setCourseInput(e.target.value)}
-            placeholder="Custom course..."
-            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
-          />
+              {courseInput.trim() && (
+                <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                  {courseSearchLoading ? (
+                    <div className="px-3 py-2 text-sm text-slate-500">Searching courses...</div>
+                  ) : courseSuggestions.length > 0 ? (
+                    courseSuggestions.map((course) => (
+                      <button
+                        key={course}
+                        type="button"
+                        onClick={() => addCourse(course)}
+                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-blue-50"
+                      >
+                        {course}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-slate-500">No matching York courses.</div>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <button
-            onClick={() => addCourse(courseInput)}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-          >
-            Add
-          </button>
+            <button
+              onClick={addCourseFromInput}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+            >
+              Add
+            </button>
+          </div>
+
+          {courseInputError && (
+            <p className="text-sm text-red-600">{courseInputError}</p>
+          )}
         </div>
         <button
           onClick={() =>
