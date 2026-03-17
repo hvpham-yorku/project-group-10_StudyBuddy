@@ -42,13 +42,14 @@ export default function EventDetails() {
         const token = localStorage.getItem("studyBuddyToken");
         
         // 1. Fetch Student Profile
+        let currentStudent = null;
         if (token) {
           const userRes = await fetch("/api/studentcontroller/profile", {
             headers: { "Authorization": "Bearer " + token }
           });
           if (userRes.ok) {
-             const studentData = await userRes.json();
-             setStudent(studentData);
+             currentStudent = await userRes.json();
+             setStudent(currentStudent);
           }
         }
 
@@ -100,6 +101,13 @@ export default function EventDetails() {
         setEvent(formattedEvent);
         setLocalReviews(formattedEvent.reviews || []); 
 
+        if (currentStudent) {
+          const isAlreadyJoined = formattedEvent.attendees.some(
+            (a: any) => a.id === currentStudent.userId
+          );
+          setJoined(isAlreadyJoined);
+        }
+
       } catch (err: any) {
         console.error("Failed to fetch event:", err);
         setError(err.message);
@@ -121,8 +129,8 @@ export default function EventDetails() {
   new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const isMyEvent = student && event.host.id === student.userId;
 
-  const isParticipating = isMyEvent || joined || (student && event.attendees.some((a: any) => a.id === student.userId));
-
+  const isParticipating = isMyEvent || joined;
+  
   const submitReview = () => {
     if (!reviewText.trim()) return;
     const newReview = {
@@ -150,6 +158,58 @@ export default function EventDetails() {
     );
     setCommentText((prev) => ({ ...prev, [reviewId]: "" }));
     setShowCommentInput(null);
+  };
+
+  const handleJoinToggle = async () => {
+    // 1. Safety check so we don't crash if data isn't loaded yet
+    if (!student || !event) return;
+
+    const wasJoined = joined;
+    const previousAttendees = [...event.attendees]; 
+
+    // 2. Optimistically update both the button state  the attendees list
+    setJoined(!wasJoined);
+    setEvent((prev: any) => ({
+      ...prev,
+      attendees: wasJoined 
+        // If leaving: filter signed-in ID out of the array
+        ? prev.attendees.filter((a: any) => a.id !== student.userId) 
+        // Otherwise, inject the mock "You"
+        : [...prev.attendees, { 
+            id: student.userId, 
+            name: student.fullName || student.name || "You", // Fallback if for some reason fullName isn't showing
+            avatar: student.avatar 
+          }] 
+    }));
+
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const endpoint = wasJoined ? `/api/events/leave` : `/api/events/join`;
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId: student.userId
+        })
+      });
+
+      if (!response.ok) {
+        // 3. If the server fails, revert BOTH the button and the array back to normal
+        setJoined(wasJoined);
+        setEvent((prev: any) => ({ ...prev, attendees: previousAttendees }));
+        console.error("Failed to update attendance status");
+      }
+    } catch (err) {
+      // 4. Revert if the network crashes completely
+      setJoined(wasJoined);
+      setEvent((prev: any) => ({ ...prev, attendees: previousAttendees }));
+      console.error("Error updating attendance:", err);
+    }
   };
 
   return (
@@ -244,7 +304,7 @@ export default function EventDetails() {
           <div className="flex gap-3">
             {event.status === "upcoming" && !isMyEvent && (
               <button
-                onClick={() => setJoined(!joined)}
+                onClick={handleJoinToggle}
                 className={`flex-1 py-2.5 rounded-xl text-sm transition-colors ${
                   joined
                     ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
