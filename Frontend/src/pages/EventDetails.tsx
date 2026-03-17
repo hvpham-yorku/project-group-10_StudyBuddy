@@ -121,6 +121,8 @@ export default function EventDetails() {
   new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const isMyEvent = student && event.host.id === student.userId;
 
+  const isParticipating = isMyEvent || joined || (student && event.attendees.some((a: any) => a.id === student.userId));
+
   const submitReview = () => {
     if (!reviewText.trim()) return;
     const newReview = {
@@ -298,32 +300,40 @@ export default function EventDetails() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
         <h2 className="text-slate-800 text-sm mb-4 flex items-center gap-2" style={{ fontWeight: 600 }}>
           <Users size={16} className="text-blue-500" />
-          Attendees ({event.attendees.length}/{event.maxParticipants})
+          Attendees ({event.attendees?.length || 0}/{event.maxParticipants})
         </h2>
-        <div className="flex flex-wrap gap-3">
-          {event.attendees.map((a: any) => (
-            <div 
-              key={a.id} 
-              className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
-              onClick={() => navigate(`/profile/${a.id}`)}
-            >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
-                {a.avatar ? (
-                  <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
-                    {a.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
+        
+        {isParticipating ? (
+          <div className="flex flex-wrap gap-3">
+            {event.attendees.map((a: any) => (
+              <div 
+                key={a.id} 
+                className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
+                onClick={() => navigate(`/profile/${a.id}`)}
+              >
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
+                  {a.avatar ? (
+                    <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
+                      {a.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
               </div>
-              <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
-              {/* Removed the UserPlus button! */}
-            </div>
-          ))}
-          {event.attendees.length === 0 && (
-            <p className="text-sm text-slate-400">No attendees yet. Be the first to join!</p>
-          )}
-        </div>
+            ))}
+            {event.attendees.length === 0 && (
+              <p className="text-sm text-slate-400">No attendees yet. Be the first to join!</p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+            <p className="text-sm text-slate-500">
+              Join this session to see who else is attending.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Reviews */}
