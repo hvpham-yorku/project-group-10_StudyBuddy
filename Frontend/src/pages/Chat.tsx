@@ -169,7 +169,9 @@ export default function Chat() {
       let directChatsList: any[] = [];
       let connectionsData: any[] = [];
       try {
-        const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
+        const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`, {
+          headers: authHeaders
+        });
         if (connRes.ok) {
           connectionsData = await connRes.json();
           directChatsList = connectionsData.map((c: any) => ({
@@ -187,7 +189,9 @@ export default function Chat() {
       // 2. Fetch Events (Group Chats)
       let eventChatsList: any[] = [];
       try {
-        const eventsRes = await fetch(`/api/events`);
+        const eventsRes = await fetch(`/api/events`, {
+          headers: authHeaders
+        });
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           const myEvents = eventsData.filter((e: any) => 

@@ -148,18 +148,57 @@ export default function EventDetails() {
     setShowReviewForm(false);
   };
 
-  const submitComment = (reviewId: string) => {
+  const submitComment = async (reviewId: string) => {
     const text = commentText[reviewId];
-    if (!text?.trim()) return;
+    if (!text?.trim() || !student) return;
+
+    const previousReviews = [...localReviews];
+
+    // 1. Create the mock comment for the Optimistic Update
+    const newComment = { 
+      id: `c_temp_${Date.now()}`, 
+      author: { 
+        id: student.userId, 
+        name: student.fullName || student.name || "You", 
+        avatar: student.avatar 
+      }, 
+      text: text.trim(), 
+      date: new Date().toISOString().split("T")[0] 
+    };
+
+    // 2. Optimistically update the UI instantly
     setLocalReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? { ...r, comments: [...r.comments, { id: `c_${Date.now()}`, author: currentUser as any, text, date: new Date().toISOString().split("T")[0] }] }
+          ? { ...r, comments: [...(r.comments || []), newComment] }
           : r
       )
     );
     setCommentText((prev) => ({ ...prev, [reviewId]: "" }));
     setShowCommentInput(null);
+
+    // 3. Send to the Backend
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch(`/api/events/${id}/reviews/${reviewId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ text: text.trim() })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to post comment");
+      }
+      
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+      // Revert the UI if the network fails
+      setLocalReviews(previousReviews);
+      alert("Failed to post comment. Please try again.");
+    }
   };
 
   const handleJoinToggle = async () => {
