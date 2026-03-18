@@ -9,7 +9,9 @@ import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
+import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.classes.Student;
 
 import org.springframework.context.annotation.DependsOn;
@@ -299,6 +301,44 @@ public class EventService implements EventRepository  {
     	Firestore db = FirestoreClient.getFirestore();
     	db.collection("events").document(eventId).update("attendees", deductedAttendees).get();
     	return true;
+    }
+    
+    @Override
+    public boolean addReview(String eventId, Review review) throws Exception {
+        Event e = getEventById(eventId);
+        if (e == null) return false;
+
+        List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
+        if (reviews == null) {
+            reviews = new ArrayList<>();
+            e.setReviews(reviews);
+        }
+
+        reviews.add(review);
+        return true;
+    }
+
+    @Override
+    public boolean addCommentToReview(String eventId, String reviewId, Comment comment) throws Exception {
+        Event e = getEventById(eventId);
+        if (e == null) return false;
+
+        List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
+        if (reviews == null) return false;
+
+        for (ca.yorku.my.StudyBuddy.classes.Review r : reviews) {
+            if (r.getId() != null && r.getId().equals(reviewId)) {
+                List<Comment> comments = r.getComments();
+                if (comments == null) {
+                    comments = new ArrayList<>();
+                    r.setComments(comments);
+                }
+                comments.add(comment);
+                return true; // Successfully added comment
+            }
+        }
+        
+        return false; // Review not found
     }
     
 }

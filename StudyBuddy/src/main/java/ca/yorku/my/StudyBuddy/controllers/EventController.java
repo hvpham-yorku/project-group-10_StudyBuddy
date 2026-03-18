@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.HostDTO;
@@ -240,6 +242,80 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/{eventId}/reviews")
+    public ResponseEntity<?> addReview(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable String eventId,
+            @RequestBody Map<String, Object> payload) {
+
+        try {
+            String userId = authService.verifyFrontendToken(authHeader);
+            
+            int rating = 5;
+            if (payload.containsKey("rating")) {
+                rating = Integer.parseInt(String.valueOf(payload.get("rating")));
+            }
+            String text = String.valueOf(payload.getOrDefault("text", ""));
+
+            Review review = new Review(
+                "r_" + System.currentTimeMillis(),
+                userId,
+                rating,
+                text,
+                java.time.LocalDate.now().toString(),
+                new ArrayList<>()
+            );
+
+            boolean success = eventService.addReview(eventId, review);
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(review);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); 
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/{eventId}/reviews/{reviewId}/comments")
+    public ResponseEntity<?> addReviewComment(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable String eventId,
+            @PathVariable String reviewId,
+            @RequestBody Map<String, Object> payload) {
+
+        try {
+            String userId = authService.verifyFrontendToken(authHeader);
+            
+            // Text Extraction
+            String text = String.valueOf(payload.getOrDefault("text", ""));
+
+            if (text == null || text.trim().isEmpty() || text.equals("null")) {
+                return ResponseEntity.badRequest().body("Comment text cannot be empty");
+            }
+
+            Comment comment = new Comment(
+                "c_" + System.currentTimeMillis(),
+                userId,
+                text,
+                java.time.LocalDate.now().toString()
+            );
+
+            boolean success = eventService.addCommentToReview(eventId, reviewId, comment);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(comment);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event or Review not found");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
         }
     }
     

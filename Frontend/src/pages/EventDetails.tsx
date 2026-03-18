@@ -76,28 +76,25 @@ export default function EventDetails() {
 
         const data = await response.json();
 
-        // 4. Map the data safely!
+        // Safely map string IDs back into objects for the frontend
         const formattedEvent = {
           ...data,
-          // Format the Host
           host: typeof data.host === 'string'
             ? { id: "unknown_id", name: data.host, avatar: null }
             : data.host,
-
-          // Map Attendee IDs -> Real Student Objects
-          attendees: (data.attendees || []).map((attendeeId: any) => {
-            // If it's already an object for some reason, leave it
-            if (typeof attendeeId !== 'string') return attendeeId;
-
-            // Otherwise, look up their real name in the directory
-            const matchedStudent = allStudents.find((s: any) => s.userId === attendeeId);
-
-            return {
-              id: attendeeId,
-              name: matchedStudent ? (matchedStudent.fullName || "Unnamed Student") : attendeeId,
-              avatar: matchedStudent ? matchedStudent.avatar : null
-            };
-          })
+          attendees: data.attendees 
+          ? data.attendees.map((att: any) => 
+              typeof att === 'string' ? { id: att, name: "Student", avatar: null } : att
+            )
+          : [],
+          reviews: data.reviews ? data.reviews.map((r: any) => ({
+            ...r,
+            author: typeof r.author === 'string' ? { id: r.author, name: "Student", avatar: null } : r.author,
+            comments: r.comments ? r.comments.map((c: any) => ({
+              ...c,
+              author: typeof c.author === 'string' ? { id: c.author, name: "Student", avatar: null } : c.author
+            })) : []
+          })) : []
         };
 
         setEvent(formattedEvent);
@@ -133,28 +130,56 @@ export default function EventDetails() {
 
   const isParticipating = isMyEvent || joined;
 
-  const submitReview = () => {
-    if (!reviewText.trim()) return;
+  const submitReview = async () => {
+    if (!reviewText.trim() || !student) return;
+
+    const previousReviews = [...localReviews];
+
     const newReview = {
-      id: `r_new_${Date.now()}`,
-      author: currentUser as any,
+      id: `r_temp_${Date.now()}`,
+      author: {
+        id: student.userId,
+        name: student.fullName || student.name || "You",
+        avatar: student.avatar
+      },
       rating: reviewRating,
-      text: reviewText,
+      text: reviewText.trim(),
       date: new Date().toISOString().split("T")[0],
       comments: [],
     };
+
     setLocalReviews((prev) => [...prev, newReview]);
     setReviewText("");
     setShowReviewForm(false);
+
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch(`/api/events/${id}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ rating: reviewRating, text: reviewText.trim() })
+      });
+
+      if (!response.ok) throw new Error("Failed to post review");
+      
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      setLocalReviews(previousReviews); // Revert if the server fails
+      alert("Failed to post review. Please try again.");
+    }
   };
 
   const submitComment = async (reviewId: string) => {
     const text = commentText[reviewId];
     if (!text?.trim() || !student) return;
 
+    // 1. Snapshot for safety
     const previousReviews = [...localReviews];
 
-    // 1. Create the mock comment for the Optimistic Update
+    // 2. Create the mock comment for Optimistic Update
     const newComment = { 
       id: `c_temp_${Date.now()}`, 
       author: { 
@@ -166,7 +191,7 @@ export default function EventDetails() {
       date: new Date().toISOString().split("T")[0] 
     };
 
-    // 2. Optimistically update the UI instantly
+    // 3. Update the UI instantly
     setLocalReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
@@ -177,7 +202,7 @@ export default function EventDetails() {
     setCommentText((prev) => ({ ...prev, [reviewId]: "" }));
     setShowCommentInput(null);
 
-    // 3. Send to the Backend
+    // 4. Send to the Backend
     try {
       const token = localStorage.getItem("studyBuddyToken");
       const response = await fetch(`/api/events/${id}/reviews/${reviewId}/comments`, {
@@ -190,7 +215,8 @@ export default function EventDetails() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to post comment");
+        const errorText = await response.text();
+        throw new Error(`Failed to post comment: ${errorText}`);
       }
       
     } catch (err) {
