@@ -5,6 +5,18 @@ import {
   Mail, GraduationCap, MapPin, Star, Flame
 } from "lucide-react";
 import { studyVibeOptions } from "../data/mockData";
+import {
+  formatDistance,
+  getLastCampusLocation,
+  isGeolocationPermissionDenied,
+  getLocationPreference,
+  setLocationPreference,
+  shouldTrackLocationNow,
+  watchCampusLocation,
+  addLocationPreferenceListener,
+  requestCurrentCampusLocation,
+  setOnceLocationActive
+} from "../lib/locationTracking";
 
 interface SessionLogEvent {
   id: string;
@@ -79,6 +91,10 @@ export default function Profile() {
   const [autoTimeout, setAutoTimeout] = useState(0);
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState("");
+  const [liveCampusLocation, setLiveCampusLocation] = useState<any>(null); // Only populate when tracking is enabled
+  const [locationTrackingEnabled, setLocationTrackingEnabled] = useState(false); // Start as false
+  const [locationTrackingError, setLocationTrackingError] = useState("");
+  const [locationPermissionPref, setLocationPermissionPref] = useState(getLocationPreference());
 
   // AVATAR
   const [avatar, setAvatar] = useState("");
@@ -228,6 +244,69 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
+    // Function to evaluate and update location tracking state
+    const updateLocationState = () => {
+      const token = localStorage.getItem("studyBuddyToken");
+      const pref = getLocationPreference();
+      const canTrack = shouldTrackLocationNow(token);
+
+      setLocationPermissionPref(pref);
+      setLocationTrackingEnabled(canTrack);
+      
+      // When tracking is disabled, clear all location data
+      if (!canTrack) {
+        setLiveCampusLocation(null);
+        // If preference is explicitly "reject", also clear the input field to ensure clean manual mode
+        if (pref === "reject") {
+          setLocation("");
+        }
+      } else {
+        // Restore last known location if tracking is enabled
+        setLiveCampusLocation(getLastCampusLocation());
+      }
+    };
+
+    // Initial state evaluation
+    updateLocationState();
+
+    // Listen for preference changes (e.g., from Dashboard or settings change)
+    const unsubscribe = addLocationPreferenceListener(updateLocationState);
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!locationTrackingEnabled) {
+      return;
+    }
+
+    const stopWatch = watchCampusLocation({
+      onUpdate: (reading) => {
+        // Only update location display if tracking is still enabled
+        // (safety check in case state changed between watch callback and execution)
+        if (getLocationPreference() !== "reject") {
+          setLiveCampusLocation(reading);
+          setLocation(reading.buildingName);
+          setLocationTrackingError("");
+        }
+      },
+      onError: (error) => {
+        if (isGeolocationPermissionDenied(error)) {
+          setLocationPreference("reject");
+          setLocationTrackingEnabled(false);
+          setLiveCampusLocation(null);
+          setLocationTrackingError("Location access denied. You can set location manually.");
+          return;
+        }
+
+        setLocationTrackingError("Location tracking is blocked in your browser settings.");
+      }
+    });
+
+    return stopWatch;
+  }, [locationTrackingEnabled]);
+
+  useEffect(() => {
     const query = courseInput.trim();
     if (!query) {
       setCourseSuggestions([]);
@@ -330,18 +409,31 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
       const base64 = reader.result as string;
       const token = localStorage.getItem("studyBuddyToken");
 
-      // Send to backend
-      await fetch(`/api/studentcontroller/profile/avatar`, {
-        method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ avatar: base64 })
-      });
+      try {
+        // Send to backend
+        const response = await fetch(`/api/studentcontroller/profile/avatar`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({ avatar: base64 })
+        });
 
-      // Update UI immediately
-      setAvatar(base64);
+        if (!response.ok) {
+          throw new Error("Failed to save avatar");
+        }
+
+        // Update UI immediately
+        setAvatar(base64);
+      } catch (err) {
+        console.error("Failed to update avatar", err);
+      } finally {
+        // Reset so selecting the same file again still triggers onChange
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
     };
 
     reader.readAsDataURL(file);
@@ -407,6 +499,13 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                   </span>
                 )}
               </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </div>
 
             {/* Streak Badge */}
@@ -468,7 +567,10 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-500">
                 <MapPin size={14} className="text-slate-400" />
-                <span>{location}</span>
+                <span>{liveCampusLocation?.buildingName || location}</span>
+                {liveCampusLocation && (
+                  <span className="text-xs text-slate-400">({formatDistance(liveCampusLocation.distanceMeters)})</span>
+                )}
               </div>
 
               <p className="text-xs text-slate-400 mt-1">Member since {joinedDate || "Recently"}</p>
@@ -1017,14 +1119,69 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Location</h2>
 
+        <div className="mb-3 text-sm text-slate-600">
+          {locationTrackingEnabled ? (
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Auto-updating from GPS ({locationPermissionPref === "always" ? "Allow Always" : "Allow Once"})
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              Manual location mode
+            </span>
+          )}
+        </div>
+
         <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="Enter your current study location..."
-          className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+          placeholder={locationTrackingEnabled ? "Location is auto-detected" : "Enter your current study location..."}
+          readOnly={locationTrackingEnabled}
+          className={`border rounded-lg px-3 py-2 w-full ${locationTrackingEnabled ? "bg-slate-100 border-slate-200 text-slate-600" : "border-slate-300"}`}
         />
 
+        {locationTrackingError && (
+          <p className="text-sm text-red-600 mt-2">{locationTrackingError}</p>
+        )}
+
+        {locationPermissionPref === "reject" && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-slate-500">Location tracking is disabled. You can change this:</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setLocationPreference(null);
+                  setLocationTrackingError("");
+                }}
+                className="flex-1 text-xs px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+              >
+                Ask Again on Dashboard
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem("studyBuddyToken");
+                    // Set "once" active first before requesting
+                    setOnceLocationActive(true, token);
+                    const reading = await requestCurrentCampusLocation();
+                    setLiveCampusLocation(reading);
+                    setLocationPreference(null); // Reset preference so prompt shows on dashboard next time
+                    setLocationTrackingEnabled(true);
+                    setLocationTrackingError("");
+                  } catch {
+                    setLocationTrackingError("Could not access your location. Allow in browser settings.");
+                    setOnceLocationActive(false);
+                  }
+                }}
+                className="flex-1 text-xs px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition"
+              >
+                Enable for This Session
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
+          disabled={locationTrackingEnabled}
           onClick={() =>
             saveProfile({
               courses,
@@ -1036,9 +1193,9 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
               location,
             })
           }
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+          className={`mt-4 px-4 py-2 rounded-lg text-sm transition ${locationTrackingEnabled ? "bg-slate-200 text-slate-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
         >
-          Save Location
+          {locationTrackingEnabled ? "Location Auto-Synced" : "Save Location"}
         </button>
       </div>
 

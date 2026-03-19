@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 
 @Service
-// This service loads and manages the York course catalog, providing search functionality for course codes.
+// This service loads and manages the York course catalog, providing search functionality for course codes. It uses filtering based on the CSV file to only show course codes.
 public class YorkCourseCatalogService {
 
     private final List<String> courseCodes = new ArrayList<>();
