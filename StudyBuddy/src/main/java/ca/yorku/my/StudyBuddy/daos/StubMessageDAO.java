@@ -38,6 +38,14 @@ public class StubMessageDAO implements MessageDAO {
     }
 
     @Override
+    public Optional<Message> findLatestMessage(String chatId) {
+        return StubDatabase.MESSAGES.stream()
+                .filter(m -> m.getChatId().equals(chatId))
+                .max(Comparator.comparingLong(Message::getTimestampEpochMillis)
+                        .thenComparing(Message::getMessageId));
+    }
+
+    @Override
     public List<Message> listMessages(String chatId, int limit, String beforeCursor) {
         List<Message> chatMessages = StubDatabase.MESSAGES.stream()
                 .filter(m -> m.getChatId().equals(chatId))

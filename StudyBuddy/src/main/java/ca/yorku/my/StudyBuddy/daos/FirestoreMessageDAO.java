@@ -107,6 +107,46 @@ public class FirestoreMessageDAO implements MessageDAO {
 
     @Override
     /**
+     * Finds the most recent message in a chat with a single descending query.
+     */
+    public Optional<Message> findLatestMessage(String chatId) {
+        if (isBlank(chatId)) {
+            return Optional.empty();
+        }
+
+        Firestore db = FirestoreClient.getFirestore();
+        CollectionReference messagesRef = db.collection(CHATS_COLLECTION)
+                .document(chatId)
+                .collection(MESSAGES_SUBCOLLECTION);
+
+        Query query = messagesRef
+                .orderBy("timestampEpochMillis", Query.Direction.DESCENDING)
+                .orderBy(FieldPath.documentId(), Query.Direction.DESCENDING)
+                .limit(1);
+
+        try {
+            List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+            if (documents.isEmpty()) {
+                return Optional.empty();
+            }
+
+            QueryDocumentSnapshot document = documents.get(0);
+            Message message = document.toObject(Message.class);
+            if (message == null) {
+                return Optional.empty();
+            }
+
+            message.setMessageId(document.getId());
+            message.setChatId(chatId);
+            return Optional.of(message);
+        } catch (InterruptedException | ExecutionException exception) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Failed to find latest message", exception);
+        }
+    }
+
+    @Override
+    /**
      * Lists messages in descending chronological order.
      *
      * When beforeCursor is provided, results start strictly after that message
