@@ -166,26 +166,21 @@ const BUILDING_ANCHOR_REFINEMENTS: Record<string, BuildingAnchor[]> = {
   ]
 };
 
-const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-
-// Calculate the Haversine distance between two lat/lng points in meters using formula
-const haversineDistanceMeters = (
+// Approximate lat/lng to meters then use Euclidean distance.
+const euclideanDistanceMeters = (
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
 ) => {
-  const earthRadiusMeters = 6371000;
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) *
-      Math.cos(toRadians(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusMeters * c;
+  const metersPerDegreeLat = 111_320;
+  const avgLatRadians = ((lat1 + lat2) / 2) * (Math.PI / 180);
+  const metersPerDegreeLon = 111_320 * Math.cos(avgLatRadians);
+
+  const dx = (lon2 - lon1) * metersPerDegreeLon;
+  const dy = (lat2 - lat1) * metersPerDegreeLat;
+
+  return Math.sqrt(dx * dx + dy * dy);
 };
 
 // Format distance in meters to a user-friendly string (e.g. "150 m away" or "1.2 km away")
@@ -217,7 +212,7 @@ const getMinDistanceToBuilding = (
   const anchors = getAnchorsForBuilding(building);
   let minDistance = Number.POSITIVE_INFINITY;
   for (const anchor of anchors) {
-    const distance = haversineDistanceMeters(
+    const distance = euclideanDistanceMeters(
       latitude,
       longitude,
       anchor.lat,
