@@ -119,6 +119,7 @@ export default function Chat() {
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const typingPollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestMessageEpochByChatId = useRef<Record<string, number>>({});
 
   const selectedChat = localChats.find((c) => c.id === selectedChatId);
 
@@ -245,9 +246,23 @@ export default function Chat() {
 
   useEffect(() => {
     void loadRealChats();
-    const interval = setInterval(() => { void loadRealChats(); }, 5000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      void loadRealChats();
+    }, 15000);
     return () => clearInterval(interval);
   }, [activeUser?.id]);
+
+  const extractLatestMessageEpoch = (messages: any[]) => {
+    let latest = 0;
+    for (const message of messages || []) {
+      const parsed = Date.parse(String(message?.timestamp || ""));
+      if (!Number.isNaN(parsed) && parsed > latest) {
+        latest = parsed;
+      }
+    }
+    return latest;
+  };
 
   const mapMessageToUi = (chat: any, apiMessage: any) => {
     const sender = chat.members.find((member: any) => member.id === apiMessage.senderId) as any;
@@ -313,9 +328,17 @@ export default function Chat() {
 
       const payload = await response.json();
       const pageMessages = (payload.messages || []).map((msg: any) => mapMessageToUi(chat, msg)).reverse();
+      const latestEpoch = extractLatestMessageEpoch(pageMessages);
 
       setNextCursor(payload.nextCursor || null);
       setHasMoreMessages(Boolean(payload.hasMore));
+
+      if (latestEpoch > 0) {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          latestEpoch
+        );
+      }
 
       setLocalChats((prev) =>
         prev.map((existing) => existing.id === chat.id ? {
@@ -331,12 +354,60 @@ export default function Chat() {
     }
   };
 
+  const pollMessagesIfChanged = async (chat: any) => {
+    if (!chat) return;
+
+    try {
+      const backendChatId = await ensureBackendChat(chat);
+      const sinceEpochMillis = latestMessageEpochByChatId.current[chat.id] || 0;
+      const params = new URLSearchParams({ sinceEpochMillis: String(sinceEpochMillis) });
+
+      const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages/sync?${params.toString()}`), {
+        headers: authHeaders,
+      });
+
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      if (typeof payload.latestTimestampEpochMillis === "number") {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          payload.latestTimestampEpochMillis
+        );
+      }
+
+      if (payload.changed) {
+        await loadMessages(chat, undefined, false, true);
+      }
+    } catch {
+      // Silent background polling failures should not interrupt chat UX.
+    }
+  };
+
   useEffect(() => {
     const chat = localChats.find((c) => c.id === selectedChatId);
     if (!chat) return;
-    void loadMessages(chat);
-    const interval = setInterval(() => { void loadMessages(chat, undefined, false, true); }, 3000);
-    return () => clearInterval(interval);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const schedule = () => {
+      const nextIntervalMs = document.hidden ? 30000 : 10000;
+      timeoutId = setTimeout(async () => {
+        if (cancelled) return;
+        await pollMessagesIfChanged(chat);
+        if (!cancelled) schedule();
+      }, nextIntervalMs);
+    };
+
+    void loadMessages(chat).then(() => {
+      if (!cancelled) schedule();
+    });
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [selectedChatId, activeUser?.id]);
 
   const sendTypingStatus = async (chat: any, typing: boolean) => {
@@ -389,6 +460,14 @@ export default function Chat() {
 
       const apiMessage = await response.json();
       const newMsg = mapMessageToUi(chat, apiMessage);
+
+      const sentAtEpoch = Date.parse(String(newMsg.timestamp || ""));
+      if (!Number.isNaN(sentAtEpoch)) {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          sentAtEpoch
+        );
+      }
 
       setLocalChats((prev) => prev.map((existing) => existing.id === selectedChatId ? {
           ...existing,
