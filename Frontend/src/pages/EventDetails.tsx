@@ -471,7 +471,7 @@ export default function EventDetails() {
             <Star size={16} className="text-orange-400" />
             Reviews ({localReviews.length})
           </h2>
-          {event.status === "past" && !showReviewForm && (
+          {event.status === "past" && (joined || isMyEvent) && !showReviewForm && (
             <button
               onClick={() => setShowReviewForm(true)}
               className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors"
