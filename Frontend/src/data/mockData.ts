@@ -20,7 +20,6 @@ export const YORK_BUILDINGS = [
   { acronym: "FAN", name: "Founders College Annex", lat: 43.7760, lng: -79.5000 },
   { acronym: "FAS", name: "Fine Arts Studios", lat: 43.7720, lng: -79.5000 },
   { acronym: "FC",  name: "Founders College", lat: 43.7765, lng: -79.5010 },
-  { acronym: "HH",  name: "Hilliard Hall", lat: 43.7741, lng: -79.5065 },
   { acronym: "HNE", name: "Health, Nursing & Environmental Studies", lat: 43.7728, lng: -79.5045 },
   { acronym: "IKB", name: "Ignat Kaneff Building", lat: 43.7735, lng: -79.5010 },
   { acronym: "KT",  name: "Kaneff Tower", lat: 43.7738, lng: -79.5012 },

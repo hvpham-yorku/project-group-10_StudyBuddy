@@ -336,43 +336,60 @@ export const requestCurrentCampusLocation = () =>
 interface WatchCampusLocationOptions {
   onUpdate: (reading: CampusLocationReading) => void;
   onError?: (error: GeolocationPositionError) => void;
+  updateIntervalMs?: number;
 }
+
+export const LOCATION_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
 
 export const watchCampusLocation = ({
   onUpdate,
-  onError
+  onError,
+  updateIntervalMs = LOCATION_UPDATE_INTERVAL_MS
 }: WatchCampusLocationOptions) => {
   if (!navigator.geolocation) {
     return () => {};
   }
 
-  const watchId = navigator.geolocation.watchPosition(
-    (position) => {
-      const reading = readNearestCampusLocation(
-        position.coords.latitude,
-        position.coords.longitude,
-        position.coords.accuracy,
-        getLastCampusLocation()
-      );
-      if (!reading) {
-        return;
-      }
-      persistLastCampusLocation(reading);
-      onUpdate(reading);
-    },
-    (error) => {
-      if (onError) {
-        onError(error);
-      }
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 10000
+  let isStopped = false;
+
+  const fetchLocation = () => {
+    if (isStopped) {
+      return;
     }
-  );
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const reading = readNearestCampusLocation(
+          position.coords.latitude,
+          position.coords.longitude,
+          position.coords.accuracy,
+          getLastCampusLocation()
+        );
+        if (!reading) {
+          return;
+        }
+        persistLastCampusLocation(reading);
+        onUpdate(reading);
+      },
+      (error) => {
+        if (onError) {
+          onError(error);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: updateIntervalMs,
+        timeout: 10000
+      }
+    );
+  };
+
+  // Immediate first reading, then poll at the configured interval.
+  fetchLocation();
+  const intervalId = window.setInterval(fetchLocation, updateIntervalMs);
 
   return () => {
-    navigator.geolocation.clearWatch(watchId);
+    isStopped = true;
+    window.clearInterval(intervalId);
   };
 };
