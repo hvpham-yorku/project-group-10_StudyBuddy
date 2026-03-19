@@ -295,6 +295,32 @@ public class ChatService {
     }
 
     /**
+     * Returns whether chat messages changed since a client-provided epoch timestamp.
+     */
+    public Map<String, Object> getMessageSyncState(String actorId, String chatId, long sinceEpochMillis) {
+        Chat chat = chatDAO.findById(chatId).orElse(null);
+        if (chat == null) {
+            throw new NotFoundException("Chat not found");
+        }
+        if (!chat.getParticipantIds().contains(actorId)) {
+            throw new ForbiddenException("Actor is not a participant in this chat");
+        }
+        if (sinceEpochMillis < 0) {
+            throw new ValidationException("sinceEpochMillis must be greater than or equal to 0");
+        }
+
+        Message latest = messageDAO.findLatestMessage(chatId).orElse(null);
+        long latestTimestampEpochMillis = latest == null ? 0L : latest.getTimestampEpochMillis();
+        String latestMessageId = latest == null ? null : latest.getMessageId();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("changed", latestTimestampEpochMillis > sinceEpochMillis);
+        response.put("latestTimestampEpochMillis", latestTimestampEpochMillis);
+        response.put("latestMessageId", latestMessageId);
+        return response;
+    }
+
+    /**
      * Updates ephemeral typing state for the actor in a chat.
      */
     public void updateTypingStatus(String actorId, String chatId, TypingStatusUpdateRequest request) {

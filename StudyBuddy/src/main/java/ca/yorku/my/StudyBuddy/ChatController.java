@@ -151,6 +151,30 @@ public class ChatController {
     }
 
     /**
+     * Lightweight sync probe used by clients to avoid fetching full message pages when unchanged.
+     */
+    @GetMapping("/{chatId}/messages/sync")
+    public ResponseEntity<?> getMessageSyncState(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable String chatId,
+            @RequestParam(defaultValue = "0") long sinceEpochMillis) {
+        try {
+            String actorId = chatService.extractActorId(authorizationHeader);
+            return ResponseEntity.ok(chatService.getMessageSyncState(actorId, chatId, sinceEpochMillis));
+        } catch (UnauthorizedException ex) {
+            return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        } catch (ForbiddenException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
+        } catch (NotFoundException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ValidationException ex) {
+            return error(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        } catch (Exception ex) {
+            return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
+        }
+    }
+
+    /**
      * Updates whether the authenticated actor is currently typing.
      */
     @PutMapping("/{chatId}/typing")
