@@ -141,9 +141,17 @@ public class EventController {
             // 3. Check if the requester has permission to see the attendees
             boolean isParticipating = requesterId != null && 
                 (requesterId.equals(event.getHost()) || rawAttendees.contains(requesterId));
+            
+            
 
             // 4. Filter the list: send the real list if participating, otherwise send empty array
             List<String> visibleAttendees = isParticipating ? rawAttendees : new ArrayList<>();
+    		
+            String serverToday = java.time.LocalDate.now().toString();
+            String calculatedStatus = "upcoming";
+            if (event.getDate() != null && event.getDate().compareTo(serverToday) < 0) {
+                calculatedStatus = "past";
+            }
     		
     		EventResponseDTO dto = new EventResponseDTO(
                 	event.getId(),
@@ -159,7 +167,7 @@ public class EventController {
                     attendeeCount,
                     visibleAttendees,
                 	event.getTags() != null ? event.getTags() : new ArrayList<>(),
-                	event.getStatus() != null ? event.getStatus() : "upcoming",
+        			calculatedStatus,
                 	event.getReviews() != null ? event.getReviews() : new ArrayList<>()
                 );
     		
@@ -189,6 +197,13 @@ public class EventController {
             }
 
             for (Event event : events) {
+            	
+            	String serverToday = java.time.LocalDate.now().toString();
+                String calculatedStatus = "upcoming";
+                if (event.getDate() != null && event.getDate().compareTo(serverToday) < 0) {
+                    calculatedStatus = "past";
+                }
+                
                 Student hostStudent = studentService.getStudent(event.getHost());
                 HostDTO hostDTO = new HostDTO(
                     hostStudent.getUserId(),
@@ -213,7 +228,7 @@ public class EventController {
                     attendeeCount,
                     visibleAttendees,
                 	event.getTags() != null ? event.getTags() : new ArrayList<>(), 
-                    event.getStatus() != null ? event.getStatus() : "upcoming", 
+                    calculatedStatus,
                     event.getReviews() != null ? event.getReviews() : new ArrayList<>()
                 );
                 eventDTOs.add(dto);
