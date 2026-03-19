@@ -12,6 +12,7 @@ import {
   getLocationPreference,
   setLocationPreference,
   shouldTrackLocationNow,
+  syncTrackedLocationToProfile,
   watchCampusLocation,
   addLocationPreferenceListener,
   requestCurrentCampusLocation,
@@ -292,6 +293,12 @@ export default function Profile() {
           setLiveCampusLocation(reading);
           setLocation(reading.buildingName);
           setLocationTrackingError("");
+          syncTrackedLocationToProfile(reading.buildingName, {
+            latitude: reading.latitude,
+            longitude: reading.longitude
+          }).catch((err) => {
+            console.error("Failed to sync tracked location", err);
+          });
         }
       },
       onError: (error) => {
@@ -1168,6 +1175,10 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
                     setOnceLocationActive(true, token);
                     const reading = await requestCurrentCampusLocation();
                     setLiveCampusLocation(reading);
+                    await syncTrackedLocationToProfile(reading.buildingName, {
+                      latitude: reading.latitude,
+                      longitude: reading.longitude
+                    });
                     setLocationPreference(null); // Reset preference so prompt shows on dashboard next time
                     setLocationTrackingEnabled(true);
                     setLocationTrackingError("");

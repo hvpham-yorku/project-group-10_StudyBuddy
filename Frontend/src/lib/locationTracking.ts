@@ -332,6 +332,32 @@ export const requestCurrentCampusLocation = () =>
     );
   });
 
+export const syncTrackedLocationToProfile = async (
+  buildingName: string,
+  exactLocation?: { latitude: number; longitude: number }
+) => {
+  if (!buildingName.trim()) {
+    return;
+  }
+
+  const token = localStorage.getItem("studyBuddyToken");
+  if (!token) {
+    return;
+  }
+
+  await fetch("/api/studentcontroller/profile/update", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      location: buildingName,
+      exactLocation: exactLocation ?? null
+    })
+  });
+};
+
 // Update user location in real-time as they move around campus
 interface WatchCampusLocationOptions {
   onUpdate: (reading: CampusLocationReading) => void;

@@ -23,6 +23,7 @@ public class Student {
     private Boolean isOnline;
     private String joinedDate;
     private String location;
+    private ExactLocation exactLocation;
     private boolean twoFAEnabled;
     private int autoTimeout;
     private int loginStreak;
@@ -154,6 +155,9 @@ public class Student {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
+    public ExactLocation getExactLocation() { return exactLocation; }
+    public void setExactLocation(ExactLocation exactLocation) { this.exactLocation = exactLocation; }
+
     public boolean isTwoFAEnabled() { return twoFAEnabled; }
     public void setTwoFAEnabled(boolean twoFAEnabled) { this.twoFAEnabled = twoFAEnabled; }
 
@@ -168,6 +172,24 @@ public class Student {
 
     public String getLastLoginDate() { return lastLoginDate; }
     public void setLastLoginDate(String lastLoginDate) { this.lastLoginDate = lastLoginDate; }
+
+    public static class ExactLocation {
+        private double latitude;
+        private double longitude;
+
+        public ExactLocation() {}
+
+        public ExactLocation(double latitude, double longitude) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+
+        public double getLatitude() { return latitude; }
+        public void setLatitude(double latitude) { this.latitude = latitude; }
+
+        public double getLongitude() { return longitude; }
+        public void setLongitude(double longitude) { this.longitude = longitude; }
+    }
 
     
 }

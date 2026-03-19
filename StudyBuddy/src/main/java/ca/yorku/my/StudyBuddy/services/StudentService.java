@@ -97,6 +97,12 @@ public class StudentService implements StudentRepository {
         db.collection("students").document(userId).update("location", location).get();
     }
 
+    // Updates the exact location coordinates of a student based on tracked geolocation
+    @Override
+    public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
+        db.collection("students").document(userId).update("exactLocation", exactLocation).get();
+    }
+
     // Updates the two-factor authentication setting of a student based on their input
     @Override
     public void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception {

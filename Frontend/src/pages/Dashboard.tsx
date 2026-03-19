@@ -12,6 +12,7 @@ import {
   requestCurrentCampusLocation,
   setLocationPreference,
   setOnceLocationActive,
+  syncTrackedLocationToProfile,
   watchCampusLocation,
   addLocationPreferenceListener
 } from "../lib/locationTracking";
@@ -159,6 +160,12 @@ export default function Dashboard() {
     const stopWatch = watchCampusLocation({
       onUpdate: (reading) => {
         setLiveCampusLocation(reading);
+        syncTrackedLocationToProfile(reading.buildingName, {
+          latitude: reading.latitude,
+          longitude: reading.longitude
+        }).catch((err) => {
+          console.error("Failed to sync tracked location", err);
+        });
       },
       onError: (error) => {
         if (isGeolocationPermissionDenied(error)) {
@@ -184,6 +191,10 @@ export default function Dashboard() {
       setOnceLocationActive(true, token);
       const reading = await requestCurrentCampusLocation();
       setLiveCampusLocation(reading);
+      await syncTrackedLocationToProfile(reading.buildingName, {
+        latitude: reading.latitude,
+        longitude: reading.longitude
+      });
       setTrackCampusLocation(true);
       setShowLocationPrompt(false);
     } catch (error) {
@@ -207,6 +218,10 @@ export default function Dashboard() {
       setLocationPreference("always");
       const reading = await requestCurrentCampusLocation();
       setLiveCampusLocation(reading);
+      await syncTrackedLocationToProfile(reading.buildingName, {
+        latitude: reading.latitude,
+        longitude: reading.longitude
+      });
       setOnceLocationActive(false);
       setTrackCampusLocation(true);
       setShowLocationPrompt(false);

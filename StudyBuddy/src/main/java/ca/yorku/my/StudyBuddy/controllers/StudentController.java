@@ -85,6 +85,10 @@ public class StudentController {
 	    		studentRepository.updateLocation(studentID, req.location());
 	    	}
 
+	    	if (req.exactLocation() != null) {
+	    		studentRepository.updateExactLocation(studentID, req.exactLocation());
+	    	}
+
 	    	if (req.notifications() != null) {
 	    		studentRepository.updateNotifications(studentID, req.notifications());
 	    	}
