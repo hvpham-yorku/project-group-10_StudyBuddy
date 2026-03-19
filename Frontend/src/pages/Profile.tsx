@@ -262,7 +262,11 @@ export default function Profile() {
         }
       } else {
         // Restore last known location if tracking is enabled
-        setLiveCampusLocation(getLastCampusLocation());
+        const lastLocation = getLastCampusLocation();
+        setLiveCampusLocation(lastLocation);
+        if (lastLocation) {
+          setLocation(lastLocation.buildingName);
+        }
       }
     };
 
@@ -1132,7 +1136,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
         </div>
 
         <input
-          value={location}
+          value={locationTrackingEnabled ? (liveCampusLocation?.buildingName || location) : location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder={locationTrackingEnabled ? "Location is auto-detected" : "Enter your current study location..."}
           readOnly={locationTrackingEnabled}
