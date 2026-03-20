@@ -228,7 +228,7 @@ export default function EventDetails() {
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {event.tags.map((tag) => (
+            {event.tags.map((tag: string) => (
               <span key={tag} className={`text-xs px-2.5 py-1 rounded-full ${vibeColors[tag] || "bg-slate-100 text-slate-600"}`} style={{ fontWeight: 500 }}>
                 {tag}
               </span>
@@ -413,7 +413,7 @@ export default function EventDetails() {
               {/* Comments */}
               {r.comments.length > 0 && (
                 <div className="pl-4 border-l-2 border-slate-100 space-y-2 mb-3">
-                  {r.comments.map((c) => (
+                  {r.comments.map((c: any) => (
                     <div key={c.id} className="flex items-start gap-2">
                       <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
                         <span className="text-blue-600" style={{ fontSize: "9px", fontWeight: 700 }}>

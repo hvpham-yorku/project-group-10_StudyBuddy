@@ -12,6 +12,7 @@ import {
   requestCurrentCampusLocation,
   setLocationPreference,
   setOnceLocationActive,
+  shouldTrackLocationNow,
   syncTrackedLocationToProfile,
   watchCampusLocation,
   addLocationPreferenceListener
@@ -117,7 +118,15 @@ export default function Dashboard() {
   useEffect(() => {
     // Function to evaluate and update tracking state based on current preferences
     const updateLocationState = () => {
+      const token = localStorage.getItem("studyBuddyToken");
       const pref = getLocationPreference();
+      const canTrackNow = shouldTrackLocationNow(token);
+
+      if (canTrackNow) {
+        setTrackCampusLocation(true);
+        setShowLocationPrompt(false);
+        return;
+      }
 
       // NEVER track on initial load if preference is null (first time user)
       // Only show prompt to let user decide
