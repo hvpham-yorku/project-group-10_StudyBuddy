@@ -80,17 +80,66 @@ public class EventController {
         }
     }
     
-    // TODO: Make DTO
     @PostMapping("/join")
-    public ResponseEntity<String> joinEvent(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<String> joinEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @RequestBody Map<String, String> payload) {
         try {
-        	// 1. Initiate the service
-    		eventService.joinEvent(payload.get("userId"), payload.get("eventId"));
-        	
-        	// 2. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+            // 1. Verify the token to see who is ACTUALLY making the request
+            String requesterId = authService.verifyFrontendToken(authHeader);
+            String eventId = payload.get("eventId");
+            
+            // 2. Ignore any userId in the payload. Force the requester to only join for themselves.
+            boolean success = eventService.joinEvent(requesterId, eventId);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to join event");
+            }
         } catch (Exception e) {
-        	e.printStackTrace();
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/leave")
+    public ResponseEntity<String> leaveEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @RequestBody Map<String, String> payload) {
+        try {
+            // 1. Verify who is making the request
+            String requesterId = authService.verifyFrontendToken(authHeader);
+            
+            // 2. Extract who they are trying to remove
+            String targetUserId = payload.get("userId");
+            String eventId = payload.get("eventId");
+            
+            // 3. Verify the user
+            if (!requesterId.equals(targetUserId)) {
+                ca.yorku.my.StudyBuddy.classes.Event event = eventService.getEventById(eventId);
+                
+                if (event == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                }
+                
+                // If they aren't removing themselves and they aren't the host, block request
+                if (!event.getHost().equals(requesterId)) {
+                    System.out.println("SECURITY ALERT: User " + requesterId + " attempted to kick " + targetUserId);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the host can kick users.");
+                }
+            }
+
+            // 4. If they pass the security check, execute the removal
+            boolean success = eventService.leaveEvent(targetUserId, eventId);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.OK).body("Successfully removed from event!");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to remove from event");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

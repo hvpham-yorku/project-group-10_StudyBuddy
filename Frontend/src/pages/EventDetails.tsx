@@ -292,6 +292,50 @@ export default function EventDetails() {
       console.error("Error updating attendance:", err);
     }
   };
+
+  const handleKick = async (targetUserId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents clicking through to the profile page
+    if (!window.confirm("Are you sure you want to remove this user from the session?")) return;
+
+    // 1. Snapshot for safety
+    const previousAttendees = [...event.attendees];
+    const previousCount = event.attendeeCount ?? event.attendees.length;
+
+    // 2. Optimistic UI update: instantly remove them from the screen
+    setEvent((prev: any) => ({
+      ...prev,
+      attendees: prev.attendees.filter((a: any) => a.id !== targetUserId),
+      attendeeCount: Math.max(0, previousCount - 1)
+    }));
+
+    // 3. Tell the backend to drop them
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch("/api/events/leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId: targetUserId // Passing the target's ID instead of the host's ID
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to kick user");
+
+    } catch (err) {
+      console.error("Error kicking user:", err);
+      // Revert if the server fails
+      setEvent((prev: any) => ({
+        ...prev,
+        attendees: previousAttendees,
+        attendeeCount: previousCount
+      }));
+      alert("Failed to remove user. Please try again.");
+    }
+  };
   return (
     <div className="p-6 max-w-3xl mx-auto">
       {/* Back */}
@@ -447,7 +491,7 @@ export default function EventDetails() {
             {event.attendees.map((a: any) => (
               <div
                 key={a.id}
-                className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
+                className="group relative flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
                 onClick={() => navigate(`/profile/${a.id}`)}
               >
                 <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
@@ -455,11 +499,22 @@ export default function EventDetails() {
                     <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
-                      {a.name.charAt(0).toUpperCase()}
+                      {(a.name || "?").charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
+                
+                {/* Kick button */}
+                {isMyEvent && a.id !== student.userId && (
+                  <button
+                    onClick={(e) => handleKick(a.id, e)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity shadow-sm"
+                    title="Remove user"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
             ))}
             {event.attendees.length === 0 && (
