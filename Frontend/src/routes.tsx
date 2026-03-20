@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import React from 'react';
+import { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -16,13 +17,65 @@ import EventDetails from "./pages/EventDetails";
 import Layout from "./pages/Layout";
 import { RootLayout } from "./layouts/RootLayout";
 import Inactive from "./pages/Inactive";
+import { clearAuthState, getAuthToken } from "./lib/auth";
 
 // This component checks for a token. If it's missing, it kicks the user to Login.
 const ProtectedRoute = () => {
-  const token = localStorage.getItem("studyBuddyToken");
-  if (!token) {
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const validateAuth = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        if (!cancelled) {
+          setIsAuthorized(false);
+          setIsCheckingAuth(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/studentcontroller/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          clearAuthState();
+          setIsAuthorized(false);
+        } else {
+          setIsAuthorized(true);
+        }
+      } catch {
+        if (cancelled) return;
+        clearAuthState();
+        setIsAuthorized(false);
+      } finally {
+        if (!cancelled) {
+          setIsCheckingAuth(false);
+        }
+      }
+    };
+
+    void validateAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (isCheckingAuth) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Checking session...</div>;
+  }
+
+  if (!isAuthorized) {
     return <Navigate to="/" replace />;
   }
+
   return <Outlet />;
 };
 

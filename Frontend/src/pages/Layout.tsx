@@ -5,6 +5,7 @@ import {
   Users, Settings, Bell, BookOpen, LogOut, ChevronLeft, ChevronRight,
   X
 } from "lucide-react";
+import { clearAuthState, getAuthToken } from "../lib/auth";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -22,14 +23,14 @@ export default function Layout() {
   const [student, setStudent] = useState<any>(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("studyBuddyToken");
+    clearAuthState();
     navigate("/");
   };
 
   useEffect(() => {
     async function fetchUser() {
       try {
-        const token = localStorage.getItem("studyBuddyToken");
+        const token = getAuthToken();
         if (!token) return;
         
         const res = await fetch("/api/studentcontroller/profile", {

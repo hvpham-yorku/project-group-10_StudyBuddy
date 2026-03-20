@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { BookOpen, Eye, EyeOff, AlertCircle, Mail } from "lucide-react";
+import { setAuthToken } from "../lib/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,8 +45,8 @@ export default function Login() {
         // Status 200: Verified and logged in!
         const data = await response.text();
 
-        // Save the token so the Auth Guard lets us into the dashboard
-        localStorage.setItem("studyBuddyToken", data);
+        // Save token for protected routes and authenticated API calls.
+        setAuthToken(data);
         navigate("/dashboard");
 
       } else if (response.status === 403) {
