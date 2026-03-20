@@ -76,6 +76,16 @@ export default function EventDetails() {
 
         const data = await response.json();
 
+        let globalDirectory: any[] = []; 
+        try {
+          const stuRes = await fetch("/api/studentcontroller/getstudents", {
+            headers: token ? { "Authorization": "Bearer " + token } : {}
+          });
+          if (stuRes.ok) globalDirectory = await stuRes.json();
+        } catch (e) {
+          console.warn("Could not load student directory");
+        }
+
         // Safely map string IDs back into objects for the frontend
         const formattedEvent = {
           ...data,
@@ -83,16 +93,27 @@ export default function EventDetails() {
             ? { id: "unknown_id", name: data.host, avatar: null }
             : data.host,
           attendees: data.attendees 
-          ? data.attendees.map((att: any) => 
-              typeof att === 'string' ? { id: att, name: "Student", avatar: null } : att
-            )
+          ? data.attendees.map((att: any) => {
+              if (typeof att === 'string') {
+                // Check both userId and id just in case
+                const stu = globalDirectory.find((s: any) => s.userId === att || s.id === att);
+                
+                // Try fullName, then firstName + lastName, then fallback to their raw ID
+                const displayName = stu 
+                  ? (stu.fullName || `${stu.firstName || ''} ${stu.lastName || ''}`.trim() || att) 
+                  : att; 
+                  
+                return { id: att, name: displayName, avatar: stu?.avatar || null }; 
+              }
+              return att;
+            })
           : [],
           reviews: data.reviews ? data.reviews.map((r: any) => ({
             ...r,
-            author: typeof r.author === 'string' ? { id: r.author, name: "Student", avatar: null } : r.author,
+            author: typeof r.author === 'string' ? { id: r.author, name: r.author, avatar: null } : r.author,
             comments: r.comments ? r.comments.map((c: any) => ({
               ...c,
-              author: typeof c.author === 'string' ? { id: c.author, name: "Student", avatar: null } : c.author
+              author: typeof c.author === 'string' ? { id: c.author, name: c.author, avatar: null } : c.author
             })) : []
           })) : []
         };
@@ -597,7 +618,7 @@ export default function EventDetails() {
             <div className="text-center py-8">
               <Star size={28} className="text-slate-200 mx-auto mb-2" />
               <p className="text-sm text-slate-400">No reviews yet.</p>
-              {event.status === "past" && (
+              {event.status === "past" && (joined || isMyEvent) && (
                 <button
                   onClick={() => setShowReviewForm(true)}
                   className="text-xs text-blue-600 hover:underline mt-1"

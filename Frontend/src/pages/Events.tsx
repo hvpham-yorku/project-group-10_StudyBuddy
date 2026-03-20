@@ -285,7 +285,7 @@ export default function Events() {
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
                         {ev.course}
                       </span>
-                      {ev.status === "past" && (
+                      {ev.status === "past" && (isJoined(ev.id) || isMyEvent(ev)) && (
                         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Past</span>
                       )}
                       {isMyEvent(ev) && (
@@ -382,13 +382,17 @@ export default function Events() {
                     </div>
                   )}
                   {ev.status === "past" && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
-                      className="px-4 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                      style={{ fontWeight: 600 }}
-                    >
-                      Review
-                    </button>
+                    <>
+                      {(isJoined(ev.id) || isMyEvent(ev)) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
+                          className="px-4 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Review
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
         </div>
