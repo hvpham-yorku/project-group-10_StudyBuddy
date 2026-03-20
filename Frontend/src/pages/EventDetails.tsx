@@ -40,92 +40,84 @@ export default function EventDetails() {
     const fetchEventAndStudents = async () => {
       try {
         const token = localStorage.getItem("studyBuddyToken");
+        const headers = token ? { "Authorization": "Bearer " + token } : {};
 
-        // 1. Fetch Student Profile
+        // 1. Fetch Current Student Profile
         let currentStudent = null;
         if (token) {
-          const userRes = await fetch("/api/studentcontroller/profile", {
-            headers: { "Authorization": "Bearer " + token }
-          });
-          if (userRes.ok) {
-            currentStudent = await userRes.json();
-            setStudent(currentStudent);
-          }
+          const userRes = await fetch("/api/studentcontroller/profile", { headers });
+          if (userRes.ok) currentStudent = await userRes.json();
+          setStudent(currentStudent);
         }
 
-        // 2. Fetch Global Student Directory (so we can map names!)
-        let allStudents: any[] = [];
-        try {
-          const stuRes = await fetch("/api/studentcontroller/getstudents");
-          if (stuRes.ok) {
-            allStudents = await stuRes.json();
-          }
-        } catch (e) {
-          console.warn("Could not load student directory");
-        }
-
-        // 3. Fetch Event Details
-        const response = await fetch(`/api/events/${id}`, {
-          headers: token ? { "Authorization": "Bearer " + token } : {}
-        });
-
+        // 2. Fetch Event Details
+        const response = await fetch(`/api/events/${id}`, { headers });
         if (!response.ok) {
           if (response.status === 404) throw new Error("Event not found");
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
         const data = await response.json();
 
-        let globalDirectory: any[] = []; 
-        try {
-          const stuRes = await fetch("/api/studentcontroller/getstudents", {
-            headers: token ? { "Authorization": "Bearer " + token } : {}
-          });
-          if (stuRes.ok) globalDirectory = await stuRes.json();
-        } catch (e) {
-          console.warn("Could not load student directory");
-        }
+        // 3. ASYNC HELPER: Fetches a single user profile directly from Firestore
+        const resolveUserAsync = async (userOrId: any) => {
+          if (!userOrId) return { id: "unknown", name: "Student", avatar: null };
+          
+          // If the backend already populated the name (like it does for Host), use it
+          if (typeof userOrId === 'object' && userOrId.name) return userOrId;
+          
+          const targetId = typeof userOrId === 'string' ? userOrId : (userOrId.id || userOrId.userId);
 
-        // Safely map string IDs back into objects for the frontend
+          try {
+            // Ask the backend for this specific student's profile
+            const res = await fetch(`/api/studentcontroller/${targetId}`, { headers });
+            if (res.ok) {
+              const profile = await res.json();
+              return {
+                id: targetId,
+                name: profile.fullName || profile.name || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || targetId,
+                avatar: profile.avatar || null
+              };
+            }
+          } catch (e) {
+            console.warn("Could not fetch profile for", targetId);
+          }
+
+          // Ultimate fallback
+          return { id: targetId, name: "Unknown Student", avatar: null };
+        };
+
+        const resolvedHost = await resolveUserAsync(data.host);
+        
+        const resolvedAttendees = data.attendees 
+          ? await Promise.all(data.attendees.map((att: any) => resolveUserAsync(att)))
+          : [];
+
+        const resolvedReviews = data.reviews 
+          ? await Promise.all(data.reviews.map(async (r: any) => ({
+              ...r,
+              author: await resolveUserAsync(r.author),
+              comments: r.comments 
+                ? await Promise.all(r.comments.map(async (c: any) => ({
+                    ...c,
+                    author: await resolveUserAsync(c.author)
+                  })))
+                : []
+            })))
+          : [];
+
+        // 5. Update State
         const formattedEvent = {
           ...data,
-          host: typeof data.host === 'string'
-            ? { id: "unknown_id", name: data.host, avatar: null }
-            : data.host,
-          attendees: data.attendees 
-          ? data.attendees.map((att: any) => {
-              if (typeof att === 'string') {
-                // Check both userId and id just in case
-                const stu = globalDirectory.find((s: any) => s.userId === att || s.id === att);
-                
-                // Try fullName, then firstName + lastName, then fallback to their raw ID
-                const displayName = stu 
-                  ? (stu.fullName || `${stu.firstName || ''} ${stu.lastName || ''}`.trim() || att) 
-                  : att; 
-                  
-                return { id: att, name: displayName, avatar: stu?.avatar || null }; 
-              }
-              return att;
-            })
-          : [],
-          reviews: data.reviews ? data.reviews.map((r: any) => ({
-            ...r,
-            author: typeof r.author === 'string' ? { id: r.author, name: r.author, avatar: null } : r.author,
-            comments: r.comments ? r.comments.map((c: any) => ({
-              ...c,
-              author: typeof c.author === 'string' ? { id: c.author, name: c.author, avatar: null } : c.author
-            })) : []
-          })) : []
+          host: resolvedHost,
+          attendees: resolvedAttendees,
+          reviews: resolvedReviews
         };
 
         setEvent(formattedEvent);
         setLocalReviews(formattedEvent.reviews || []);
 
         if (currentStudent) {
-          const isAlreadyJoined = formattedEvent.attendees.some(
-            (a: any) => a.id === currentStudent.userId
-          );
-          setJoined(isAlreadyJoined);
+          setJoined(formattedEvent.attendees.some((a: any) => a.id === currentStudent.userId));
         }
 
       } catch (err: any) {
@@ -133,12 +125,10 @@ export default function EventDetails() {
         setError(err.message);
       } finally {
         setIsLoading(false);
-      };
+      }
     };
 
-    if (id) {
-      fetchEventAndStudents();
-    }
+    if (id) fetchEventAndStudents();
   }, [id]);
 
   if (isLoading) return <div className="p-10 text-center text-slate-500 mt-10">Loading session details...</div>;
