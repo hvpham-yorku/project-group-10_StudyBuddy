@@ -87,7 +87,7 @@ export default function Profile() {
   const [email, setEmail] = useState("");
 
 
-  // SECURITY + NOTIFICATIONS
+  // SECURITY
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [autoTimeout, setAutoTimeout] = useState(0);
   const [isOnline, setIsOnline] = useState(false);
@@ -112,13 +112,6 @@ export default function Profile() {
     showSessionHistory: true,
     showLocation: true,
     showAvatar: true
-  });
-
-  // NOTIFICATION SETTINGS
-  const [notifications, setNotifications] = useState({
-    chatMessages: true,
-    sessionUpdates: true,
-    connectionRequests: true,
   });
 
   const normalizeCourseValue = (value: string) =>
@@ -198,7 +191,6 @@ export default function Profile() {
         setProgram(data.program || "");
         setTempProgram(data.program || "");
         setEmail(data.email || "");
-        console.log("data.notifications:", data.notifications);
         setYear(data.year || "");
         setTempYear(data.year || "");
         setAvatar(data.avatar || "");
@@ -210,17 +202,6 @@ export default function Profile() {
         setJoinedDate(data.joinedDate || "");
         setLoginStreak(data.loginStreak ?? 0);
       
-        const defaultNotifications = {
-          chatMessages: false,
-          sessionUpdates: false,
-          connectionRequests: false,
-        };
-
-        setNotifications(
-          data.notifications &&
-          typeof data.notifications === "object" &&
-          Object.keys(data.notifications).length > 0 ? data.notifications: defaultNotifications);
-
         const sessionRes = await fetch(`/api/studentcontroller/profile/session-log`, {
           headers: {
             "Authorization": "Bearer " + token
@@ -366,7 +347,6 @@ export default function Profile() {
     year?: string;
     avatar?: string;
     privacySettings?: Record<string, boolean>;
-    notifications?: Record<string, boolean>;
     location?: string;
     isOnline?: boolean;
     twoFAEnabled?: boolean;
@@ -382,7 +362,6 @@ export default function Profile() {
       email,
       avatar,
       privacySettings,
-      notifications,
       location,
       isOnline,
       twoFAEnabled,
@@ -1287,42 +1266,6 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
         </button>
       </div>
 
-      {/* NOTIFICATION SETTINGS */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
-        <h2 className="text-lg font-semibold text-slate-800 mb-3">Notifications</h2>
-
-        <div className="space-y-3">
-          {Object.entries(notifications).map(([key, value]) => (
-            <label key={key} className="flex items-center gap-3 text-slate-700">
-              <input
-                type="checkbox"
-                checked={value}
-                onChange={(e) =>
-                  setNotifications((prev: any) => ({
-                    ...prev,
-                    [key]: e.target.checked,
-                  }))
-                }
-                className="w-4 h-4"
-              />
-              <span className="capitalize">
-                {key.replace(/([A-Z])/g, " $1")}
-              </span>
-            </label>
-          ))}
-        </div>
-
-        <button
-          onClick={() =>
-            saveProfile({
-              notifications,
-            })
-          }
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-        >
-          Save Notification Settings
-        </button>
-      </div>
     </div>
 
   );
