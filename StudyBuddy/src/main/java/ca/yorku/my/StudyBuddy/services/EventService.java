@@ -303,42 +303,61 @@ public class EventService implements EventRepository  {
     	return true;
     }
     
+    /**
+     * Add a review to an event in Firestore
+     */
     @Override
-    public boolean addReview(String eventId, Review review) throws Exception {
-        Event e = getEventById(eventId);
+    public boolean addReview(String eventId, ca.yorku.my.StudyBuddy.classes.Review review) throws Exception {
+        Event e = this.getEventById(eventId);
         if (e == null) return false;
-
+        
         List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
         if (reviews == null) {
             reviews = new ArrayList<>();
-            e.setReviews(reviews);
         }
-
+        
+        // Append the new review
         reviews.add(review);
+        
+        // Push the updated array back to Firestore
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("events").document(eventId).update("reviews", reviews).get();
         return true;
     }
 
+    /**
+     * Add a comment to a specific review inside an event in Firestore
+     */
     @Override
-    public boolean addCommentToReview(String eventId, String reviewId, Comment comment) throws Exception {
-        Event e = getEventById(eventId);
+    public boolean addCommentToReview(String eventId, String reviewId, ca.yorku.my.StudyBuddy.classes.Comment comment) throws Exception {
+        Event e = this.getEventById(eventId);
         if (e == null) return false;
-
+        
         List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
         if (reviews == null) return false;
 
+        boolean reviewFound = false;
+        
+        // Find the matching review and inject the comment
         for (ca.yorku.my.StudyBuddy.classes.Review r : reviews) {
             if (r.getId() != null && r.getId().equals(reviewId)) {
-                List<Comment> comments = r.getComments();
+                List<ca.yorku.my.StudyBuddy.classes.Comment> comments = r.getComments();
                 if (comments == null) {
                     comments = new ArrayList<>();
-                    r.setComments(comments);
                 }
                 comments.add(comment);
-                return true; // Successfully added comment
+                r.setComments(comments);
+                reviewFound = true;
+                break;
             }
         }
         
-        return false; // Review not found
+        if (!reviewFound) return false;
+
+        // Push the entirely updated reviews array (with the nested comment) back to Firestore
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("events").document(eventId).update("reviews", reviews).get();
+        return true;
     }
     
 }
