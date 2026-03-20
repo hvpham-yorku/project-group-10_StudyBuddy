@@ -9,6 +9,7 @@ import {
   Users, Circle, X, File, Image as ImageIcon, Link as LinkIcon
 } from "lucide-react";
 import { currentUser } from "../data/mockData";
+import { DEV_ACTOR_STORAGE_KEY, getAuthToken } from "../lib/auth";
 
 type UiMessageType = "text" | "link" | "file";
 
@@ -44,8 +45,6 @@ function formatTypingLabel(names: string[]) {
   return `${names[0]} and ${names.length - 1} others are typing...`;
 }
 
-const DEV_ACTOR_KEY = "studybuddy.dev.actorId";
-
 export default function Chat() {
   const [localChats, setLocalChats] = useState<any[]>([]);
   const knownMembers = [currentUser, ...localChats.flatMap((chat) => chat.members || [])].reduce((acc: any[], member: any) => {
@@ -68,7 +67,7 @@ export default function Chat() {
   const apiUrl = (path: string) => `${API_BASE}${path}`;
   const [devActorId, setDevActorId] = useState<string>(() => {
     if (typeof window === "undefined") return currentUser.id;
-    return window.sessionStorage.getItem(DEV_ACTOR_KEY) || currentUser.id;
+    return window.sessionStorage.getItem(DEV_ACTOR_STORAGE_KEY) || currentUser.id;
   });
 
   const [activeUser, setActiveUser] = useState<any>(currentUser);
@@ -129,17 +128,20 @@ export default function Chat() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && activeUser?.id) {
-      window.sessionStorage.setItem(DEV_ACTOR_KEY, activeUser.id);
+      window.sessionStorage.setItem(DEV_ACTOR_STORAGE_KEY, activeUser.id);
     }
     setChatBackendIds({});
     setTypingUserIds([]);
     setIsTyping(false);
   }, [activeUser?.id]);
 
-  const authHeaders = {
+  const token = getAuthToken();
+  const authHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("studyBuddyToken") || activeUser?.id}`,
   };
+  if (token) {
+    authHeaders.Authorization = `Bearer ${token}`;
+  }
 
   const loadRealChats = async () => {
     if (!activeUser || !activeUser.id) return; // FIXED: Removed the ID trap!

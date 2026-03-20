@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearAuthState } from "../lib/auth";
 
 export function useInactivityTimer(timeoutMinutes: number) {
   const navigate = useNavigate();
@@ -9,7 +10,8 @@ export function useInactivityTimer(timeoutMinutes: number) {
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      navigate("/inactive");
+      clearAuthState();
+      navigate("/inactive", { replace: true });
     }, timeoutMinutes * 60 * 1000);
   };
 
