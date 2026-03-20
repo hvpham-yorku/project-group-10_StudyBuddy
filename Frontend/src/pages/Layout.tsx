@@ -30,22 +30,31 @@ export default function Layout() {
     async function fetchUser() {
       try {
         const token = localStorage.getItem("studyBuddyToken");
-        if (!token) return;
-        
+
+        // 1. Kick the user out if auth token not found
+        if (!token) {
+          navigate("/");
+          return;
+        }
+
         const res = await fetch("/api/studentcontroller/profile", {
           headers: { "Authorization": "Bearer " + token }
         });
-        
+
         if (res.ok) {
           const data = await res.json();
           setStudent(data);
+        } else {
+          // Token invalid/expired - kick user back to login
+          localStorage.removeItem("studyBuddyToken");
+          navigate("/");
         }
       } catch (err) {
         console.error("Failed to load user for layout", err);
       }
     }
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
@@ -66,9 +75,8 @@ export default function Layout() {
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
       <aside
-        className={`relative flex flex-col bg-blue-900 text-white transition-all duration-300 ${
-          collapsed ? "w-16" : "w-60"
-        } shrink-0`}
+        className={`relative flex flex-col bg-blue-900 text-white transition-all duration-300 ${collapsed ? "w-16" : "w-60"
+          } shrink-0`}
       >
         {/* Logo */}
         <div className={`flex items-center gap-3 px-4 py-5 border-b border-blue-800 ${collapsed ? "justify-center" : ""}`}>
@@ -89,10 +97,9 @@ export default function Layout() {
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
-                  isActive
-                    ? "bg-orange-500 text-white"
-                    : "text-blue-200 hover:bg-blue-800 hover:text-white"
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${isActive
+                  ? "bg-orange-500 text-white"
+                  : "text-blue-200 hover:bg-blue-800 hover:text-white"
                 } ${collapsed ? "justify-center" : ""}`
               }
               title={collapsed ? label : undefined}
@@ -101,7 +108,7 @@ export default function Layout() {
                 <>
                   <Icon size={20} className={isActive ? "text-white" : "text-blue-300 group-hover:text-white"} />
                   {!collapsed && <span className="text-sm truncate">{label}</span>}
-                 
+
                 </>
               )}
             </NavLink>
@@ -111,14 +118,14 @@ export default function Layout() {
         {/* User & Logout */}
         <div className={`border-t border-blue-800 px-3 py-3 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
           <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-blue-600 bg-blue-100 flex items-center justify-center shrink-0">
-              {student.avatar ? (
-                <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "14px" }}>
-                  {(student.fullName || student.userId || "?").charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
+            {student.avatar ? (
+              <img src={student.avatar} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "14px" }}>
+                {(student.fullName || student.userId || "?").charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs text-white truncate" style={{ fontWeight: 600 }}>{student.fullName}</p>
@@ -151,8 +158,8 @@ export default function Layout() {
             <div className={`w-2 h-2 rounded-full ${student.isOnline ? "bg-green-500" : "bg-slate-300"}`}></div>
             <span className="text-sm text-slate-500">
               {/* Only render the location if it actually exists */}
-              {student.isOnline 
-                ? `Online${student.location ? ` · ${student.location}` : ""}` 
+              {student.isOnline
+                ? `Online${student.location ? ` · ${student.location}` : ""}`
                 : "Offline"}
             </span>
           </div>
