@@ -811,7 +811,7 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
             {sessionLogError}
           </div>
         ) : (
-          <div className="max-h-80 overflow-y-auto pr-1 space-y-3">
+          <div className="max-h-80 overflow-y-auto overscroll-y-contain pr-1 space-y-3">
             {sessionLog?.events && sessionLog.events.length > 0 ? (
               sessionLog.events.map((session) => (
                 <div key={session.id} className="rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors">
