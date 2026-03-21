@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin, Users, Clock, Navigation, Search, X, BookOpen, ArrowRight
@@ -129,7 +129,7 @@ export default function MapView() {
 
   const uniqueCourses = ["All", ...Array.from(new Set(events.map((s) => s.course).filter(Boolean)))];
 
-  const filteredSessions = events.filter((s) => {
+  const filteredSessions = events.filter((s: any) => {
     const matchSearch =
       s.title?.toLowerCase().includes(search.toLowerCase()) ||
       s.course?.toLowerCase().includes(search.toLowerCase()) ||
@@ -175,8 +175,8 @@ export default function MapView() {
         body: JSON.stringify({ eventId, userId: student.userId }),
       });
       if (response.ok) {
-        setEvents((prev) =>
-          prev.map((ev) => {
+        setEvents((prev: any[]) =>
+          prev.map((ev: any) => {
             if (ev.id === eventId) {
               const cur = ev.attendees || [];
               const next = isJoined
