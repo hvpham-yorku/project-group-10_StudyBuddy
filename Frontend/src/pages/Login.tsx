@@ -3,7 +3,7 @@
  * The login page for StudyBuddy
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { BookOpen, Eye, EyeOff, AlertCircle, Mail } from "lucide-react";
 import { setAuthToken } from "../lib/auth";
@@ -15,6 +15,14 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // "Reverse Guard" -- If user does have valid token, then kick them to the dashboard
+  useEffect(() => {
+    const token = localStorage.getItem("studyBuddyToken");
+    if (token) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
 
   const validateDomain = (e: string) => {
     return e.endsWith("@my.yorku.ca") || e.endsWith("@yorku.ca");

@@ -40,77 +40,95 @@ export default function EventDetails() {
     const fetchEventAndStudents = async () => {
       try {
         const token = localStorage.getItem("studyBuddyToken");
-        
-        // 1. Fetch Student Profile
+        const headers = token ? { "Authorization": "Bearer " + token } : {};
+
+        // 1. Fetch Current Student Profile
+        let currentStudent = null;
         if (token) {
-          const userRes = await fetch("/api/studentcontroller/profile", {
-            headers: { "Authorization": "Bearer " + token }
-          });
-          if (userRes.ok) {
-             const studentData = await userRes.json();
-             setStudent(studentData);
-          }
+          const userRes = await fetch("/api/studentcontroller/profile", { headers });
+          if (userRes.ok) currentStudent = await userRes.json();
+          setStudent(currentStudent);
         }
 
-        // 2. Fetch Global Student Directory (so we can map names!)
-        let allStudents: any[] = [];
-        try {
-          const stuRes = await fetch("/api/studentcontroller/getstudents");
-          if (stuRes.ok) {
-            allStudents = await stuRes.json();
-          }
-        } catch (e) {
-          console.warn("Could not load student directory");
-        }
-
-        // 3. Fetch Event Details
-        const response = await fetch(`/api/events/${id}`);
-        
+        // 2. Fetch Event Details
+        const response = await fetch(`/api/events/${id}`, { headers });
         if (!response.ok) {
           if (response.status === 404) throw new Error("Event not found");
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const data = await response.json();
 
-        // 4. Map the data safely!
+        // 3. ASYNC HELPER: Fetches a single user profile directly from Firestore
+        const resolveUserAsync = async (userOrId: any) => {
+          if (!userOrId) return { id: "unknown", name: "Student", avatar: null };
+          
+          // If the backend already populated the name (like it does for Host), use it
+          if (typeof userOrId === 'object' && userOrId.name) return userOrId;
+          
+          const targetId = typeof userOrId === 'string' ? userOrId : (userOrId.id || userOrId.userId);
+
+          try {
+            // Ask the backend for this specific student's profile
+            const res = await fetch(`/api/studentcontroller/${targetId}`, { headers });
+            if (res.ok) {
+              const profile = await res.json();
+              return {
+                id: targetId,
+                name: profile.fullName || profile.name || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || targetId,
+                avatar: profile.avatar || null
+              };
+            }
+          } catch (e) {
+            console.warn("Could not fetch profile for", targetId);
+          }
+
+          // Ultimate fallback
+          return { id: targetId, name: "Unknown Student", avatar: null };
+        };
+
+        const resolvedHost = await resolveUserAsync(data.host);
+        
+        const resolvedAttendees = data.attendees 
+          ? await Promise.all(data.attendees.map((att: any) => resolveUserAsync(att)))
+          : [];
+
+        const resolvedReviews = data.reviews 
+          ? await Promise.all(data.reviews.map(async (r: any) => ({
+              ...r,
+              author: await resolveUserAsync(r.author),
+              comments: r.comments 
+                ? await Promise.all(r.comments.map(async (c: any) => ({
+                    ...c,
+                    author: await resolveUserAsync(c.author)
+                  })))
+                : []
+            })))
+          : [];
+
+        // 5. Update State
         const formattedEvent = {
           ...data,
-          // Format the Host
-          host: typeof data.host === 'string'
-            ? { id: "unknown_id", name: data.host, avatar: null }
-            : data.host,
-            
-          // Map Attendee IDs -> Real Student Objects
-          attendees: (data.attendees || []).map((attendeeId: any) => {
-            // If it's already an object for some reason, leave it
-            if (typeof attendeeId !== 'string') return attendeeId;
-            
-            // Otherwise, look up their real name in the directory
-            const matchedStudent = allStudents.find((s: any) => s.userId === attendeeId);
-            
-            return { 
-              id: attendeeId, 
-              name: matchedStudent ? (matchedStudent.fullName || "Unnamed Student") : attendeeId, 
-              avatar: matchedStudent ? matchedStudent.avatar : null 
-            };
-          })
+          host: resolvedHost,
+          attendees: resolvedAttendees,
+          reviews: resolvedReviews
         };
 
         setEvent(formattedEvent);
-        setLocalReviews(formattedEvent.reviews || []); 
+        setLocalReviews(formattedEvent.reviews || []);
+
+        if (currentStudent) {
+          setJoined(formattedEvent.attendees.some((a: any) => a.id === currentStudent.userId));
+        }
 
       } catch (err: any) {
         console.error("Failed to fetch event:", err);
         setError(err.message);
       } finally {
         setIsLoading(false);
-      };
+      }
     };
-    
-    if (id) {
-      fetchEventAndStudents();
-    }
+
+    if (id) fetchEventAndStudents();
   }, [id]);
 
   if (isLoading) return <div className="p-10 text-center text-slate-500 mt-10">Loading session details...</div>;
@@ -118,38 +136,206 @@ export default function EventDetails() {
   if (!event) return <div className="p-10 text-center text-slate-500 mt-10">Event not found.</div>;
 
   const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    new Date(d).toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const isMyEvent = student && event.host.id === student.userId;
 
-  const submitReview = () => {
-    if (!reviewText.trim()) return;
+  const isParticipating = isMyEvent || joined;
+
+  const submitReview = async () => {
+    if (!reviewText.trim() || !student) return;
+
+    const previousReviews = [...localReviews];
+
     const newReview = {
-      id: `r_new_${Date.now()}`,
-      author: currentUser as any,
+      id: `r_temp_${Date.now()}`,
+      author: {
+        id: student.userId,
+        name: student.fullName || student.name || "You",
+        avatar: student.avatar
+      },
       rating: reviewRating,
-      text: reviewText,
+      text: reviewText.trim(),
       date: new Date().toISOString().split("T")[0],
       comments: [],
     };
+
     setLocalReviews((prev) => [...prev, newReview]);
     setReviewText("");
     setShowReviewForm(false);
+
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch(`/api/events/${id}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ rating: reviewRating, text: reviewText.trim() })
+      });
+
+      if (!response.ok) throw new Error("Failed to post review");
+      
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      setLocalReviews(previousReviews); // Revert if the server fails
+      alert("Failed to post review. Please try again.");
+    }
   };
 
-  const submitComment = (reviewId: string) => {
+  const submitComment = async (reviewId: string) => {
     const text = commentText[reviewId];
-    if (!text?.trim()) return;
+    if (!text?.trim() || !student) return;
+
+    // 1. Snapshot for safety
+    const previousReviews = [...localReviews];
+
+    // 2. Create the mock comment for Optimistic Update
+    const newComment = { 
+      id: `c_temp_${Date.now()}`, 
+      author: { 
+        id: student.userId, 
+        name: student.fullName || student.name || "You", 
+        avatar: student.avatar 
+      }, 
+      text: text.trim(), 
+      date: new Date().toISOString().split("T")[0] 
+    };
+
+    // 3. Update the UI instantly
     setLocalReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? { ...r, comments: [...r.comments, { id: `c_${Date.now()}`, author: currentUser as any, text, date: new Date().toISOString().split("T")[0] }] }
+          ? { ...r, comments: [...(r.comments || []), newComment] }
           : r
       )
     );
     setCommentText((prev) => ({ ...prev, [reviewId]: "" }));
     setShowCommentInput(null);
+
+    // 4. Send to the Backend
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch(`/api/events/${id}/reviews/${reviewId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ text: text.trim() })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to post comment: ${errorText}`);
+      }
+      
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+      // Revert the UI if the network fails
+      setLocalReviews(previousReviews);
+      alert("Failed to post comment. Please try again.");
+    }
   };
 
+  const handleJoinToggle = async () => {
+    // 1. Safety check so we don't crash if data isn't loaded yet
+    if (!student || !event) return;
+
+    const wasJoined = joined;
+    const previousAttendees = [...event.attendees];
+    const previousCount = event.attendeeCount ?? event.attendees.length ?? 0;
+    const newCount = wasJoined ? Math.max(0, previousCount - 1) : previousCount + 1;
+
+    // 2. Optimistically update button state, the array, AND the explicit count
+    setJoined(!wasJoined);
+    setEvent((prev: any) => ({
+      ...prev,
+      attendeeCount: newCount,
+      attendees: wasJoined
+        // If leaving: filter signed-in ID out of the array
+        ? prev.attendees.filter((a: any) => a.id !== student.userId)
+        // Otherwise, inject the mock "You"
+        : [...prev.attendees, {
+          id: student.userId,
+          name: student.fullName || student.name || "You",
+          avatar: student.avatar
+        }]
+    }));
+
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const endpoint = wasJoined ? `/api/events/leave` : `/api/events/join`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId: student.userId
+        })
+      });
+
+      if (!response.ok) {
+        // 3. Revert everything if the backend fails
+        setJoined(wasJoined);
+        setEvent((prev: any) => ({ ...prev, attendees: previousAttendees, attendeeCount: previousCount }));
+        console.error("Failed to update attendance status");
+      }
+    } catch (err) {
+      // 4. Revert if the network crashes
+      setJoined(wasJoined);
+      setEvent((prev: any) => ({ ...prev, attendees: previousAttendees, attendeeCount: previousCount }));
+      console.error("Error updating attendance:", err);
+    }
+  };
+
+  const handleKick = async (targetUserId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents clicking through to the profile page
+    if (!window.confirm("Are you sure you want to remove this user from the session?")) return;
+
+    // 1. Snapshot for safety
+    const previousAttendees = [...event.attendees];
+    const previousCount = event.attendeeCount ?? event.attendees.length;
+
+    // 2. Optimistic UI update: instantly remove them from the screen
+    setEvent((prev: any) => ({
+      ...prev,
+      attendees: prev.attendees.filter((a: any) => a.id !== targetUserId),
+      attendeeCount: Math.max(0, previousCount - 1)
+    }));
+
+    // 3. Tell the backend to drop them
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      const response = await fetch("/api/events/leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId: targetUserId // Passing the target's ID instead of the host's ID
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to kick user");
+
+    } catch (err) {
+      console.error("Error kicking user:", err);
+      // Revert if the server fails
+      setEvent((prev: any) => ({
+        ...prev,
+        attendees: previousAttendees,
+        attendeeCount: previousCount
+      }));
+      alert("Failed to remove user. Please try again.");
+    }
+  };
   return (
     <div className="p-6 max-w-3xl mx-auto">
       {/* Back */}
@@ -194,11 +380,11 @@ export default function EventDetails() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Users size={15} className="text-blue-500 shrink-0" />
-                  {event.attendees.length} / {event.maxParticipants} attending
+                  {event.attendeeCount ?? event.attendees?.length ?? 0} / {event.maxParticipants} attending
                   <div className="flex-1 max-w-24 bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-blue-500 h-full rounded-full"
-                      style={{ width: `${(event.attendees.length / event.maxParticipants) * 100}%` }}
+                      style={{ width: `${((event.attendeeCount ?? event.attendees?.length ?? 0) / event.maxParticipants) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -208,7 +394,7 @@ export default function EventDetails() {
             {/* Host */}
             <div className="shrink-0 text-right">
               <p className="text-xs text-slate-400 mb-1">Hosted by</p>
-              <div 
+              <div
                 className="flex flex-col items-end gap-1 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={(e) => { e.stopPropagation(); navigate(`/profile/${event.host.id}`); }}
               >
@@ -242,12 +428,11 @@ export default function EventDetails() {
           <div className="flex gap-3">
             {event.status === "upcoming" && !isMyEvent && (
               <button
-                onClick={() => setJoined(!joined)}
-                className={`flex-1 py-2.5 rounded-xl text-sm transition-colors ${
-                  joined
+                onClick={handleJoinToggle}
+                className={`flex-1 py-2.5 rounded-xl text-sm transition-colors ${joined
                     ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
                     : "bg-blue-700 hover:bg-blue-800 text-white"
-                }`}
+                  }`}
                 style={{ fontWeight: 600 }}
               >
                 {joined ? "Cancel Attendance" : "Join Session"}
@@ -298,32 +483,51 @@ export default function EventDetails() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
         <h2 className="text-slate-800 text-sm mb-4 flex items-center gap-2" style={{ fontWeight: 600 }}>
           <Users size={16} className="text-blue-500" />
-          Attendees ({event.attendees.length}/{event.maxParticipants})
+          Attendees ({event.attendeeCount ?? event.attendees?.length ?? 0}/{event.maxParticipants})
         </h2>
-        <div className="flex flex-wrap gap-3">
-          {event.attendees.map((a: any) => (
-            <div 
-              key={a.id} 
-              className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
-              onClick={() => navigate(`/profile/${a.id}`)}
-            >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
-                {a.avatar ? (
-                  <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
-                    {a.name.charAt(0).toUpperCase()}
-                  </div>
+
+        {isParticipating ? (
+          <div className="flex flex-wrap gap-3">
+            {event.attendees.map((a: any) => (
+              <div
+                key={a.id}
+                className="group relative flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-xl px-3 py-2 cursor-pointer transition-colors"
+                onClick={() => navigate(`/profile/${a.id}`)}
+              >
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-blue-100">
+                  {a.avatar ? (
+                    <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-blue-600" style={{ fontSize: "11px", fontWeight: 700 }}>
+                      {(a.name || "?").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
+                
+                {/* Kick button */}
+                {isMyEvent && a.id !== student.userId && (
+                  <button
+                    onClick={(e) => handleKick(a.id, e)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity shadow-sm"
+                    title="Remove user"
+                  >
+                    <X size={12} />
+                  </button>
                 )}
               </div>
-              <span className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{a.name}</span>
-              {/* Removed the UserPlus button! */}
-            </div>
-          ))}
-          {event.attendees.length === 0 && (
-            <p className="text-sm text-slate-400">No attendees yet. Be the first to join!</p>
-          )}
-        </div>
+            ))}
+            {event.attendees.length === 0 && (
+              <p className="text-sm text-slate-400">No attendees yet. Be the first to join!</p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+            <p className="text-sm text-slate-500">
+              Join this session to see who else is attending.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Reviews */}
@@ -333,7 +537,7 @@ export default function EventDetails() {
             <Star size={16} className="text-orange-400" />
             Reviews ({localReviews.length})
           </h2>
-          {event.status === "past" && !showReviewForm && (
+          {event.status === "past" && (joined || isMyEvent) && !showReviewForm && (
             <button
               onClick={() => setShowReviewForm(true)}
               className="text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors"
@@ -459,7 +663,7 @@ export default function EventDetails() {
             <div className="text-center py-8">
               <Star size={28} className="text-slate-200 mx-auto mb-2" />
               <p className="text-sm text-slate-400">No reviews yet.</p>
-              {event.status === "past" && (
+              {event.status === "past" && (joined || isMyEvent) && (
                 <button
                   onClick={() => setShowReviewForm(true)}
                   className="text-xs text-blue-600 hover:underline mt-1"

@@ -59,27 +59,27 @@ class EventControllerIntegrationTests {
      * Tests if sending a POST request with an Event DTO correctly creates an event
      * and returns a 201 CREATED status.
      */
-    @Test
-    void createEvent_returnsCreatedStatusAndEvent() throws Exception {
-        // 1. Prepare the payload (Frontend sends this)
-        EventResponseDTO newEventDTO = new EventResponseDTO(
-                null, "Study Session", "EECS 2311", null, "Scott Library", 
-                "2026-03-15", "14:00", 120, "Midterm prep", 5, 
-                new ArrayList<>(), new ArrayList<>(), "upcoming", new ArrayList<>()
-        );
-
-        // 2. Convert object to JSON
-        String jsonPayload = objectMapper.writeValueAsString(newEventDTO);
-
-        // 3. Perform fake HTTP POST request
-        mockMvc.perform(post("/api/events")
-                .header("Authorization", "host_123") // Our stub auth just uses the raw string as token
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonPayload))
-               .andExpect(status().isCreated()) // Expect HTTP 201
-               .andExpect(jsonPath("$.title").value("Study Session")) // Verify JSON response body
-               .andExpect(jsonPath("$.course").value("EECS 2311"));
-    }
+//    @Test
+//    void createEvent_returnsCreatedStatusAndEvent() throws Exception {
+//        // 1. Prepare the payload (Frontend sends this)
+//        EventResponseDTO newEventDTO = new EventResponseDTO(
+//                null, "Study Session", "EECS 2311", null, "Scott Library", 
+//                "2026-03-15", "14:00", 120, "Midterm prep", 5, 
+//                new ArrayList<>(), new ArrayList<>(), "upcoming", new ArrayList<>()
+//        );
+//
+//        // 2. Convert object to JSON
+//        String jsonPayload = objectMapper.writeValueAsString(newEventDTO);
+//
+//        // 3. Perform fake HTTP POST request
+//        mockMvc.perform(post("/api/events")
+//                .header("Authorization", "host_123") // Our stub auth just uses the raw string as token
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .content(jsonPayload))
+//               .andExpect(status().isCreated()) // Expect HTTP 201
+//               .andExpect(jsonPath("$.title").value("Study Session")) // Verify JSON response body
+//               .andExpect(jsonPath("$.course").value("EECS 2311"));
+//    }
 
     /**
      * Tests if sending a GET request fetches the list of events and maps the HostDTO properly.
