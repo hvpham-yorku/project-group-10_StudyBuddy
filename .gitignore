@@ -1,3 +1,8 @@
+# Custom files for dev purposes
+backend.log
+frontend.log
+Makefile
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
