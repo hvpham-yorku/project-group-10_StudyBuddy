@@ -123,11 +123,14 @@ public class StubStudentRepository implements StudentRepository {
 		
 	}
 
-    @Override
-public void reportUser(String reporterUserId, String reportedUserId, String reason) throws Exception {
-    // Stub implementation for compatibility
-    System.out.println("Stub reportUser called: reporter=" + reporterUserId
-        + ", reported=" + reportedUserId + ", reason=" + reason);
+ @Override
+public void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception {
+    System.out.println(
+        "Stub reportUser called: reporter=" + reporterUserId
+        + ", reported=" + reportedUserId
+        + ", category=" + category
+        + ", details=" + details
+    );
 }
     
 }

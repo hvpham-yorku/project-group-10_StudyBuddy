@@ -2,5 +2,6 @@ package ca.yorku.my.StudyBuddy.dtos;
 
 public record ReportUserRequestDTO(
     String reportedUserId,
-    String reason
+    String category,
+    String details
 ) {}

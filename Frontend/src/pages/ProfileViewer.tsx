@@ -10,7 +10,8 @@ export default function ProfileViewer() {
   const [student, setStudent] = useState<any>(null);
 
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState("");
+  const [reportCategory, setReportCategory] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
@@ -32,8 +33,8 @@ export default function ProfileViewer() {
   }, [id]);
 
   async function handleSubmitReport() {
-    if (!reportReason.trim()) {
-      alert("Please enter a reason for reporting.");
+    if (!reportCategory.trim()) {
+      alert("Please select a report category.");
       return;
     }
 
@@ -50,7 +51,8 @@ export default function ProfileViewer() {
         },
         body: JSON.stringify({
           reportedUserId: id,
-          reason: reportReason,
+          category: reportCategory,
+          details: reportDetails,
         }),
       });
 
@@ -62,7 +64,8 @@ export default function ProfileViewer() {
 
       alert("Report submitted successfully.");
       setShowReportModal(false);
-      setReportReason("");
+      setReportCategory("");
+      setReportDetails("");
     } catch (err: any) {
       alert(err.message || "Something went wrong.");
     } finally {
@@ -105,10 +108,10 @@ export default function ProfileViewer() {
                 src={
                   student.avatar ||
                   "https://ui-avatars.com/api/?background=DBEAFE&color=1D4ED8&name=" +
-                    (student.fullName || "User")
+                    encodeURIComponent(student.fullName || "User")
                 }
                 className="w-24 h-24 rounded-full object-cover border-4 border-white bg-white"
-                alt={student.fullName}
+                alt={student.fullName || "User avatar"}
               />
             ) : (
               <div className="w-24 h-24 rounded-full bg-slate-300 border-4 border-white"></div>
@@ -235,22 +238,46 @@ export default function ProfileViewer() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-lg font-semibold text-slate-800 mb-3">Report User</h2>
             <p className="text-sm text-slate-600 mb-3">
-              Please tell us why you are reporting this user.
+              Please select a reason and provide any extra details.
             </p>
 
-            <textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Enter reason..."
-              className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:outline-none"
-              rows={4}
-            />
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Report Category
+              </label>
+              <select
+                value={reportCategory}
+                onChange={(e) => setReportCategory(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:outline-none"
+              >
+                <option value="">Select a category...</option>
+                <option value="Harassment">Harassment</option>
+                <option value="Spam">Spam</option>
+                <option value="Inappropriate Content">Inappropriate Content</option>
+                <option value="Impersonation">Impersonation</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Additional Details
+              </label>
+              <textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Add any extra details..."
+                className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                rows={4}
+              />
+            </div>
 
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => {
                   setShowReportModal(false);
-                  setReportReason("");
+                  setReportCategory("");
+                  setReportDetails("");
                 }}
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
               >

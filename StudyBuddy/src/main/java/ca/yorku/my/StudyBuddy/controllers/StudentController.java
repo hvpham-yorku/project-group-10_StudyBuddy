@@ -301,7 +301,12 @@ public class StudentController {
         try {
             String reporterUserId = authService.verifyFrontendToken(authHeader);
 
-            studentRepository.reportUser(reporterUserId, req.reportedUserId(), req.reason());
+            studentRepository.reportUser(
+				reporterUserId,
+				req.reportedUserId(),
+				req.category(),
+				req.details()
+			);
 
             return ResponseEntity.ok("Report submitted successfully.");
         } catch (IllegalArgumentException e) {

@@ -53,5 +53,5 @@ public interface StudentRepository {
     // Updates events that the user attended
 	void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception;
     //reports a user to the admin team for review
-    void reportUser(String reporterUserId, String reportedUserId, String reason) throws Exception;
+    void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception;
 }
