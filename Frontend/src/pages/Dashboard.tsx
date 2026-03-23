@@ -5,6 +5,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, Clock, Users, MapPin, Plus, ArrowRight, BookOpen, Star, TrendingUp } from "lucide-react";
+import {
+  formatDistance,
+  getLocationPreference,
+  isGeolocationPermissionDenied,
+  requestCurrentCampusLocation,
+  setLocationPreference,
+  setOnceLocationActive,
+  shouldTrackLocationNow,
+  syncTrackedLocationToProfile,
+  watchCampusLocation,
+  addLocationPreferenceListener
+} from "../lib/locationTracking";
+
+interface SessionLogResponse {
+  summary?: {
+    totalMinutes?: number;
+  };
+}
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -27,8 +45,13 @@ export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeConnections, setActiveConnections] = useState<any[]>([]);
   const [totalConnectionsCount, setTotalConnectionsCount] = useState(0);
+  const [totalStudyMinutes, setTotalStudyMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locationPromptError, setLocationPromptError] = useState("");
+  const [liveCampusLocation, setLiveCampusLocation] = useState<any>(null); // Only set after user chooses
+  const [trackCampusLocation, setTrackCampusLocation] = useState(false);
 
   // Fetch data from the API on mount
   useEffect(() => {
@@ -48,6 +71,15 @@ export default function Dashboard() {
         if (!profileRes.ok) throw new Error("Failed to load profile");
         const profileData = await profileRes.json();
         setUserProfile(profileData);
+
+        // 1.5 Fetch Session Log Summary for total study time
+        const sessionLogRes = await fetch("/api/studentcontroller/profile/session-log", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (sessionLogRes.ok) {
+          const sessionData: SessionLogResponse = await sessionLogRes.json();
+          setTotalStudyMinutes(sessionData?.summary?.totalMinutes ?? 0);
+        }
 
         // 2. Fetch Events
         const eventsRes = await fetch("/api/events");
@@ -83,6 +115,148 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    // Function to evaluate and update tracking state based on current preferences
+    const updateLocationState = () => {
+      const token = localStorage.getItem("studyBuddyToken");
+      const pref = getLocationPreference();
+      const canTrackNow = shouldTrackLocationNow(token);
+
+      if (canTrackNow) {
+        setTrackCampusLocation(true);
+        setShowLocationPrompt(false);
+        return;
+      }
+
+      // NEVER track on initial load if preference is null (first time user)
+      // Only show prompt to let user decide
+      if (pref === null) {
+        setTrackCampusLocation(false);
+        setShowLocationPrompt(true);
+        setLiveCampusLocation(null); // Don't show cached location until user chooses
+        return;
+      }
+
+      // If preference is "always", resume tracking
+      if (pref === "always") {
+        setTrackCampusLocation(true);
+        setShowLocationPrompt(false);
+        return;
+      }
+
+      // If preference is "reject", never track
+      if (pref === "reject") {
+        setTrackCampusLocation(false);
+        setShowLocationPrompt(false);
+        setLiveCampusLocation(null);
+      }
+    };
+
+    // Initial state evaluation
+    updateLocationState();
+
+    // Listen for preference changes (e.g., from Profile page)
+    const unsubscribe = addLocationPreferenceListener(updateLocationState);
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!trackCampusLocation) {
+      return;
+    }
+
+    const stopWatch = watchCampusLocation({
+      onUpdate: (reading) => {
+        setLiveCampusLocation(reading);
+        syncTrackedLocationToProfile(reading.buildingName, {
+          latitude: reading.latitude,
+          longitude: reading.longitude
+        }).catch((err) => {
+          console.error("Failed to sync tracked location", err);
+        });
+      },
+      onError: (error) => {
+        if (isGeolocationPermissionDenied(error)) {
+          setLocationPreference("reject");
+          setTrackCampusLocation(false);
+          setShowLocationPrompt(false);
+          setLiveCampusLocation(null);
+          setLocationPromptError("Location access denied. Manual location mode is active.");
+          return;
+        }
+        setLocationPromptError("Location access was blocked by your browser.");
+      }
+    });
+
+    return stopWatch;
+  }, [trackCampusLocation]);
+
+  const handleAllowOnce = async () => {
+    setLocationPromptError("");
+    try {
+      const token = localStorage.getItem("studyBuddyToken");
+      // Set "once" BEFORE requesting location so tracking immediately starts
+      setOnceLocationActive(true, token);
+      const reading = await requestCurrentCampusLocation();
+      setLiveCampusLocation(reading);
+      await syncTrackedLocationToProfile(reading.buildingName, {
+        latitude: reading.latitude,
+        longitude: reading.longitude
+      });
+      setTrackCampusLocation(true);
+      setShowLocationPrompt(false);
+    } catch (error) {
+      if (isGeolocationPermissionDenied(error)) {
+        setLocationPreference("reject");
+        setTrackCampusLocation(false);
+        setShowLocationPrompt(false);
+        setLiveCampusLocation(null);
+        setLocationPromptError("Location access denied. Manual location mode is active.");
+      } else {
+        setLocationPromptError("Could not access your location. You can continue with manual location.");
+      }
+      setOnceLocationActive(false);
+    }
+  };
+
+  const handleAllowAlways = async () => {
+    setLocationPromptError("");
+    try {
+      // Set preference BEFORE requesting location
+      setLocationPreference("always");
+      const reading = await requestCurrentCampusLocation();
+      setLiveCampusLocation(reading);
+      await syncTrackedLocationToProfile(reading.buildingName, {
+        latitude: reading.latitude,
+        longitude: reading.longitude
+      });
+      setOnceLocationActive(false);
+      setTrackCampusLocation(true);
+      setShowLocationPrompt(false);
+    } catch (error) {
+      if (isGeolocationPermissionDenied(error)) {
+        setLocationPreference("reject");
+        setTrackCampusLocation(false);
+        setShowLocationPrompt(false);
+        setLiveCampusLocation(null);
+        setLocationPromptError("Location access denied. Manual location mode is active.");
+      } else {
+        setLocationPromptError("Could not access your location. Please check browser location permissions.");
+        setLocationPreference(null);
+      }
+    }
+  };
+
+  const handleRejectLocation = () => {
+    // Set preference to reject (clears "once" internally)
+    setLocationPreference("reject");
+    setTrackCampusLocation(false);
+    setShowLocationPrompt(false);
+    setLocationPromptError("");
+    setLiveCampusLocation(null); // Clear any cached location data
+  };
+
   if (isLoading) {
     return <p className="p-6 text-center text-slate-500 mt-10">Loading your dashboard...</p>;
   }
@@ -107,6 +281,14 @@ export default function Dashboard() {
     return date.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
   };
 
+  const formatStudyTime = () => {
+    if (totalStudyMinutes <= 0) return "0 min";
+    const totalHours = Math.floor(totalStudyMinutes / 60);
+    const remainingMinutes = totalStudyMinutes % 60;
+    if (totalHours <= 0) return `${totalStudyMinutes} min`;
+    return `${totalHours}h ${remainingMinutes}m`;
+  };
+
   const displayName = userProfile.fullName || `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim() || userProfile.userId;
 
   return (
@@ -124,7 +306,12 @@ export default function Dashboard() {
             <p className="text-blue-200 text-sm mt-1">{userProfile.program || "Student"} · {userProfile.year || "Unknown Year"}</p>
             <div className="flex items-center gap-2 mt-3">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-blue-100 text-xs">{userProfile.location || "Campus"}</span>
+              <span className="text-blue-100 text-xs">
+                {liveCampusLocation?.buildingName || userProfile.location || "Campus"}
+              </span>
+              {liveCampusLocation && (
+                <span className="text-blue-200 text-xs">({formatDistance(liveCampusLocation.distanceMeters)})</span>
+              )}
             </div>
           </div>
           <div className="hidden md:flex flex-col items-end gap-2">
@@ -148,7 +335,7 @@ export default function Dashboard() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-x">
-        <StatCard icon={BookOpen} label="Study Hours" value="Coming Soon..." color="bg-blue-600" />
+        <StatCard icon={BookOpen} label="Study Hours" value={formatStudyTime()} color="bg-blue-600" />
         <StatCard icon={CalendarDays} label="Joined Sessions" value={myTotalSessions} color="bg-orange-500" />
         <StatCard icon={Users} label="Connections" value={totalConnectionsCount} color="bg-blue-700" />
         <StatCard icon={Star} label="Courses" value={userCourses.length} color="bg-orange-600" />
@@ -282,8 +469,12 @@ export default function Dashboard() {
               <TrendingUp size={18} />
               <span className="text-sm" style={{ fontWeight: 600 }}>Study Streak</span>
             </div>
-            <p style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>Coming Soon....</p>
-            <p className="text-orange-100 text-xs mt-1"> 🔥</p>
+            <p style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>
+              {userProfile.loginStreak ?? 0}
+            </p>
+            <p className="text-orange-100 text-xs mt-1">
+              🔥 {(userProfile.loginStreak ?? 0) === 1 ? "day" : "days"} in a row
+            </p>
           </div>
         </div>
       </div>
@@ -317,6 +508,45 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {showLocationPrompt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h2 className="text-lg text-slate-900" style={{ fontWeight: 700 }}>Share your exact location?</h2>
+            <p className="text-sm text-slate-600 mt-2">
+              We use your coordinates to detect the nearest YorkU building and keep your profile location updated while you move around campus.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={handleAllowOnce}
+                className="w-full px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors"
+                style={{ fontWeight: 600 }}
+              >
+                Allow Once
+              </button>
+              <button
+                onClick={handleAllowAlways}
+                className="w-full px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm transition-colors"
+                style={{ fontWeight: 600 }}
+              >
+                Allow Always
+              </button>
+              <button
+                onClick={handleRejectLocation}
+                className="w-full px-4 py-2.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm transition-colors"
+                style={{ fontWeight: 600 }}
+              >
+                Reject
+              </button>
+            </div>
+
+            {locationPromptError && (
+              <p className="text-sm text-red-600 mt-3">{locationPromptError}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

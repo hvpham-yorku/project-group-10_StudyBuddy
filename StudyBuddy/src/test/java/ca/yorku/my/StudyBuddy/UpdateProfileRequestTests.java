@@ -23,6 +23,7 @@ class UpdateProfileRequestTests {
             "CS",                                 // program
             "avatarUrl",                          // avatar
             "Toronto",                            // location
+            Map.of("latitude", 43.77, "longitude", -79.50), // exactLocation
             true,                                 // twoFAEnabled
             30,                                   // autoTimeout
             true,                                 // isOnline
@@ -37,6 +38,7 @@ class UpdateProfileRequestTests {
         assertEquals("CS", req.program());
         assertEquals("avatarUrl", req.avatar());
         assertEquals("Toronto", req.location());
+        assertEquals(Map.of("latitude", 43.77, "longitude", -79.50), req.exactLocation());
         assertEquals(true, req.twoFAEnabled());
         assertEquals(30, req.autoTimeout());
         assertEquals(true, req.isOnline());
@@ -47,7 +49,7 @@ class UpdateProfileRequestTests {
     void emptyRecord_allowsNulls() {
         UpdateProfileRequestDTO req = new UpdateProfileRequestDTO(
             null, null, null, null, null, null,
-            null, null, null, 0, null, null
+            null, null, null, null, 0, null, null
         );
 
         assertNull(req.courses());
@@ -58,6 +60,7 @@ class UpdateProfileRequestTests {
         assertNull(req.program());
         assertNull(req.avatar());
         assertNull(req.location());
+        assertNull(req.exactLocation());
         assertNull(req.twoFAEnabled());
         assertEquals(0, req.autoTimeout());
         assertNull(req.isOnline());
@@ -75,6 +78,7 @@ class UpdateProfileRequestTests {
             "CS",                   // program
             null,                   // avatar
             null,                   // location
+            null,                   // exactLocation
             null,                   // twoFAEnabled
             15,                     // autoTimeout
             null,                   // isOnline
@@ -89,6 +93,7 @@ class UpdateProfileRequestTests {
         assertEquals("CS", req.program());
         assertNull(req.avatar());
         assertNull(req.location());
+        assertNull(req.exactLocation());
         assertNull(req.twoFAEnabled());
         assertEquals(15, req.autoTimeout());
         assertNull(req.isOnline());
@@ -102,7 +107,7 @@ class UpdateProfileRequestTests {
 
         UpdateProfileRequestDTO req = new UpdateProfileRequestDTO(
             courses, null, null, null, null, null,
-            null, null, null, 0, null, null
+            null, null, null, null, 0, null, null
         );
 
         courses.add("EECS 3311");
@@ -114,13 +119,13 @@ class UpdateProfileRequestTests {
     void constructor_handlesExtremeAutoTimeoutValues() {
     	UpdateProfileRequestDTO req1 = new UpdateProfileRequestDTO(
             null, null, null, null, null, null,
-            null, null, null, Integer.MIN_VALUE, null, null
+            null, null, null, null, Integer.MIN_VALUE, null, null
         );
         assertEquals(Integer.MIN_VALUE, req1.autoTimeout());
 
         UpdateProfileRequestDTO req2 = new UpdateProfileRequestDTO(
             null, null, null, null, null, null,
-            null, null, null, Integer.MAX_VALUE, null, null
+            null, null, null, null, Integer.MAX_VALUE, null, null
         );
         assertEquals(Integer.MAX_VALUE, req2.autoTimeout());
     }
@@ -130,6 +135,7 @@ class UpdateProfileRequestTests {
     	UpdateProfileRequestDTO req = new UpdateProfileRequestDTO(
             null, null, null, null, null, null,
             null, null,
+            null,
             true,   // twoFAEnabled
             10,
             false,  // isOnline
@@ -149,7 +155,7 @@ class UpdateProfileRequestTests {
 
         UpdateProfileRequestDTO req = new UpdateProfileRequestDTO(
             null, null, settings, null, null, null,
-            null, null, null, 0, null, null
+            null, null, null, null, 0, null, null
         );
 
         assertEquals(settings, req.privacySettings());
@@ -160,7 +166,7 @@ class UpdateProfileRequestTests {
     	UpdateProfileRequestDTO req = new UpdateProfileRequestDTO(
             List.of(), List.of(), Map.of(),
             "", "", "",
-            "", "", false,
+            "", "", null, false,
             0, false, Map.of()
         );
 
@@ -177,7 +183,7 @@ class UpdateProfileRequestTests {
             "",      // empty bio
             null,    // null year
             "",      // empty program
-            null, null, null, 0, null, null
+            null, null, null, null, 0, null, null
         );
 
         assertEquals("", req.bio());

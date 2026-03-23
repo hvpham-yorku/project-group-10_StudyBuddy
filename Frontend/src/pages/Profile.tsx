@@ -1,22 +1,59 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Edit2, Camera, Plus, X, Check, BookOpen, Clock, CalendarDays,
-  Mail, GraduationCap, MapPin, Star
+  Edit2, X, BookOpen, Clock, CalendarDays,
+  Mail, GraduationCap, MapPin, Star, Flame
 } from "lucide-react";
-import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "../data/mockData";
-import { set } from "date-fns";
-import { Avatar } from "@radix-ui/react-avatar";
+import { studyVibeOptions } from "../data/mockData";
+import {
+  formatDistance,
+  getLastCampusLocation,
+  isGeolocationPermissionDenied,
+  getLocationPreference,
+  setLocationPreference,
+  shouldTrackLocationNow,
+  syncTrackedLocationToProfile,
+  watchCampusLocation,
+  addLocationPreferenceListener,
+  requestCurrentCampusLocation,
+  setOnceLocationActive
+} from "../lib/locationTracking";
+
+interface SessionLogEvent {
+  id: string;
+  title: string;
+  course: string;
+  location: string;
+  date: string;
+  time: string;
+  duration: number;
+  status: string;
+  role: string;
+}
+
+interface SessionLogSummary {
+  totalMinutes: number;
+  totalEvents: number;
+  hostedCount: number;
+  attendedCount: number;
+}
+
+interface SessionLogResponse {
+  summary: SessionLogSummary;
+  events: SessionLogEvent[];
+}
 
 export default function Profile() {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem("studyBuddyToken");
   const [loading, setLoading] = useState(true);
 
   // STUDENT DATA
   const [student, setStudent] = useState<any>(null);
   const [joinedDate, setJoinedDate] = useState("");
+  const [sessionLog, setSessionLog] = useState<SessionLogResponse | null>(null);
+  const [sessionLogError, setSessionLogError] = useState("");
+  const [loginStreak, setLoginStreak] = useState(0);
 
   // BIO
   const [editingBio, setEditingBio] = useState(false);
@@ -27,6 +64,9 @@ export default function Profile() {
   const [editingCourses, setEditingCourses] = useState(false);
   const [courses, setCourses] = useState<string[]>([]);
   const [courseInput, setCourseInput] = useState("");
+  const [courseSuggestions, setCourseSuggestions] = useState<string[]>([]);
+  const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+  const [courseInputError, setCourseInputError] = useState("");
 
   // STUDY VIBES
   const [vibes, setVibes] = useState<string[]>([]);
@@ -52,6 +92,10 @@ export default function Profile() {
   const [autoTimeout, setAutoTimeout] = useState(0);
   const [isOnline, setIsOnline] = useState(false);
   const [location, setLocation] = useState("");
+  const [liveCampusLocation, setLiveCampusLocation] = useState<any>(null); // Only populate when tracking is enabled
+  const [locationTrackingEnabled, setLocationTrackingEnabled] = useState(false); // Start as false
+  const [locationTrackingError, setLocationTrackingError] = useState("");
+  const [locationPermissionPref, setLocationPermissionPref] = useState(getLocationPreference());
 
   // AVATAR
   const [avatar, setAvatar] = useState("");
@@ -71,14 +115,42 @@ export default function Profile() {
   });
 
   const [activeTab, setActiveTab] = useState<"overview" | "log">("overview");
-
-  const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
-  const totalHours = Math.floor(totalMinutes / 60);
+  const normalizeCourseValue = (value: string) =>
+    value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   const removeCourse = (c: string) => setCourses((prev) => prev.filter((x) => x !== c));
   const addCourse = (c: string) => {
-    if (c && !courses.includes(c)) setCourses((prev) => [...prev, c]);
+    const normalizedCourse = c.trim();
+    if (normalizedCourse && !courses.includes(normalizedCourse)) {
+      setCourses((prev) => [...prev, normalizedCourse]);
+    }
     setCourseInput("");
+    setCourseSuggestions([]);
+    setCourseInputError("");
+  };
+
+  const addCourseFromInput = () => {
+    const typed = courseInput.trim();
+    if (!typed) {
+      return;
+    }
+
+    const normalizedTyped = normalizeCourseValue(typed);
+    const exactMatch = courseSuggestions.find(
+      (course) => normalizeCourseValue(course) === normalizedTyped
+    );
+
+    if (exactMatch) {
+      addCourse(exactMatch);
+      return;
+    }
+
+    if (courseSuggestions.length === 1) {
+      addCourse(courseSuggestions[0]);
+      return;
+    }
+
+    setCourseInputError("Select a York course from the suggestions.");
   };
 
   const removeVibe = (v: string) => setVibes((prev) => prev.filter((x) => x !== v));
@@ -129,15 +201,142 @@ export default function Profile() {
         setTwoFAEnabled(data.twoFAEnabled ?? false);
         setAutoTimeout(data.autoTimeout ?? 0);
         setJoinedDate(data.joinedDate || "");
+        setLoginStreak(data.loginStreak ?? 0);
       
+        const sessionRes = await fetch(`/api/studentcontroller/profile/session-log`, {
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
+
+        if (!sessionRes.ok) {
+          throw new Error("Failed to load study session log");
+        }
+
+        const sessionData: SessionLogResponse = await sessionRes.json();
+        setSessionLog(sessionData);
+
       } catch (err) {
         console.error("Failed to load profile", err);
+        setSessionLogError("Could not load study session history.");
       } finally {
         setLoading(false);
       }
     }
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    // Function to evaluate and update location tracking state
+    const updateLocationState = () => {
+      const token = localStorage.getItem("studyBuddyToken");
+      const pref = getLocationPreference();
+      const canTrack = shouldTrackLocationNow(token);
+
+      setLocationPermissionPref(pref);
+      setLocationTrackingEnabled(canTrack);
+      
+      // When tracking is disabled, clear all location data
+      if (!canTrack) {
+        setLiveCampusLocation(null);
+        // If preference is explicitly "reject", also clear the input field to ensure clean manual mode
+        if (pref === "reject") {
+          setLocation("");
+        }
+      } else {
+        // Restore last known location if tracking is enabled
+        const lastLocation = getLastCampusLocation();
+        setLiveCampusLocation(lastLocation);
+        if (lastLocation) {
+          setLocation(lastLocation.buildingName);
+        }
+      }
+    };
+
+    // Initial state evaluation
+    updateLocationState();
+
+    // Listen for preference changes (e.g., from Dashboard or settings change)
+    const unsubscribe = addLocationPreferenceListener(updateLocationState);
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!locationTrackingEnabled) {
+      return;
+    }
+
+    const stopWatch = watchCampusLocation({
+      onUpdate: (reading) => {
+        // Only update location display if tracking is still enabled
+        // (safety check in case state changed between watch callback and execution)
+        if (getLocationPreference() !== "reject") {
+          setLiveCampusLocation(reading);
+          setLocation(reading.buildingName);
+          setLocationTrackingError("");
+          syncTrackedLocationToProfile(reading.buildingName, {
+            latitude: reading.latitude,
+            longitude: reading.longitude
+          }).catch((err) => {
+            console.error("Failed to sync tracked location", err);
+          });
+        }
+      },
+      onError: (error) => {
+        if (isGeolocationPermissionDenied(error)) {
+          setLocationPreference("reject");
+          setLocationTrackingEnabled(false);
+          setLiveCampusLocation(null);
+          setLocationTrackingError("Location access denied. You can set location manually.");
+          return;
+        }
+
+        setLocationTrackingError("Location tracking is blocked in your browser settings.");
+      }
+    });
+
+    return stopWatch;
+  }, [locationTrackingEnabled]);
+
+  useEffect(() => {
+    const query = courseInput.trim();
+    if (!query) {
+      setCourseSuggestions([]);
+      setCourseSearchLoading(false);
+      setCourseInputError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      setCourseSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/courses/search?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load course suggestions");
+        }
+
+        const suggestions: string[] = await response.json();
+        setCourseSuggestions(suggestions);
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          setCourseSuggestions([]);
+        }
+      } finally {
+        setCourseSearchLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [courseInput]);
 
   // Save profile to backend
  async function saveProfile(payload: {
@@ -201,22 +400,65 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
       const base64 = reader.result as string;
       const token = localStorage.getItem("studyBuddyToken");
 
-      // Send to backend
-      await fetch(`/api/studentcontroller/profile/avatar`, {
-        method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ avatar: base64 })
-      });
+      try {
+        // Send to backend
+        const response = await fetch(`/api/studentcontroller/profile/avatar`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({ avatar: base64 })
+        });
 
-      // Update UI immediately
-      setAvatar(base64);
+        if (!response.ok) {
+          throw new Error("Failed to save avatar");
+        }
+
+        // Update UI immediately
+        setAvatar(base64);
+      } catch (err) {
+        console.error("Failed to update avatar", err);
+      } finally {
+        // Reset so selecting the same file again still triggers onChange
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
     };
 
     reader.readAsDataURL(file);
   }
+
+  const totalMinutes = sessionLog?.summary.totalMinutes ?? 0;
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  const formatStudyTime = () => {
+    if (totalMinutes <= 0) return "0 min";
+    if (totalHours <= 0) return `${totalMinutes} min`;
+    return `${totalHours}h ${remainingMinutes}m`;
+  };
+
+  const formatEventDate = (date: string, time: string) => {
+    const parsed = new Date(`${date}T${time}`);
+    if (Number.isNaN(parsed.getTime())) {
+      return `${date || "Unknown date"} ${time || ""}`.trim();
+    }
+    return parsed.toLocaleString("en-CA", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  };
+
+  const roleStyles: Record<string, string> = {
+    "Hosted": "bg-blue-100 text-blue-700 border-blue-200",
+    "Attended": "bg-emerald-100 text-emerald-700 border-emerald-200",
+    "Hosted & Attended": "bg-amber-100 text-amber-700 border-amber-200"
+  };
 
   if (loading) return <p className="p-6">Loading profile...</p>;
 
@@ -233,19 +475,40 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
         <div className="px-6 pb-6">
 
-          {/* Avatar */}
-          <div className="relative w-24 h-24">
-            <div 
-              onClick={handleAvatarClick}
-              className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 cursor-pointer hover:opacity-80 transition flex items-center justify-center border-4 border-white shadow-sm"
-            >
-              {avatar ? (
-                <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "2rem" }}>
-                  {(student?.fullName || student?.userId || "?").charAt(0).toUpperCase()}
-                </span>
-              )}
+          {/* Avatar + Streak Badge */}
+          <div className="flex items-end gap-4">
+            <div className="relative w-24 h-24">
+              <div 
+                onClick={handleAvatarClick}
+                className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 cursor-pointer hover:opacity-80 transition flex items-center justify-center border-4 border-white shadow-sm"
+              >
+                {avatar ? (
+                  <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-blue-600" style={{ fontWeight: 700, fontSize: "2rem" }}>
+                    {(student?.fullName || student?.userId || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+
+            {/* Streak Badge */}
+            <div className="mb-1 flex flex-col items-center px-4 py-2 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-2xl shadow-sm min-w-[70px]">
+              <Flame size={22} className="text-orange-500 mb-0.5" />
+              <span className="text-orange-700 leading-none" style={{ fontWeight: 700, fontSize: "1.4rem" }}>
+                {loginStreak}
+              </span>
+              <span className="text-orange-400 text-xs mt-0.5" style={{ fontWeight: 500 }}>
+                {loginStreak === 1 ? "day" : "days"}
+              </span>
+              <span className="text-orange-300 text-xs">streak</span>
             </div>
           </div>
 
@@ -295,10 +558,13 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
 
               <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-500">
                 <MapPin size={14} className="text-slate-400" />
-                <span>{location}</span>
+                <span>{liveCampusLocation?.buildingName || location}</span>
+                {liveCampusLocation && (
+                  <span className="text-xs text-slate-400">({formatDistance(liveCampusLocation.distanceMeters)})</span>
+                )}
               </div>
 
-              <p className="text-xs text-slate-400 mt-1">Member since {currentUser.joinedDate}</p>
+              <p className="text-xs text-slate-400 mt-1">Member since {joinedDate || "Recently"}</p>
             </div>
             {/* Edit Profile Button */}
             <div className="flex gap-2">
@@ -485,6 +751,78 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
         )}
       </div>
 
+      {/* STUDY SESSION LOG */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Study Session Log</h2>
+            <p className="text-sm text-slate-500">Your hosted and attended past sessions</p>
+          </div>
+          <div className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            Past events only
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="text-xs text-blue-700 mb-1" style={{ fontWeight: 600 }}>Total Study Time</div>
+            <div className="flex items-center gap-2 text-blue-900">
+              <Clock size={16} />
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{formatStudyTime()}</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="text-xs text-emerald-700 mb-1" style={{ fontWeight: 600 }}>Total Events</div>
+            <div className="flex items-center gap-2 text-emerald-900">
+              <CalendarDays size={16} />
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{sessionLog?.summary.totalEvents ?? 0}</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+            <div className="text-xs text-orange-700 mb-1" style={{ fontWeight: 600 }}>Hosted / Attended</div>
+            <div className="text-orange-900" style={{ fontWeight: 700, fontSize: "1.1rem" }}>
+              {sessionLog?.summary.hostedCount ?? 0} / {sessionLog?.summary.attendedCount ?? 0}
+            </div>
+          </div>
+        </div>
+
+        {sessionLogError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {sessionLogError}
+          </div>
+        ) : (
+          <div className="max-h-80 overflow-y-auto overscroll-y-contain pr-1 space-y-3">
+            {sessionLog?.events && sessionLog.events.length > 0 ? (
+              sessionLog.events.map((session) => (
+                <div key={session.id} className="rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-slate-800" style={{ fontWeight: 600 }}>{session.title || "Untitled Session"}</h3>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500">
+                        <span className="flex items-center gap-1.5"><BookOpen size={14} />{session.course || "No course"}</span>
+                        <span className="flex items-center gap-1.5"><MapPin size={14} />{session.location || "No location"}</span>
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full border text-xs ${roleStyles[session.role] || "bg-slate-100 text-slate-700 border-slate-200"}`}>
+                      {session.role}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                    <span className="flex items-center gap-1.5"><CalendarDays size={14} />{formatEventDate(session.date, session.time)}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={14} />{session.duration} min</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500 text-center">
+                No past hosted or attended sessions yet.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* PRIVACY SETTINGS CARD */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Privacy Settings</h2>
@@ -631,31 +969,59 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           ))}
         </div>
 
-        {/* Add course (preset + custom) */}
-        <div className="flex items-center gap-3">
-          <select
-            onChange={(e) => addCourse(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
-          >
-            <option value="">Add preset course...</option>
-            {courseOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+        {/* Add course (York catalog autocomplete) */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-3">
+            <div className="relative w-full max-w-xs">
+              <input
+                value={courseInput}
+                onChange={(e) => {
+                  setCourseInput(e.target.value);
+                  setCourseInputError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCourseFromInput();
+                  }
+                }}
+                placeholder="Type a York course (e.g. EECS 1021)..."
+                className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+              />
 
-          <input
-            value={courseInput}
-            onChange={(e) => setCourseInput(e.target.value)}
-            placeholder="Custom course..."
-            className="border border-slate-300 rounded-lg px-3 py-2 w-48"
-          />
+              {courseInput.trim() && (
+                <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                  {courseSearchLoading ? (
+                    <div className="px-3 py-2 text-sm text-slate-500">Searching courses...</div>
+                  ) : courseSuggestions.length > 0 ? (
+                    courseSuggestions.map((course) => (
+                      <button
+                        key={course}
+                        type="button"
+                        onClick={() => addCourse(course)}
+                        className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-blue-50"
+                      >
+                        {course}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-slate-500">No matching York courses.</div>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <button
-            onClick={() => addCourse(courseInput)}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-          >
-            Add
-          </button>
+            <button
+              onClick={addCourseFromInput}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+            >
+              Add
+            </button>
+          </div>
+
+          {courseInputError && (
+            <p className="text-sm text-red-600">{courseInputError}</p>
+          )}
         </div>
         <button
           onClick={() =>
@@ -744,14 +1110,73 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
         <h2 className="text-lg font-semibold text-slate-800 mb-3">Location</h2>
 
+        <div className="mb-3 text-sm text-slate-600">
+          {locationTrackingEnabled ? (
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Auto-updating from GPS ({locationPermissionPref === "always" ? "Allow Always" : "Allow Once"})
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              Manual location mode
+            </span>
+          )}
+        </div>
+
         <input
-          value={location}
+          value={locationTrackingEnabled ? (liveCampusLocation?.buildingName || location) : location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="Enter your current study location..."
-          className="border border-slate-300 rounded-lg px-3 py-2 w-full"
+          placeholder={locationTrackingEnabled ? "Location is auto-detected" : "Enter your current study location..."}
+          readOnly={locationTrackingEnabled}
+          className={`border rounded-lg px-3 py-2 w-full ${locationTrackingEnabled ? "bg-slate-100 border-slate-200 text-slate-600" : "border-slate-300"}`}
         />
 
+        {locationTrackingError && (
+          <p className="text-sm text-red-600 mt-2">{locationTrackingError}</p>
+        )}
+
+        {locationPermissionPref === "reject" && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-slate-500">Location tracking is disabled. You can change this:</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setLocationPreference(null);
+                  setLocationTrackingError("");
+                }}
+                className="flex-1 text-xs px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+              >
+                Ask Again on Dashboard
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem("studyBuddyToken");
+                    // Set "once" active first before requesting
+                    setOnceLocationActive(true, token);
+                    const reading = await requestCurrentCampusLocation();
+                    setLiveCampusLocation(reading);
+                    await syncTrackedLocationToProfile(reading.buildingName, {
+                      latitude: reading.latitude,
+                      longitude: reading.longitude
+                    });
+                    setLocationPreference(null); // Reset preference so prompt shows on dashboard next time
+                    setLocationTrackingEnabled(true);
+                    setLocationTrackingError("");
+                  } catch {
+                    setLocationTrackingError("Could not access your location. Allow in browser settings.");
+                    setOnceLocationActive(false);
+                  }
+                }}
+                className="flex-1 text-xs px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition"
+              >
+                Enable for This Session
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
+          disabled={locationTrackingEnabled}
           onClick={() =>
             saveProfile({
               courses,
@@ -763,9 +1188,9 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
               location,
             })
           }
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+          className={`mt-4 px-4 py-2 rounded-lg text-sm transition ${locationTrackingEnabled ? "bg-slate-200 text-slate-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
         >
-          Save Location
+          {locationTrackingEnabled ? "Location Auto-Synced" : "Save Location"}
         </button>
       </div>
 

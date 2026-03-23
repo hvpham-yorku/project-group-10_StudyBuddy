@@ -1,23 +1,25 @@
 package ca.yorku.my.StudyBuddy;
 
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.firebase.cloud.FirestoreClient;
-
 import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.dtos.StudentSessionLogEventDTO;
+import ca.yorku.my.StudyBuddy.dtos.StudentSessionLogResponseDTO;
+import ca.yorku.my.StudyBuddy.dtos.StudentSessionLogSummaryDTO;
+import ca.yorku.my.StudyBuddy.services.EventRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * This class manages student session-log operations such as retrieval,
@@ -26,34 +28,85 @@ import java.time.format.DateTimeParseException;
 @Service
 public class SessionLogService {
 
-    private static final String EVENTS_COLLECTION = "events";
+    @Autowired
+    private EventRepository eventRepository;
+
+    @Autowired
+    private StudentRepository studentRepository;
 
 
-    /**
-     * Retrieves all events a student has attended based on their attended event IDs.
-     */
-//    public List<Event> getStudentSessionLog(List<String> attendedEventIds) throws ExecutionException, InterruptedException {
-//        List<Event> sessionLog = new ArrayList<>();
-//
-//        if (attendedEventIds == null || attendedEventIds.isEmpty()) {
-//            return sessionLog;
-//        }
-//
-//        Firestore db = FirestoreClient.getFirestore();
-//
-//        for (String eventId : attendedEventIds) {
-//            DocumentSnapshot doc = db.collection(EVENTS_COLLECTION).document(eventId).get().get();
-//            if (doc.exists()) {
-//                Event event = doc.toObject(Event.class);
-//                if (event != null) {
-//                    event.setEventId(doc.getId());
-//                    sessionLog.add(event);
-//                }
-//            }
-//        }
-//
-//        return sessionLog;
-//    }
+    public StudentSessionLogResponseDTO getSessionLogForStudent(String studentId) throws Exception {
+        Student student = studentRepository.getStudent(studentId);
+        List<Event> events = eventRepository.getAllEvents();
+
+        Set<String> attendedEventIds = student.getAttendedEventIds() != null
+                ? new HashSet<>(student.getAttendedEventIds())
+                : new HashSet<>();
+
+        int totalMinutes = 0;
+        int hostedCount = 0;
+        int attendedCount = 0;
+        Set<String> uniqueEventIds = new HashSet<>();
+        List<StudentSessionLogEventDTO> sessionEvents = new ArrayList<>();
+
+        for (Event event : events) {
+            if (event == null || event.getId() == null) {
+                continue;
+            }
+
+            boolean hosted = studentId.equals(event.getHost());
+            boolean attended = attendedEventIds.contains(event.getId())
+                    || (event.getAttendees() != null && event.getAttendees().contains(studentId));
+
+            if (!hosted && !attended) {
+                continue;
+            }
+
+            if (!isPastEvent(event)) {
+                continue;
+            }
+
+            if (hosted) {
+                hostedCount++;
+            }
+            if (attended) {
+                attendedCount++;
+            }
+
+            uniqueEventIds.add(event.getId());
+            totalMinutes += Math.max(event.getDuration(), 0);
+
+            String role;
+            if (hosted && attended) {
+                role = "Hosted & Attended";
+            } else if (hosted) {
+                role = "Hosted";
+            } else {
+                role = "Attended";
+            }
+
+            sessionEvents.add(new StudentSessionLogEventDTO(
+                    event.getId(),
+                    event.getTitle(),
+                    event.getCourse(),
+                    event.getLocation(),
+                    event.getDate(),
+                    event.getTime(),
+                    event.getDuration(),
+                    event.getStatus(),
+                    role));
+        }
+
+        sessionEvents.sort(Comparator.comparing(this::startDateTimeFromDTO, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        StudentSessionLogSummaryDTO summary = new StudentSessionLogSummaryDTO(
+                totalMinutes,
+                uniqueEventIds.size(),
+                hostedCount,
+                attendedCount);
+
+        return new StudentSessionLogResponseDTO(summary, sessionEvents);
+    }
 
     /**
      * Adds an event to a student's session log, if they attended the event. 
@@ -76,37 +129,40 @@ public class SessionLogService {
         return filtered;
     }
 
-    /**
-     * Calculates total study hours based on a student's session log
-     */
-//    public long getTotalStudyMinutes(List<Event> sessionLog) {
-//        long totalMinutes = 0;
-//        for (Event event : sessionLog) {
-//            if (event.getStartTime() != null && event.getEndTime() != null) {
-//                try {
-//                    Instant start = parseToInstant(event.getStartTime());
-//                    Instant end = parseToInstant(event.getEndTime());
-//                    totalMinutes += Duration.between(start, end).toMinutes();
-//                } catch (DateTimeParseException ex) {
-//                    // skip events with unparseable timestamps
-//                }
-//            }
-//        }
-//        return totalMinutes;
-//    }
+    private boolean isPastEvent(Event event) {
+        LocalDateTime start = toStartDateTime(event);
+        if (start != null) {
+            LocalDateTime end = start.plusMinutes(Math.max(event.getDuration(), 0));
+            return end.isBefore(LocalDateTime.now());
+        }
 
-    private Instant parseToInstant(String ts) {
-        // Try instant first 
+        return "past".equalsIgnoreCase(event.getStatus());
+    }
+
+    private LocalDateTime startDateTimeFromDTO(StudentSessionLogEventDTO event) {
+        if (event == null || event.date() == null || event.time() == null) {
+            return null;
+        }
         try {
-            return Instant.parse(ts);
-        } catch (DateTimeParseException ignored) {}
+            LocalDate date = LocalDate.parse(event.date(), DateTimeFormatter.ISO_LOCAL_DATE);
+            LocalTime time = LocalTime.parse(event.time(), DateTimeFormatter.ofPattern("H:mm"));
+            return LocalDateTime.of(date, time);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
 
-        // Try offset datetime 
+    private LocalDateTime toStartDateTime(Event event) {
+        if (event == null || event.getDate() == null || event.getTime() == null) {
+            return null;
+        }
+
         try {
-            return OffsetDateTime.parse(ts).toInstant();
-        } catch (DateTimeParseException ignored) {}
-
-        // Fallback to plain LocalDateTime using system zone
-        return LocalDateTime.parse(ts).atZone(ZoneId.systemDefault()).toInstant();
+            LocalDate date = LocalDate.parse(event.getDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+            LocalTime time = LocalTime.parse(event.getTime(), DateTimeFormatter.ofPattern("H:mm"));
+            return LocalDateTime.of(date, time);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }

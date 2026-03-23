@@ -96,6 +96,22 @@ public class StubStudentRepository implements StudentRepository {
         student.setLocation(location);
     }
 
+    @Override
+    public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
+        Student student = getStudent(userId);
+        if (exactLocation == null) {
+            student.setExactLocation(null);
+            return;
+        }
+
+        Double latitude = exactLocation.get("latitude");
+        Double longitude = exactLocation.get("longitude");
+
+        if (latitude != null && longitude != null) {
+            student.setExactLocation(new Student.ExactLocation(latitude, longitude));
+        }
+    }
+
     // Updates the online status of a student based on their input
     @Override
     public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
