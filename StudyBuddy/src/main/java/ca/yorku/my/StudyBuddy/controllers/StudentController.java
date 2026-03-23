@@ -23,6 +23,7 @@ import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.dtos.ReportUserRequestDTO;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
@@ -292,4 +293,21 @@ public class StudentController {
 
     studentRepository.updateAvatar(verifiedId, avatar);
 }
+    @PostMapping("/report")
+    public ResponseEntity<?> reportUser(
+        @RequestHeader("Authorization") String authHeader,
+        @RequestBody ReportUserRequestDTO req
+    ) {
+        try {
+            String reporterUserId = authService.verifyFrontendToken(authHeader);
+
+            studentRepository.reportUser(reporterUserId, req.reportedUserId(), req.reason());
+
+            return ResponseEntity.ok("Report submitted successfully.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to submit report.");
+        }
+    }
 }

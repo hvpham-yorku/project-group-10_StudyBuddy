@@ -122,5 +122,12 @@ public class StubStudentRepository implements StudentRepository {
 		// TODO Auto-generated method stub
 		
 	}
+
+    @Override
+public void reportUser(String reporterUserId, String reportedUserId, String reason) throws Exception {
+    // Stub implementation for compatibility
+    System.out.println("Stub reportUser called: reporter=" + reporterUserId
+        + ", reported=" + reportedUserId + ", reason=" + reason);
+}
     
 }
