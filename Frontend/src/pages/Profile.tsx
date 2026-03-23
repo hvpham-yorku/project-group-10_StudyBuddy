@@ -7,6 +7,7 @@ import {
 import { currentUser, studyVibeOptions, courseOptions, sessionHistory } from "../data/mockData";
 import { set } from "date-fns";
 import { Avatar } from "@radix-ui/react-avatar";
+import { yorkPrograms } from "../data/yorkPrograms";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -42,6 +43,8 @@ export default function Profile() {
 
   const [tempProgram, setTempProgram] = useState("");
   const [tempYear, setTempYear] = useState("");
+  const [showProgramSuggestions, setShowProgramSuggestions] = useState(false);
+  const programDropdownRef = useRef<HTMLDivElement>(null);
 
   // EMAIL
   const [email, setEmail] = useState("");
@@ -74,6 +77,11 @@ export default function Profile() {
 
   const totalMinutes = sessionHistory.reduce((acc, s) => acc + s.duration, 0);
   const totalHours = Math.floor(totalMinutes / 60);
+  const filteredPrograms = yorkPrograms
+    .filter((p) => p.toLowerCase().includes(tempProgram.toLowerCase()))
+    .slice(0, 8);
+
+  const isValidProgram = yorkPrograms.includes(tempProgram);
 
   const removeCourse = (c: string) => setCourses((prev) => prev.filter((x) => x !== c));
   const addCourse = (c: string) => {
@@ -137,6 +145,20 @@ export default function Profile() {
       }
     }
     loadProfile();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        programDropdownRef.current &&
+        !programDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowProgramSuggestions(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Save profile to backend
@@ -315,51 +337,100 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           {/* INLINE EDITORS FOR PROGRAM + YEAR */}
           <div className="mt-4 space-y-4">
 
-            {/* PROGRAM EDITOR */}
-            <div>
+                        {/* PROGRAM EDITOR */}
+            <div ref={programDropdownRef}>
               <div className="flex items-center gap-2 text-sm text-slate-600 mb-1">
                 <GraduationCap size={14} className="text-blue-500" />
                 <span className="font-medium">Major</span>
               </div>
 
               {editingProgram ? (
-                <div className="flex items-center gap-3">
-                  <input
-                    value={tempProgram}
-                    onChange={(e) => setTempProgram(e.target.value)}
-                    className="border border-slate-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
+                <div className="relative w-80">
+                  <div className="flex items-center gap-3">
+                    <input
+                      value={tempProgram}
+                      onChange={(e) => {
+                        setTempProgram(e.target.value);
+                        setShowProgramSuggestions(true);
+                      }}
+                      onFocus={() => setShowProgramSuggestions(true)}
+                      placeholder="Search York major..."
+                      className="border border-slate-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
 
-                  <button
-                    onClick={async () => {
-                      await saveProfile({
-                        courses,
-                        studyVibes: vibes,
-                        bio,
-                        program: tempProgram,
-                        year,
-                        privacySettings
-                      });
-                      setProgram(tempProgram);
-                      setEditingProgram(false);
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
-                  >
-                    Save
-                  </button>
+                    <button
+                      onClick={async () => {
+                        if (!yorkPrograms.includes(tempProgram)) {
+                          alert("Please select a valid York University major.");
+                          return;
+                        }
 
-                  <button
-                    onClick={() => setEditingProgram(false)}
-                    className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
-                  >
-                    Cancel
-                  </button>
+                        await saveProfile({
+                          courses,
+                          studyVibes: vibes,
+                          bio,
+                          program: tempProgram,
+                          year,
+                          privacySettings
+                        });
+
+                        setProgram(tempProgram);
+                        setEditingProgram(false);
+                        setShowProgramSuggestions(false);
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition"
+                    >
+                      Save
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setTempProgram(program);
+                        setEditingProgram(false);
+                        setShowProgramSuggestions(false);
+                      }}
+                      className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-300 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  {showProgramSuggestions && tempProgram.trim() !== "" && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredPrograms.length > 0 ? (
+                        filteredPrograms.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => {
+                              setTempProgram(option);
+                              setShowProgramSuggestions(false);
+                            }}
+                            className="block w-full text-left px-3 py-2 hover:bg-slate-100 text-sm"
+                          >
+                            {option}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500">
+                          No matching York program found
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isValidProgram && tempProgram.trim() !== "" && (
+                    <p className="text-sm text-red-500 mt-2">
+                      Select a valid York University major from the list.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <button
                   onClick={() => {
                     setTempProgram(program);
                     setEditingProgram(true);
+                    setShowProgramSuggestions(false);
                   }}
                   className="text-blue-600 text-sm underline hover:text-blue-700"
                 >
