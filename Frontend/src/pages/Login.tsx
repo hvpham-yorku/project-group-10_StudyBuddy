@@ -54,7 +54,8 @@ export default function Login() {
 
         // Save the token so the Auth Guard lets us into the dashboard
         localStorage.setItem("studyBuddyToken", data);
-        navigate("/dashboard");
+        // Force a full app re-mount so inactivity timer/profile state are initialized reliably.
+        window.location.assign("/dashboard");
 
       } else if (response.status === 403) {
         // Status 403: Backend says email is not verified. Send them to 2FA!

@@ -5,6 +5,7 @@ import {
   Users, Settings, Bell, BookOpen, LogOut, ChevronLeft, ChevronRight,
   X
 } from "lucide-react";
+import { InactivityCountdown } from "../components/InactivityCountdown";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -21,7 +22,19 @@ export default function Layout() {
 
   const [student, setStudent] = useState<any>(null);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem("studyBuddyToken");
+    if (token) {
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token },
+        });
+      } catch (err) {
+        console.warn("Logout API failed", err);
+      }
+    }
+
     localStorage.removeItem("studyBuddyToken");
     navigate("/");
   };
@@ -73,6 +86,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <InactivityCountdown />
       {/* Sidebar */}
       <aside
         className={`relative flex flex-col bg-blue-900 text-white transition-all duration-300 ${collapsed ? "w-16" : "w-60"

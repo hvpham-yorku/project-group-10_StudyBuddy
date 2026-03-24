@@ -8,7 +8,22 @@ export function useInactivityTimer(timeoutMinutes: number) {
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setTimeout(async () => {
+      // Invalidate session on backend and clear client auth
+      const token = localStorage.getItem("studyBuddyToken");
+      if (token) {
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + token,
+            },
+          });
+        } catch (err) {
+          console.warn("Failed to call backend logout", err);
+        }
+      }
+      localStorage.removeItem("studyBuddyToken");
       navigate("/inactive");
     }, timeoutMinutes * 60 * 1000);
   };
