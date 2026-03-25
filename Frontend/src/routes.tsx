@@ -93,64 +93,72 @@ export const router = createBrowserRouter([
     path: "/2fa",
     element: <TwoFA />,
   },
-  
+
 
   // --- App Routes (With Sidebar) ---
   {
     element: <ProtectedRoute />, // This wraps all protected routes
     children: [
-    {
-      element: <RootLayout />,
-      children: [
-    {
-      element: <Layout />, // This wraps all children below
-      children: [
-        {
-          path: "/dashboard",
-          element: <Dashboard />,
-        },
-        {
-          path: "/profile",
-          element: <Profile />,
-        },
-        {
-          path: "/profile/:id",
-          element: <ProfileViewer />,
-        },
-        {
-          path: "/events",
-          element: <Events />,
-        },
-        {
-          path: "/events/create",
-          element: <CreateEvent />,
-        },
-        {
-          path: "/events/:id",
-          element: <EventDetails />,
-        },
-        {
-          path: "map",
-          element: <MapView />,
-        },
-        {
-          path: "chat",
-          element: <Chat />,
-        },
-        {
-          path: "chat/:id",
-          element: <Chat />,
-        },
-        {
-          path: "network",
-          element: <Network />,
-        },
-      ],
-    }],
-  }],
+      {
+        element: <RootLayout />,
+        children: [
+          {
+            element: <Layout />, // This wraps all children below
+            children: [
+              {
+                path: "/dashboard",
+                element: <Dashboard />,
+              },
+              {
+                path: "/profile",
+                element: <Profile />,
+              },
+              {
+                path: "/profile/:id",
+                element: <ProfileViewer />,
+              },
+              {
+                path: "/events",
+                element: <Events />,
+              },
+              {
+                path: "/events/create",
+                element: <CreateEvent />,
+              },
+              {
+                path: "/events/:id",
+                element: <EventDetails />,
+              },
+              {
+                path: "map",
+                element: <MapView />,
+              },
+              {
+                path: "chat",
+                element: <Chat />,
+              },
+              {
+                path: "chat/:id",
+                element: <Chat />,
+              },
+              {
+                path: "network",
+                element: <Network />,
+              },
+              {
+                path: "/2fa",
+                element: <TwoFA />,
+              },
+              {
+                path: "/map",        // ← ADD THIS
+                element: <MapView />,
+              },
+            ],
+          }],
+      }],
   },
   {
-    path: "/inactive", element: <Inactive /> 
+    path: "/inactive", element: <Inactive />
   },
   {
     path: "/*",
