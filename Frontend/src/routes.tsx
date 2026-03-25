@@ -93,17 +93,20 @@ export const router = createBrowserRouter([
     path: "/2fa",
     element: <TwoFA />,
   },
-
+  {
+    path: "/map",
+    element: <MapView />,
+  },
 
   // --- App Routes (With Sidebar) ---
   {
-    element: <ProtectedRoute />, // This wraps all protected routes
+    element: <ProtectedRoute />,
     children: [
       {
         element: <RootLayout />,
         children: [
           {
-            element: <Layout />, // This wraps all children below
+            element: <Layout />,
             children: [
               {
                 path: "/dashboard",
@@ -130,10 +133,6 @@ export const router = createBrowserRouter([
                 element: <EventDetails />,
               },
               {
-                path: "map",
-                element: <MapView />,
-              },
-              {
                 path: "chat",
                 element: <Chat />,
               },
@@ -144,14 +143,6 @@ export const router = createBrowserRouter([
               {
                 path: "network",
                 element: <Network />,
-              },
-              {
-                path: "/2fa",
-                element: <TwoFA />,
-              },
-              {
-                path: "/map",        // ← ADD THIS
-                element: <MapView />,
               },
             ],
           }],
