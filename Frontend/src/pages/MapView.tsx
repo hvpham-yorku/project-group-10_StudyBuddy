@@ -17,9 +17,91 @@ import { YORK_BUILDINGS } from "../data/mockData";
 const API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || "";
 const YORK_CENTER = { lat: 43.7735, lng: -79.5019 };
 
+// ─── Seed events — exact building names from YORK_BUILDINGS so pins appear ───
+const SEED_EVENTS = [
+  {
+    id: "seed-1",
+    title: "EECS 2311 Design Patterns Study Group",
+    course: "EECS 2311",
+    host: { id: "host-1", name: "Alex Johnson" },
+    location: "Scott Library",
+    date: "2026-04-10",
+    time: "14:00",
+    duration: 120,
+    description: "Going through past exams and design pattern problems.",
+    maxParticipants: 5,
+    attendees: ["host-1", "student-2"],
+    tags: ["Group Discussion"],
+    status: "upcoming",
+    reviews: [],
+  },
+  {
+    id: "seed-2",
+    title: "MATH 1013 Calculus Review",
+    course: "MATH 1013",
+    host: { id: "host-2", name: "Jamie Lee" },
+    location: "Vari Hall",
+    date: "2026-04-11",
+    time: "10:00",
+    duration: 90,
+    description: "Integrals and derivatives — bringing practice sheets.",
+    maxParticipants: 4,
+    attendees: ["host-2"],
+    tags: ["Quiet Focus"],
+    status: "upcoming",
+    reviews: [],
+  },
+  {
+    id: "seed-3",
+    title: "PHYS 1800 Lab Prep",
+    course: "PHYS 1800",
+    host: { id: "host-3", name: "Sam Rivera" },
+    location: "Lassonde Building",
+    date: "2026-04-12",
+    time: "13:00",
+    duration: 60,
+    description: "Preparing for the upcoming physics lab.",
+    maxParticipants: 3,
+    attendees: ["host-3", "student-4", "student-5"],
+    tags: ["Lab Prep"],
+    status: "upcoming",
+    reviews: [],
+  },
+  {
+    id: "seed-4",
+    title: "EECS 3421 Database Study",
+    course: "EECS 3421",
+    host: { id: "host-4", name: "Morgan Chen" },
+    location: "Bergeron Centre",
+    date: "2026-04-13",
+    time: "15:00",
+    duration: 120,
+    description: "SQL queries, normalization, and ER diagrams.",
+    maxParticipants: 6,
+    attendees: ["host-4"],
+    tags: ["Group Discussion", "Whiteboard Work"],
+    status: "upcoming",
+    reviews: [],
+  },
+  {
+    id: "seed-5",
+    title: "ADMS 2500 Accounting Cram",
+    course: "ADMS 2500",
+    host: { id: "host-5", name: "Taylor Brooks" },
+    location: "Ross Building",
+    date: "2026-04-14",
+    time: "11:00",
+    duration: 90,
+    description: "Balance sheets, income statements, and cash flow.",
+    maxParticipants: 4,
+    attendees: ["host-5", "student-6"],
+    tags: ["Exam Prep"],
+    status: "upcoming",
+    reviews: [],
+  },
+];
+
 // ─── Directions Layer ─────────────────────────────────────────────────────────
-// Renders a walking route as a blue polyline directly on the map.
-// Must be a child of <Map> so it can access the map instance via useMap().
 interface DirectionsLayerProps {
   origin: { lat: number; lng: number };
   destination: { lat: number; lng: number };
@@ -73,7 +155,9 @@ function DirectionsLayer({ origin, destination, onRouteResult }: DirectionsLayer
 // ─── MapView ──────────────────────────────────────────────────────────────────
 export default function MapView() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<any[]>([]);
+
+  // Start with seed events so pins are visible without backend
+  const [events, setEvents] = useState<any[]>(SEED_EVENTS);
   const [student, setStudent] = useState<any>(null);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -89,7 +173,7 @@ export default function MapView() {
   const [routeDistance, setRouteDistance] = useState<string>("");
   const [routeDuration, setRouteDuration] = useState<string>("");
 
-  // 1. Fetch events + student
+  // 1. Try to fetch real events from backend (merges with seed data if successful)
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -101,9 +185,16 @@ export default function MapView() {
           if (userRes.ok) setStudent(await userRes.json());
         }
         const evRes = await fetch("/api/events");
-        if (evRes.ok) setEvents(await evRes.json());
+        if (evRes.ok) {
+          const realEvents = await evRes.json();
+          // Replace seed events with real ones if backend responds
+          if (realEvents && realEvents.length > 0) {
+            setEvents(realEvents);
+          }
+        }
       } catch (e) {
-        console.error("Failed to load map data", e);
+        // Backend not available — seed events stay visible
+        console.info("Backend not available, showing demo events.");
       }
     };
     loadData();
@@ -127,7 +218,7 @@ export default function MapView() {
     );
   }, []);
 
-  const uniqueCourses = ["All", ...Array.from(new Set(events.map((s) => s.course).filter(Boolean)))];
+  const uniqueCourses = ["All", ...Array.from(new Set(events.map((s: any) => s.course).filter(Boolean)))];
 
   const filteredSessions = events.filter((s: any) => {
     const matchSearch =
@@ -138,10 +229,10 @@ export default function MapView() {
     return matchSearch && matchCourse;
   });
 
-  // 3. Group events by building
+  // 3. Group events by building — location must exactly match a YORK_BUILDINGS name
   const hubs = useMemo(() => {
     const map = new globalThis.Map<string, any>();
-    filteredSessions.forEach((e) => {
+    filteredSessions.forEach((e: any) => {
       if (!e.location) return;
       const building = YORK_BUILDINGS.find((b) => e.location === b.name);
       if (!building) return;
@@ -159,7 +250,7 @@ export default function MapView() {
   }, [filteredSessions]);
 
   const activeHub = hubs.find((h: any) => h.locationName === selectedHubName) as any;
-  const activeEvent = events.find((e) => e.id === selectedEventId);
+  const activeEvent = events.find((e: any) => e.id === selectedEventId);
   const navigatingHub = hubs.find((h: any) => h.locationName === navigatingToHub) as any;
 
   // 4. Join / Leave
@@ -193,7 +284,7 @@ export default function MapView() {
     }
   };
 
-  // 5. Navigation
+  // 5. Navigation handlers
   const handleNavigate = (hub: any) => {
     if (!hub) return;
     setNavigatingToHub(hub.locationName);
@@ -284,7 +375,7 @@ export default function MapView() {
               gestureHandling="greedy"
               disableDefaultUI={false}
             >
-              {/* Walking route polyline */}
+              {/* Walking route polyline drawn on map */}
               {navigatingToHub && userLocation && navigatingHub && (
                 <DirectionsLayer
                   origin={userLocation}
@@ -305,7 +396,7 @@ export default function MapView() {
                 </AdvancedMarker>
               )}
 
-              {/* Hub pins */}
+              {/* Hub pins — one per building with sessions */}
               {hubs.map((hub: any, i) => {
                 const isSelected = selectedHubName === hub.locationName;
                 const isNavTarget = navigatingToHub === hub.locationName;
@@ -329,7 +420,7 @@ export default function MapView() {
                 );
               })}
 
-              {/* Info window */}
+              {/* Info window when a pin is clicked */}
               {activeHub && (
                 <InfoWindow position={activeHub.coords} onCloseClick={() => setSelectedHubName(null)}>
                   <div className="p-2 min-w-[220px] font-sans">
@@ -452,7 +543,7 @@ export default function MapView() {
                 <p className="text-xs text-slate-400 mt-0.5">Click a pin or session to view details</p>
               </div>
               <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-                {filteredSessions.map((s) => (
+                {filteredSessions.map((s: any) => (
                   <div
                     key={s.id}
                     className="px-4 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors"
