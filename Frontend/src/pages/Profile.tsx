@@ -395,7 +395,7 @@ export default function Profile() {
     try {
       const token = localStorage.getItem("studyBuddyToken");
       
-      await fetch(`/api/studentcontroller/profile/update`, {
+      const response = await fetch(`/api/studentcontroller/profile/update`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -403,6 +403,14 @@ export default function Profile() {
         },
         body: JSON.stringify(fullPayload)
       });
+
+      if (response.ok) {
+        window.dispatchEvent(
+          new CustomEvent("studybuddy:auto-timeout-updated", {
+            detail: Number(fullPayload.autoTimeout),
+          })
+        );
+      }
     } catch (err) {
       console.error("Failed to save profile", err);
     }
@@ -1309,14 +1317,22 @@ async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
           />
         </label>
 
-        <label className="flex items-center justify-between py-2">
+        <label className="flex flex-col py-2">
           <span>Auto Timeout (minutes)</span>
-          <input
-            type="number"
+          <select
             value={autoTimeout}
             onChange={(e) => setAutoTimeout(Number(e.target.value))}
-            className="border border-slate-300 rounded-lg px-3 py-1 w-24"
-          />
+            className="border border-slate-300 rounded-lg px-3 py-2 w-40 mt-1"
+          >
+            {[3, 5, 10, 15, 20].map((value) => (
+              <option key={value} value={value}>
+                {value} minutes
+              </option>
+            ))}
+          </select>
+          <small className="text-xs text-slate-500 mt-1">
+            Your session will automatically end after the selected time of inactivity.
+          </small>
         </label>
 
         <button

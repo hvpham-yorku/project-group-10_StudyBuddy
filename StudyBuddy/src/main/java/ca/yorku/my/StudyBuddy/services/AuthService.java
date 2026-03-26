@@ -194,6 +194,17 @@ public class AuthService implements AuthRepository {
     }
 
     /**
+     * Invalidates the user's current session by revoking refresh tokens in Firebase.
+     * The currently issued ID token may still be valid for a short period, but we clear
+     * it on the client side to enforce logout.
+     */
+    @Override
+    public void logoutUser(String authHeader) throws Exception {
+        String uid = verifyFrontendToken(authHeader);
+        FirebaseAuth.getInstance().revokeRefreshTokens(uid);
+    }
+
+    /**
      * Triggers a password reset flow and sends the secure Google-hosted link to the user.
      */
     public String generateResetLink(String email) throws Exception {

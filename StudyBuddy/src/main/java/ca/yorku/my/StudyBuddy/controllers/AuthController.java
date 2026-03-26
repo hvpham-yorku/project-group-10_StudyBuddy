@@ -52,34 +52,44 @@ public class AuthController {
      * This method generates a password reset link for an existing account email.
      */
     @PostMapping("/reset-password")
-public ResponseEntity<String> resetPassword(@RequestParam(required = false) String email) {
-    // 1. Check if the frontend actually sent an email
-    if (email == null || email.isEmpty()) {
-        return ResponseEntity.badRequest().body("Error: Please enter your YorkU email first.");
+    public ResponseEntity<String> resetPassword(@RequestParam(required = false) String email) {
+        // 1. Check if the frontend actually sent an email
+        if (email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest().body("Error: Please enter your YorkU email first.");
+        }
+
+        try {
+            authService.generateResetLink(email);
+            return ResponseEntity.ok("Reset link generated for " + email);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("An unexpected error occurred.");
+        }
     }
 
-    try {
-        authService.generateResetLink(email);
-        return ResponseEntity.ok("Reset link generated for " + email);
-    } catch (IllegalArgumentException e) {
-        return ResponseEntity.status(404).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.internalServerError().body("An unexpected error occurred.");
+    /**
+     * Logs a user in by validating account state and returning a session token.
+     */
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
+        try {
+            String sessionToken = authService.loginUser(body.get("email"), body.get("password"));
+            return ResponseEntity.ok(sessionToken);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Login Failed: User not found.");
+        }
     }
-}
 
-/**
- * Logs a user in by validating account state and returning a session token.
- */
-@PostMapping("/login")
-public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
-    try {
-        String sessionToken = authService.loginUser(body.get("email"), body.get("password"));
-        return ResponseEntity.ok(sessionToken);
-    } catch (IllegalStateException e) {
-        return ResponseEntity.status(403).body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.badRequest().body("Login Failed: User not found.");
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String authHeader) {
+        try {
+            authService.logoutUser(authHeader);
+            return ResponseEntity.ok("Logged out");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Logout failed");
+        }
     }
-}
 }

@@ -3,6 +3,7 @@ backend.log
 frontend.log
 Makefile
 
+Frontend/dist
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
