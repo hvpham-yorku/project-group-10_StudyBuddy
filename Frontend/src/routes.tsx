@@ -93,10 +93,6 @@ export const router = createBrowserRouter([
     path: "/2fa",
     element: <TwoFA />,
   },
-  {
-    path: "/map",
-    element: <MapView />,
-  },
 
   // --- App Routes (With Sidebar) ---
   {
@@ -144,6 +140,10 @@ export const router = createBrowserRouter([
                 path: "network",
                 element: <Network />,
               },
+	      {
+		path: "/map",
+		element: <MapView />,
+	      },
             ],
           }],
       }],

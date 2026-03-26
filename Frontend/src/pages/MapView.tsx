@@ -300,7 +300,7 @@ export default function MapView() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
 
       {/* Top filter bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex gap-3 items-center shrink-0">
@@ -368,12 +368,13 @@ export default function MapView() {
           </div>
 
           <APIProvider apiKey={API_KEY}>
-            <Map
+	    <Map
               defaultCenter={YORK_CENTER}
               defaultZoom={15.5}
               mapId="studybuddy-map"
               gestureHandling="greedy"
               disableDefaultUI={false}
+              style={{ width: "100%", height: "100%" }}
             >
               {/* Walking route polyline drawn on map */}
               {navigatingToHub && userLocation && navigatingHub && (
