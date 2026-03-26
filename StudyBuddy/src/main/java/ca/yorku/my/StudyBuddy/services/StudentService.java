@@ -132,4 +132,42 @@ public class StudentService implements StudentRepository {
     public void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception {
         db.collection("students").document(userId).update("attendedEventIds", attendedEventIds).get();
     }
+    @Override
+public void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception {
+    if (reportedUserId == null || reportedUserId.isBlank()) {
+        throw new IllegalArgumentException("Reported user ID is required.");
+    }
+
+    if (category == null || category.isBlank()) {
+        throw new IllegalArgumentException("Report category is required.");
+    }
+
+    if (reporterUserId.equals(reportedUserId)) {
+        throw new IllegalArgumentException("You cannot report yourself.");
+    }
+
+    Student reporter = getStudent(reporterUserId);
+    Student reported = getStudent(reportedUserId);
+
+    if (reporter == null) {
+        throw new IllegalArgumentException("Reporter not found.");
+    }
+
+    if (reported == null) {
+        throw new IllegalArgumentException("Reported user not found.");
+    }
+
+    Map<String, Object> reportData = Map.of(
+        "reportedUserId", reportedUserId,
+        "reportedUserName", reported.getFirstName() + " " + reported.getLastName(),
+        "reportedByUserId", reporterUserId,
+        "reportedByUserEmail", reporter.getEmail(),
+        "category", category,
+        "details", details == null ? "" : details,
+        "status", "OPEN",
+        "createdAt", LocalDate.now().toString()
+    );
+
+    db.collection("adminReports").add(reportData).get();
+}
 }
