@@ -44,4 +44,14 @@ public class StubAuthRepository implements AuthRepository {
         // Stub environment: no external token store to revoke.
         // Simply treat request as successful.
     }
+
+    @Override
+    public String verifyTwoFA(String email, String code) throws Exception {
+        // Stub environment: accept any 6-digit code and return the user's ID as token.
+        Student s = StubDatabase.STUDENTS.stream()
+            .filter(st -> email.equals(st.getEmail()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("No account found for this email."));
+        return s.getUserId();
+    }
 }
