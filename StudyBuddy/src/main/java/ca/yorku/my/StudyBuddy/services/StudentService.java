@@ -1,0 +1,173 @@
+package ca.yorku.my.StudyBuddy.services;
+import ca.yorku.my.StudyBuddy.classes.*;
+
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.cloud.FirestoreClient;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
+
+@Service 
+@Profile("firestore")
+@DependsOn("firebaseConfig")
+// This class allows information from the Firestore database to be accessed and modified
+public class StudentService implements StudentRepository {
+
+    private Firestore db = FirestoreClient.getFirestore();
+
+    // Retrieves a student from Firestore using ID, if they exist, otherwise throws an exception
+    @Override
+    public Student getStudent(String userId) throws Exception {
+    DocumentReference docRef = db.collection("students").document(userId);
+    DocumentSnapshot doc = docRef.get().get();
+
+    if (!doc.exists()) {
+        Student newStudent = new Student();
+        newStudent.setUserId(userId);
+        newStudent.setJoinedDate(
+            LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        );
+
+        docRef.set(newStudent);
+        return newStudent;
+    }
+
+    return doc.toObject(Student.class);
+}
+    
+    // Saves a student to Firestore database using student ID
+    @Override
+    public void saveStudent(Student student) throws Exception {
+        db.collection("students").document(student.getUserId()).set(student).get();
+    }
+
+    // Updates the courses a student is currently enrolled in
+    @Override
+    public void updateCourses(String userId, List<String> courses) throws Exception {
+        db.collection("students").document(userId).update("courses", courses).get();
+    }
+
+    // Updates the study vibe a student inputs in their profile
+    @Override
+    public void updateStudyVibes(String userId, List<String> studyVibes) throws Exception {
+        db.collection("students").document(userId).update("studyVibes", studyVibes).get();
+    }
+
+    // Updates the bio of a student based on their input
+    @Override
+    public void updateBio(String userId, String bio) throws Exception {
+    db.collection("students").document(userId).update("bio", bio).get();
+}
+
+    // Updates the privacy settings of a student based on their choices
+    @Override
+    public void updatePrivacySettings(String userId, Map<String, Boolean> privacySettings) throws Exception {
+        db.collection("students").document(userId).update("privacySettings", privacySettings).get();
+    }
+
+    // Updates the profile picture of a student based on their input
+    @Override
+    public void updateYear(String userId, String year) throws Exception {
+        db.collection("students").document(userId).update("year", year).get();
+    }
+
+    // Updates the program of a student based on their input
+    @Override
+    public void updateProgram(String userId, String program) throws Exception {
+        db.collection("students").document(userId).update("program", program).get();
+    }
+
+    // Updates the profile picture of a student based on their input
+    @Override
+    public void updateAvatar(String userId, String avatar) throws Exception {
+        db.collection("students").document(userId).update("avatar", avatar).get();
+    }   
+
+    // Updates the location of a student based on their input
+    @Override
+    public void updateLocation(String userId, String location) throws Exception {
+        db.collection("students").document(userId).update("location", location).get();
+    }
+
+    // Updates the exact location coordinates of a student based on tracked geolocation
+    @Override
+    public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
+        db.collection("students").document(userId).update("exactLocation", exactLocation).get();
+    }
+
+    // Updates the two-factor authentication setting of a student based on their input
+    @Override
+    public void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception {
+        db.collection("students").document(userId).update("twoFAEnabled", twoFAEnabled).get();
+    }
+
+    // Updates the auto timeout duration of a student based on their input
+    @Override
+    public void updateAutoTimeout(String userId, int autoTimeout) throws Exception {
+        db.collection("students").document(userId).update("autoTimeout", autoTimeout).get();
+    }
+
+    // Updates the online status of a student based on their input
+    @Override
+    public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
+        db.collection("students").document(userId).update("isOnline", isOnline).get();
+    }
+
+    // Updates the notifications settings of a student based on their input
+    @Override
+    public void updateNotifications(String userId, Map<String, Boolean> notifications) throws Exception {
+        db.collection("students").document(userId).update("notifications", notifications).get();
+    }
+    
+ // Updates the notifications settings of a student based on their input
+    @Override
+    public void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception {
+        db.collection("students").document(userId).update("attendedEventIds", attendedEventIds).get();
+    }
+    @Override
+public void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception {
+    if (reportedUserId == null || reportedUserId.isBlank()) {
+        throw new IllegalArgumentException("Reported user ID is required.");
+    }
+
+    if (category == null || category.isBlank()) {
+        throw new IllegalArgumentException("Report category is required.");
+    }
+
+    if (reporterUserId.equals(reportedUserId)) {
+        throw new IllegalArgumentException("You cannot report yourself.");
+    }
+
+    Student reporter = getStudent(reporterUserId);
+    Student reported = getStudent(reportedUserId);
+
+    if (reporter == null) {
+        throw new IllegalArgumentException("Reporter not found.");
+    }
+
+    if (reported == null) {
+        throw new IllegalArgumentException("Reported user not found.");
+    }
+
+    Map<String, Object> reportData = Map.of(
+        "reportedUserId", reportedUserId,
+        "reportedUserName", reported.getFirstName() + " " + reported.getLastName(),
+        "reportedByUserId", reporterUserId,
+        "reportedByUserEmail", reporter.getEmail(),
+        "category", category,
+        "details", details == null ? "" : details,
+        "status", "OPEN",
+        "createdAt", LocalDate.now().toString()
+    );
+
+    db.collection("adminReports").add(reportData).get();
+}
+}

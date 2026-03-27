@@ -1,222 +1,300 @@
 package ca.yorku.my.StudyBuddy;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import org.junit.jupiter.api.BeforeEach;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import ca.yorku.my.StudyBuddy.classes.Student;
 
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import ca.yorku.my.StudyBuddy.SessionLogService;
-
-@WebMvcTest(StudentController.class)
 class StudentTests {
-	
-	@Autowired
-	private MockMvc mockMvc;
 
-	@MockitoBean
-	private SessionLogService sessionLogService;
+    // -----------------------------
+    // Constructors
+    // -----------------------------
 
-	@BeforeEach
-	void setUp() {
-		StubDatabase.STUDENTS.clear();
-	}
-	
-	// ==================== EXISTING TESTS ====================
+    @Test
+    void emptyConstructor_initializesCollections() {
+        Student s = new Student();
 
-	// Test if StubDatabase is working
-	// Reference for feature unit tests
-	@Test
-	void unitTest1() throws Exception {
-    	String[] s1Courses = {"LE-EECS-2311-Z", "SC-PHYS-2020-M", "LE-EECS-4413-Z", "LE-EECS-3421-Z", "LE-EECS-2101-X"};
-		StubDatabase.STUDENTS.add(new Student("1", "John", "Doe", s1Courses));
-		
-		// Now access it from the database
-		
-		Student student = new Student(StubDatabase.STUDENTS.get(0).getFirstName(),
-				StubDatabase.STUDENTS.get(0).getLastName(),
-				StubDatabase.STUDENTS.get(0).getCourses());
-		
-		// Test the outputs
-		assert(student.getFirstName() == "John");
-		assert(student.getLastName() == "Doe");
-		assert(student.getCourses().length == 5);
-		}
-	
-	// Test if API is working
-	@Test
-	void apiTest1() throws Exception {
-		String[] s1Courses = {"LE-EECS-2311-Z", "SC-PHYS-2020-M", "LE-EECS-4413-Z", "LE-EECS-3421-Z", "LE-EECS-2101-X"};
-		StubDatabase.STUDENTS.add(new Student("1", "John", "Doe", s1Courses));
+        assertNotNull(s.getCourses());
+        assertNotNull(s.getStudyVibes());
+        assertNotNull(s.getPrivacySettings());
+        assertNotNull(s.getNotifications());
+        assertNotNull(s.getAttendedEventIds());
 
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/studentcontroller/getstudents"))
-        .andExpect(MockMvcResultMatchers.status().isOk())
-        .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("John"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].lastName").value("Doe"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[0]").value("LE-EECS-2311-Z"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[1]").value("SC-PHYS-2020-M"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[2]").value("LE-EECS-4413-Z"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[3]").value("LE-EECS-3421-Z"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$[0].courses[4]").value("LE-EECS-2101-X"));
-	}
+        assertThat(s.getCourses()).isEmpty();
+        assertThat(s.getAttendedEventIds()).isEmpty();
+    }
 
-	// ==================== 10 AI-GENERATED UNIT TESTS ====================
+    @Test
+    void mainConstructor_setsDefaults() {
+        Student s = new Student("u1", "John", "Doe");
 
-	/**
-	 * Test 1: Student constructor with userId sets all fields correctly
-	 */
-	@Test
-	void testStudentConstructorWithUserId() {
-		String[] courses = {"EECS 2311", "EECS 3311"};
-		Student s = new Student("stu-1", "Alice", "Smith", courses);
+        assertEquals("u1", s.getUserId());
+        assertEquals("John", s.getFirstName());
+        assertEquals("Doe", s.getLastName());
+        assertEquals("John Doe", s.getFullName());
+    }
 
-		assert s.getUserId().equals("stu-1");
-		assert s.getFirstName().equals("Alice");
-		assert s.getLastName().equals("Smith");
-		assert s.getCourses().length == 2;
-		assert s.getAttendedEventIds() != null;
-		assert s.getAttendedEventIds().isEmpty();
-	}
+    @Test
+    void fullName_handlesMissingLastName() {
+        Student s = new Student("u1", "John", null);
+        assertEquals("John", s.getFullName());
+    }
 
-	/**
-	 * Test 2: Student 3-arg constructor auto-generates userId
-	 */
-	@Test
-	void testStudentConstructorAutoUserId() {
-		String[] courses = {"MATH 1013"};
-		Student s = new Student("Bob", "Jones", courses);
+    @Test
+    void fullName_handlesMissingFirstName() {
+        Student s = new Student("u1", null, "Doe");
+        assertEquals("Doe", s.getFullName());
+    }
 
-		assert s.getUserId().equals("Bob-Jones");
-		assert s.getFirstName().equals("Bob");
-		assert s.getLastName().equals("Jones");
-		assert s.getAttendedEventIds().isEmpty();
-	}
+    @Test
+    void fullName_handlesBothNamesMissing() {
+        Student s = new Student("u1", null, null);
+        assertEquals("", s.getFullName());
+    }
 
-	/**
-	 * Test 3: addAttendedEvent adds event and prevents duplicates
-	 */
-	@Test
-	void testAddAttendedEventNoDuplicates() {
-		Student s = new Student("1", "Jane", "Doe", new String[]{});
+    // -----------------------------
+    // Basic setters/getters
+    // -----------------------------
 
-		s.addAttendedEvent("event-100");
-		assert s.getAttendedEventIds().size() == 1;
+    @Test
+    void setters_updateFields() {
+        Student s = new Student();
+        s.setEmail("test@yorku.ca");
+        s.setBio("Hello");
 
-		// Adding the same event again should not duplicate
-		s.addAttendedEvent("event-100");
-		assert s.getAttendedEventIds().size() == 1;
+        assertEquals("test@yorku.ca", s.getEmail());
+        assertEquals("Hello", s.getBio());
+    }
 
-		// Adding a different event should work
-		s.addAttendedEvent("event-200");
-		assert s.getAttendedEventIds().size() == 2;
-	}
+    @Test
+    void setters_updateFieldsCorrectly() {
+        Student s = new Student("123", "John", "Doe");
 
-	/**
-	 * Test 4: Student getter/setter for profile fields (email, bio, program)
-	 */
-	@Test
-	void testStudentProfileFields() {
-		Student s = new Student();
-		s.setEmail("test@my.yorku.ca");
-		s.setBio("I love studying");
-		s.setProgram("Computer Science");
-		s.setFullName("Test User");
-		s.setProfilePic("pic.jpg");
+        s.setProgram("CS");
+        s.setYear("3");
+        s.setCourses(List.of("EECS 2311"));
 
-		assert s.getEmail().equals("test@my.yorku.ca");
-		assert s.getBio().equals("I love studying");
-		assert s.getProgram().equals("Computer Science");
-		assert s.getFullName().equals("Test User");
-		assert s.getProfilePic().equals("pic.jpg");
-	}
+        assertThat(s.getProgram()).isEqualTo("CS");
+        assertThat(s.getYear()).isEqualTo("3");
+        assertThat(s.getCourses()).containsExactly("EECS 2311");
+    }
 
-	/**
-	 * Test 5: StubDatabase can hold multiple students
-	 */
-	@Test
-	void testStubDatabaseMultipleStudents() {
-		StubDatabase.STUDENTS.add(new Student("1", "A", "B", new String[]{"EECS 2311"}));
-		StubDatabase.STUDENTS.add(new Student("2", "C", "D", new String[]{"MATH 1013"}));
-		StubDatabase.STUDENTS.add(new Student("3", "E", "F", new String[]{"PHYS 2020"}));
+    @Test
+    void setters_allowNullValues() {
+        Student s = new Student("123", "John", "Doe");
 
-		assert StubDatabase.STUDENTS.size() == 3;
-		assert StubDatabase.STUDENTS.get(1).getFirstName().equals("C");
-		assert StubDatabase.STUDENTS.get(2).getUserId().equals("3");
-	}
+        s.setBio(null);
+        s.setProgram(null);
 
-	/**
-	 * Test 6: GET /getstudents returns empty list when no students exist
-	 */
-	@Test
-	void testGetStudentsEmpty() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/studentcontroller/getstudents"))
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(0));
-	}
+        assertNull(s.getBio());
+        assertNull(s.getProgram());
+    }
 
-	/**
-	 * Test 7: GET /getstudent/{id}/sessionlog returns empty when student not found
-	 */
-	@Test
-	void testSessionLogStudentNotFound() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/studentcontroller/getstudent/nonexistent/sessionlog"))
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(0));
-	}
+    // -----------------------------
+    // Boolean flags
+    // -----------------------------
 
-	/**
-	 * Test 8: GET /getstudent/{id}/totalstudytime returns 0 when student not found
-	 */
-	@Test
-	void testTotalStudyTimeStudentNotFound() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/studentcontroller/getstudent/nonexistent/totalstudytime"))
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.content().string("0"));
-	}
+    @Test
+    void onlineStatus_updatesCorrectly() {
+        Student s = new Student("123", "John", "Doe");
 
-	/**
-	 * Test 9: GET /getstudent/{id}/sessionlog returns events for valid student
-	 */
-	@Test
-	void testSessionLogReturnsEvents() throws Exception {
-		Student s = new Student("stu-1", "Test", "User", new String[]{});
-		s.addAttendedEvent("evt-1");
-		StubDatabase.STUDENTS.add(s);
+        s.setIsOnline(true);
+        assertTrue(s.getIsOnline());
 
-		// Mock the service to return a list with one event
-		Event mockEvent = new Event("host1", "Study Group", "EECS 2311", "Library",
-			"desc", "2026-02-20 14:00", "2026-02-20 16:00", 5);
-		mockEvent.setEventId("evt-1");
-		when(sessionLogService.getStudentSessionLog(anyList()))
-			.thenReturn(Arrays.asList(mockEvent));
+        s.setIsOnline(false);
+        assertFalse(s.getIsOnline());
+    }
 
-		mockMvc.perform(MockMvcRequestBuilders.get("/api/studentcontroller/getstudent/stu-1/sessionlog"))
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(1))
-			.andExpect(MockMvcResultMatchers.jsonPath("$[0].eventId").value("evt-1"))
-			.andExpect(MockMvcResultMatchers.jsonPath("$[0].course").value("EECS 2311"));
-	}
+    // -----------------------------
+    // Collections: mutation behavior
+    // -----------------------------
 
-	/**
-	 * Test 10: POST /addeventtosessionlog returns false for non-existent student
-	 */
-	@Test
-	void testAddEventToSessionLogStudentNotFound() throws Exception {
-		mockMvc.perform(MockMvcRequestBuilders.post(
-				"/api/studentcontroller/getstudent/nonexistent/addeventtosessionlog/evt-1"))
-			.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.content().string("false"));
-	}
+    @Test
+    void courses_canBeModifiedAfterConstruction() {
+        Student s = new Student();
+        s.getCourses().add("EECS 1012");
 
+        assertThat(s.getCourses()).containsExactly("EECS 1012");
+    }
+
+    // -----------------------------
+    // Events and clear 
+    // -----------------------------
+    @Test
+    void attendedEvents_addAndClear() {
+        Student s = new Student();
+
+        s.getAttendedEventIds().add("event1");
+        s.getAttendedEventIds().add("event2");
+
+        assertThat(s.getAttendedEventIds()).containsExactly("event1", "event2");
+
+        s.getAttendedEventIds().clear();
+        assertThat(s.getAttendedEventIds()).isEmpty();
+    }
+
+    // -----------------------------
+    // Update notifications
+    // -----------------------------
+    @Test
+    void notifications_canBeUpdated() {
+        Student s = new Student();
+
+        s.getNotifications().put("email", true);
+        s.getNotifications().put("push", false);
+
+        assertThat(s.getNotifications().get("email")).isTrue();
+        assertThat(s.getNotifications().get("push")).isFalse();
+    }
+
+    // -----------------------------
+    // Update privacy settings 
+    // -----------------------------
+    @Test
+    void privacySettings_canBeUpdated() {
+        Student s = new Student();
+
+        s.getPrivacySettings().put("showEmail", false);
+        s.getPrivacySettings().put("showCourses", true);
+
+        assertThat(s.getPrivacySettings().get("showEmail")).isFalse();
+        assertThat(s.getPrivacySettings().get("showCourses")).isTrue();
+    }
+
+    // -----------------------------
+    // Defensive copying (if applicable)
+    // -----------------------------
+
+    @Test
+    void setCourses_replacesListNotAppends() {
+        Student s = new Student();
+        s.setCourses(new ArrayList<>(List.of("A", "B")));
+
+        assertThat(s.getCourses()).containsExactly("A", "B");
+
+        s.setCourses(new ArrayList<>(List.of("C")));
+        assertThat(s.getCourses()).containsExactly("C");
+    }
+
+    // -----------------------------
+    // Null courses
+    // -----------------------------
+    @Test
+    void setCourses_handlesNullByClearingList() {
+        Student s = new Student();
+        s.setCourses(List.of("A", "B"));
+
+        s.setCourses(null);
+
+        assertThat(s.getCourses()).isEmpty();
+    }
+
+    // -----------------------------
+    // Full name trim
+    // -----------------------------
+    @Test
+    void fullName_trimsWhitespace() {
+        Student s = new Student("u1", "  John  ", "  Doe ");
+        assertEquals("John Doe", s.getFullName());
+    }
+
+    // -----------------------------
+    // Full name empty
+    // -----------------------------
+    @Test
+    void fullName_handlesEmptyStrings() {
+        Student s = new Student("u1", "", "");
+        assertEquals("", s.getFullName());
+    }
+
+    // -----------------------------
+    // Overwrite notifications
+    // -----------------------------
+    @Test
+    void notifications_overwritesExistingKeys() {
+        Student s = new Student();
+        s.getNotifications().put("email", true);
+        s.getNotifications().put("email", false);
+
+        assertFalse(s.getNotifications().get("email"));
+    }
+
+    // -----------------------------
+    // Default privacy settings 
+    // -----------------------------
+    @Test
+    void privacySettings_defaultValues() {
+        Student s = new Student();
+        assertNotNull(s.getPrivacySettings());
+        assertTrue(s.getPrivacySettings().isEmpty()); // or expected defaults
+    }
+
+    // -----------------------------
+    // Duplicate events attended
+    // -----------------------------
+    @Test
+    void attendedEvents_allowsDuplicates() {
+        Student s = new Student();
+        s.getAttendedEventIds().add("event1");
+        s.getAttendedEventIds().add("event1");
+
+        assertThat(s.getAttendedEventIds()).containsExactly("event1", "event1");
+    }
+
+    // -----------------------------
+    // Non-numetic year value
+    // -----------------------------
+    @Test
+    void year_allowsNonNumericValues() {
+        Student s = new Student();
+        s.setYear("First");
+        assertEquals("First", s.getYear());
+    }
+
+    // -----------------------------
+    // Change course list 
+    // -----------------------------
+    @Test
+    void modifyingReturnedCoursesListAffectsStudent() {
+        Student s = new Student();
+        List<String> list = s.getCourses();
+        list.add("EECS 2030");
+
+        assertThat(s.getCourses()).containsExactly("EECS 2030");
+    }
+
+    // -----------------------------
+    // Getters null check
+    // -----------------------------
+    @Test
+    void getters_neverReturnNullCollections() {
+        Student s = new Student();
+        assertNotNull(s.getCourses());
+        assertNotNull(s.getAttendedEventIds());
+        assertNotNull(s.getNotifications());
+        assertNotNull(s.getPrivacySettings());
+    }
+
+    // -----------------------------
+    // Replace notifications
+    // -----------------------------
+    @Test
+    void setNotifications_replacesMap() {
+        Student s = new Student();
+        s.getNotifications().put("email", true);
+
+        s.setNotifications(new HashMap<>(Map.of("push", false)));
+
+        assertThat(s.getNotifications()).containsOnlyKeys("push");
+    }
 }

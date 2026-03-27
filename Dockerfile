@@ -4,11 +4,15 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /app
 
+# Accept the API key as a build argument
+ARG VITE_GOOGLE_MAPS_API_KEY
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
+
 # Copy frontend_setup files (signin/up branch frontend)
 COPY ./Frontend/package.json ./Frontend/package-lock.json* ./
 RUN npm install
 COPY ./Frontend/ ./
-RUN npm run build
+RUN npx vite build
 
 # --------
 # BACKEND Docker Setup

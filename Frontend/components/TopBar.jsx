@@ -6,14 +6,16 @@ export default function TopBar() {
     <div className="topbar">
       <div className="topbar-title">
         <a href="/" style={{ textDecoration: 'none' }}>StudyBuddy</a>
-        </div>
+      </div>
+      <Link to="/map">
+        🗺️ Map
+      </Link>
       <Link to="/events">
         Events
       </Link>
       <Link to="/profile" className="profile-icon">
         👤
       </Link>
-
     </div>
   );
 }
