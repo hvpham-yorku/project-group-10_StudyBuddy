@@ -1,6 +1,8 @@
 package ca.yorku.my.StudyBuddy;
+
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.NotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,7 @@ public class StubStudentRepository implements StudentRepository {
         return StubDatabase.STUDENTS.stream()
                 .filter(s -> s.getUserId().equals(userId))
                 .findFirst()
-                .orElseThrow(() -> new Exception("Student not found"));
+                .orElseThrow(() -> new NotFoundException("Student not found"));
     }
 
     // Saves a student to the stub database using student ID
@@ -96,22 +98,6 @@ public class StubStudentRepository implements StudentRepository {
         student.setLocation(location);
     }
 
-    @Override
-    public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
-        Student student = getStudent(userId);
-        if (exactLocation == null) {
-            student.setExactLocation(null);
-            return;
-        }
-
-        Double latitude = exactLocation.get("latitude");
-        Double longitude = exactLocation.get("longitude");
-
-        if (latitude != null && longitude != null) {
-            student.setExactLocation(new Student.ExactLocation(latitude, longitude));
-        }
-    }
-
     // Updates the online status of a student based on their input
     @Override
     public void updateOnlineStatus(String userId, Boolean isOnline) throws Exception {
@@ -138,15 +124,5 @@ public class StubStudentRepository implements StudentRepository {
 		// TODO Auto-generated method stub
 		
 	}
-
- @Override
-public void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception {
-    System.out.println(
-        "Stub reportUser called: reporter=" + reporterUserId
-        + ", reported=" + reportedUserId
-        + ", category=" + category
-        + ", details=" + details
-    );
-}
     
 }

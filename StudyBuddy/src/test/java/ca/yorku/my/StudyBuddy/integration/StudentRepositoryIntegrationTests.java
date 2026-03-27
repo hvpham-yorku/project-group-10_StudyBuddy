@@ -6,10 +6,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ca.yorku.my.StudyBuddy.StudyBuddyApplication;
@@ -26,42 +25,16 @@ public class StudentRepositoryIntegrationTests {
     private MockMvc mockMvc;
 
     // ------------------------------------------------------------
-    // CREATE TESTS
+    // CREATE / SAVE TESTS
     // ------------------------------------------------------------
 
     @Test
-    void createStudent_validRequest_returns200() throws Exception {
+    void saveStudent_validRequest_returns200() throws Exception {
+        // Points to the actual save endpoint in StudentController
         mockMvc.perform(
-            post("/api/students")
+            post("/api/studentcontroller/save")
                 .contentType("application/json")
-                .content("{\"email\":\"sarah@my.yorku.ca\",\"name\":\"Sarah\"}")
-        ).andExpect(status().isOk());
-    }
-
-    @Test
-    void createStudent_missingFields_stillReturns200() throws Exception {
-        mockMvc.perform(
-            post("/api/students")
-                .contentType("application/json")
-                .content("{\"email\":\"noName@my.yorku.ca\"}")
-        ).andExpect(status().isOk());
-    }
-
-    @Test
-    void createStudent_invalidJson_returns200() throws Exception {
-        mockMvc.perform(
-            post("/api/students")
-                .contentType("application/json")
-                .content("{bad json}")
-        ).andExpect(status().isOk());
-    }
-
-    @Test
-    void createStudent_unsupportedMediaType_returns200() throws Exception {
-        mockMvc.perform(
-            post("/api/students")
-                .contentType("text/plain")
-                .content("hello")
+                .content("{\"userId\":\"user123\",\"firstName\":\"Sarah\",\"lastName\":\"Connor\",\"email\":\"sarah@my.yorku.ca\"}")
         ).andExpect(status().isOk());
     }
 
@@ -70,49 +43,30 @@ public class StudentRepositoryIntegrationTests {
     // ------------------------------------------------------------
 
     @Test
-    void getStudent_existingOrNot_returns200() throws Exception {
-        mockMvc.perform(get("/api/students/9999"))
+    void getStudent_nonExisting_returns404() throws Exception {
+        // Asking for a non-existent student should correctly return a 404 Not Found
+        mockMvc.perform(get("/api/studentcontroller/9999"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getStudent_existing_returns200() throws Exception {
+        // First, create a user in the stub database to ensure they exist
+        mockMvc.perform(
+            post("/api/studentcontroller/save")
+                .contentType("application/json")
+                .content("{\"userId\":\"testUser1\",\"firstName\":\"John\",\"lastName\":\"Doe\"}")
+        ).andExpect(status().isOk());
+
+        // Now, fetch that exact user and expect a 200 OK
+        mockMvc.perform(get("/api/studentcontroller/testUser1"))
+            .andExpect(status().isOk());
+    }
+    
+    @Test
+    void getAllStudents_returns200() throws Exception {
+        mockMvc.perform(get("/api/studentcontroller/getstudents"))
             .andExpect(status().isOk());
     }
 
-    // ------------------------------------------------------------
-    // UPDATE TESTS
-    // ------------------------------------------------------------
-
-    @Test
-    void updateStudent_validRequest_returns200() throws Exception {
-        mockMvc.perform(
-            put("/api/students/2")
-                .contentType("application/json")
-                .content("{\"name\":\"Updated Name\"}")
-        ).andExpect(status().isOk());
-    }
-
-    @Test
-    void updateStudent_invalidJson_returns200() throws Exception {
-        mockMvc.perform(
-            put("/api/students/2")
-                .contentType("application/json")
-                .content("{bad json}")
-        ).andExpect(status().isOk());
-    }
-
-    @Test
-    void updateStudent_missingBody_returns200() throws Exception {
-        mockMvc.perform(
-            put("/api/students/2")
-                .contentType("application/json")
-                .content("")
-        ).andExpect(status().isOk());
-    }
-
-    // ------------------------------------------------------------
-    // DELETE TESTS
-    // ------------------------------------------------------------
-
-    @Test
-    void deleteStudent_alwaysReturns200() throws Exception {
-        mockMvc.perform(delete("/api/students/12345"))
-            .andExpect(status().isOk());
-    }
 }
