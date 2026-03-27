@@ -124,5 +124,18 @@ public class StubStudentRepository implements StudentRepository {
 		// TODO Auto-generated method stub
 		
 	}
+
+	@Override
+	public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void reportUser(String reporterUserId, String reportedUserId, String category, String details)
+			throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
     
 }
