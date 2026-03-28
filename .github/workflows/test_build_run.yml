@@ -28,6 +28,8 @@ jobs:
 
     # # Step 2. Run the unit tests
     - name: Unit Tests
+      env:
+        FIREBASE_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
       run: |
         cd ./StudyBuddy
         chmod +x mvnw
