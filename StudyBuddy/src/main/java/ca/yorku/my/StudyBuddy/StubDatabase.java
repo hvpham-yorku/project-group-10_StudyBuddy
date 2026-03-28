@@ -30,6 +30,7 @@ public class StubDatabase {
     public static final List<Chat> CHATS = new CopyOnWriteArrayList<>();
     public static final List<Message> MESSAGES = new CopyOnWriteArrayList<>();
     public static final List<FriendRequest> FRIEND_REQUESTS = new CopyOnWriteArrayList<>();
+    // ID-97 smell fix: keep submitted reports in-memory for stub profile validation/testing.
     public static final List<ReportRecord> REPORTS = new CopyOnWriteArrayList<>();
 
     static {

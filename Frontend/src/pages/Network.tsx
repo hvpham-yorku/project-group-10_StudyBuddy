@@ -49,6 +49,7 @@ const vibeColors: Record<string, string> = {
 const API_BASE = "";
 
 function getAuthHeader(): Record<string, string> {
+  // ID-62 security fix: all network/presence calls must carry the signed-in token.
   const token = localStorage.getItem("studyBuddyToken");
   if (!token) {
     throw new Error("Not authenticated");
@@ -156,6 +157,7 @@ export default function Network() {
   // Handle connections
   const handleConnect = async (targetId: string) => {
     try {
+      // ID-85/ID-62 fix: backend now validates sender identity against token.
       await apiPost(`/api/connections/request`, {
         myUserId: uid,
         targetUserId: targetId,
@@ -609,6 +611,7 @@ function ConnectionCard({
   setInviteModal: (id: string) => void;
   getStatusColor: (c: Connection) => string;
   getStatusLabel: (c: Connection) => string;
+  onRemove: (targetId: string) => void | Promise<void>;
 }) {
   const displayName = connection.fullName ?? connection.userId;
   const program = connection.program ?? "";

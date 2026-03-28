@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +22,7 @@ public class PresenceService implements PresenceRepository {
 
     private final Firestore db = FirestoreClient.getFirestore();
 
+    @Override
     public void heartbeat(String userId) {
         if (userId == null || userId.isBlank()) return;
 
@@ -32,6 +34,7 @@ public class PresenceService implements PresenceRepository {
           .set(data, SetOptions.merge());
     }
 
+    @Override
     public Map<String, PresenceRecord> getPresenceMap(String uidsCsv) {
         List<String> uids = Arrays.stream(uidsCsv.split(","))
                 .map(String::trim)
@@ -50,14 +53,17 @@ public class PresenceService implements PresenceRepository {
                     .map(uid -> db.collection("presence").document(uid))
                     .collect(Collectors.toList());
 
-            List<DocumentSnapshot> snaps = db.getAll(refs.toArray(new DocumentReference[0])).get();
+            List<DocumentSnapshot> snaps = db.getAll(refs.toArray(DocumentReference[]::new)).get();
             for (DocumentSnapshot snap : snaps) {
                 if (!snap.exists()) continue;
                 Long last = snap.getLong("lastActiveAt");
                 result.put(snap.getId(), new PresenceRecord(last));
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return result;
+        } catch (ExecutionException e) {
+            return result;
         }
 
         return result;

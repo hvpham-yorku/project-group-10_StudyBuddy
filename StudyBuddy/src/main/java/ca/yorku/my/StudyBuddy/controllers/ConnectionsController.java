@@ -6,9 +6,12 @@ import org.springframework.web.bind.annotation.*;
 
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.ConnectionsRepository;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.firebase.cloud.FirestoreClient;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/api/connections")
@@ -27,6 +30,7 @@ public class ConnectionsController {
     public ResponseEntity<?> getConnections(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String userId) throws Exception {
+        // Security fix (ID-62): never trust caller-provided userId over verified token identity.
         String callerId = authService.verifyFrontendToken(authHeader);
         if (userId != null && !userId.isBlank() && !Objects.equals(userId, callerId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot request connections for another user");
@@ -38,6 +42,7 @@ public class ConnectionsController {
     public ResponseEntity<?> getAvailable(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String userId) throws Exception {
+        // Security fix (ID-62): enforce subject-level access using token owner.
         String callerId = authService.verifyFrontendToken(authHeader);
         if (userId != null && !userId.isBlank() && !Objects.equals(userId, callerId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot request students for another user");
@@ -49,6 +54,7 @@ public class ConnectionsController {
     public ResponseEntity<String> sendRequest(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, String> payload) throws Exception {
+        // Security fix (ID-62): sender must match authenticated user.
         String callerId = authService.verifyFrontendToken(authHeader);
         String myUserId = payload.get("myUserId");
         String targetUserId = payload.get("targetUserId");
@@ -70,10 +76,13 @@ public class ConnectionsController {
     private boolean userExists(String userId) {
         try {
             // Firestore lookup
-            com.google.cloud.firestore.DocumentSnapshot doc = com.google.firebase.cloud.FirestoreClient.getFirestore()
+            DocumentSnapshot doc = FirestoreClient.getFirestore()
                 .collection("students").document(userId).get().get();
             return doc.exists();
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (ExecutionException e) {
             return false;
         }
     }

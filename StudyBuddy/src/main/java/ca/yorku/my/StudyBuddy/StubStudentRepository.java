@@ -133,6 +133,7 @@ public class StubStudentRepository implements StudentRepository {
 	@Override
 	public void reportUser(String reporterUserId, String reportedUserId, String category, String details)
 			throws Exception {
+        // ID-97 smell fix: reject invalid report payloads early in stub mode.
         if (reporterUserId == null || reporterUserId.isBlank()) {
             throw new IllegalArgumentException("Reporter user ID is required");
         }
@@ -146,10 +147,11 @@ public class StubStudentRepository implements StudentRepository {
             throw new IllegalArgumentException("Report category is required");
         }
 
-        // Validate both users exist in current repository profile.
+        // Validate both users exist before storing a report record.
         getStudent(reporterUserId);
         getStudent(reportedUserId);
 
+        // Persist report in stub store so UI success reflects real state in this profile.
         StubDatabase.REPORTS.add(new StubDatabase.ReportRecord(
             reporterUserId,
             reportedUserId,

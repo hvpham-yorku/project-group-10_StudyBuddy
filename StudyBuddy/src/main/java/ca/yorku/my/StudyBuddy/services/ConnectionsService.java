@@ -35,6 +35,7 @@ public class ConnectionsService implements ConnectionsRepository {
      * users/{userId} { fullName, program, profilePic, courses }
      * presence/{userId} { lastActiveAt }
      */
+    @Override
     public List<ConnectionDTO> getAcceptedConnections(String myUserId) {
         List<ConnectionDTO> out = new ArrayList<>();
         if (myUserId == null || myUserId.isBlank()) return out;
@@ -98,9 +99,9 @@ public class ConnectionsService implements ConnectionsRepository {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            e.printStackTrace();
+            return out;
         } catch (ExecutionException e) {
-            e.printStackTrace();
+            return out;
         }
 
         return out;
@@ -117,13 +118,12 @@ public class ConnectionsService implements ConnectionsRepository {
     private String[] toStringArray(Object obj) {
         if (obj == null) return new String[0];
 
-        if (obj instanceof List<?>) {
-            List<?> list = (List<?>) obj;
+        if (obj instanceof List<?> list) {
             List<String> strings = new ArrayList<>();
             for (Object x : list) {
                 if (x != null) strings.add(x.toString());
             }
-            return strings.toArray(new String[0]);
+            return strings.toArray(new String[strings.size()]);
         }
 
         // Defensive: Firestore usually returns List, but keep this anyway
@@ -138,6 +138,7 @@ public class ConnectionsService implements ConnectionsRepository {
     }
     
     // Get all available students other than pending and accepted
+    @Override
     public List<ConnectionDTO> getAvailableStudents(String myUserId) throws Exception {
         List<ConnectionDTO> out = new ArrayList<>();
         
@@ -152,7 +153,7 @@ public class ConnectionsService implements ConnectionsRepository {
             connectedOrPendingIds.add(doc.getString("userA"));
         }
         
-        // Feetch the students (
+        // Fetch candidates once and filter already-linked users locally.
         QuerySnapshot query = db().collection("students").get().get();
         
         for (QueryDocumentSnapshot doc : query.getDocuments()) {
@@ -174,6 +175,7 @@ public class ConnectionsService implements ConnectionsRepository {
     }
     
     // Send a connection request
+    @Override
     public void sendRequest(String fromUserId, String toUserId) {
         Map<String, Object> data = new HashMap<>();
         data.put("userA", fromUserId);
@@ -182,6 +184,7 @@ public class ConnectionsService implements ConnectionsRepository {
         db().collection("connections").add(data);
     }
     
+    @Override
     public List<ConnectionDTO> getPendingRequests(String myUserId) throws Exception {
         List<ConnectionDTO> out = new ArrayList<>();
         QuerySnapshot query = db().collection("connections")
@@ -207,6 +210,7 @@ public class ConnectionsService implements ConnectionsRepository {
         return out;
     }
     
+    @Override
     public void acceptRequest(String senderId, String myUserId) throws Exception {
         QuerySnapshot query = db().collection("connections")
                 .whereEqualTo("userA", senderId)
@@ -219,6 +223,7 @@ public class ConnectionsService implements ConnectionsRepository {
         }
     }
 
+    @Override
     public void declineRequest(String senderId, String myUserId) throws Exception {
         QuerySnapshot query = db().collection("connections")
                 .whereEqualTo("userA", senderId)
@@ -231,6 +236,7 @@ public class ConnectionsService implements ConnectionsRepository {
         }
     }
     
+    @Override
     public void removeConnection(String myUserId, String otherUserId) throws Exception {
         // 1. Check if I was userA and they were userB
         QuerySnapshot q1 = db().collection("connections")
@@ -255,6 +261,7 @@ public class ConnectionsService implements ConnectionsRepository {
 
 	@Override
 	public List<ConnectionDTO> getPendingConnections(String myUserId) {
+        // Smell fix: avoid TODO/null by delegating to working pending implementation.
         try {
             return getPendingRequests(myUserId);
         } catch (Exception e) {
@@ -264,6 +271,7 @@ public class ConnectionsService implements ConnectionsRepository {
 
 	@Override
 	public List<ConnectionDTO> getSentRequests(String myUserId) {
+    // Smell fix: replace previous TODO/null with concrete sent-request query.
         List<ConnectionDTO> out = new ArrayList<>();
         try {
             QuerySnapshot query = db().collection("connections")
@@ -290,7 +298,10 @@ public class ConnectionsService implements ConnectionsRepository {
                 }
                 out.add(dto);
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new ArrayList<>();
+        } catch (ExecutionException e) {
             return new ArrayList<>();
         }
         return out;

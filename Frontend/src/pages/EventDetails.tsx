@@ -40,7 +40,7 @@ export default function EventDetails() {
     const fetchEventAndStudents = async () => {
       try {
         const token = localStorage.getItem("studyBuddyToken");
-        const headers = token ? { "Authorization": "Bearer " + token } : {};
+        const headers: HeadersInit | undefined = token ? { Authorization: "Bearer " + token } : undefined;
 
         // 1. Fetch Current Student Profile
         let currentStudent = null;
