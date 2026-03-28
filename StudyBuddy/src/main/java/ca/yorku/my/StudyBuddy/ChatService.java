@@ -13,9 +13,10 @@ import ca.yorku.my.StudyBuddy.dtos.MessageResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendFriendRequestDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendMessageDTO;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
-import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.EventRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.validators.MessageValidatorFactory;
+import ca.yorku.my.StudyBuddy.validators.MessageValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -216,38 +217,8 @@ public class ChatService {
      * Validates message payload fields according to message type semantics.
      */
     private String normalizeAndValidateMessagePayload(SendMessageDTO request) {
-        if (request.getType() == MessageType.TEXT) {
-            if (isBlank(request.getContent())) {
-                throw new ValidationException("TEXT message content is required");
-            }
-            return request.getContent().trim();
-        }
-
-        if (request.getType() == MessageType.LINK) {
-            if (isBlank(request.getContent())) {
-                throw new ValidationException("LINK message content is required");
-            }
-            String link = request.getContent().trim();
-            if (!isValidHttpUrl(link)) {
-                throw new ValidationException("LINK content must be a valid http(s) URL");
-            }
-            return link;
-        }
-
-        if (request.getType() == MessageType.FILE) {
-            if (request.getFile() == null) {
-                throw new ValidationException("FILE metadata is required");
-            }
-            if (isBlank(request.getFile().getFileName())) {
-                throw new ValidationException("FILE fileName is required");
-            }
-            if (request.getFile().getFileSizeBytes() == null || request.getFile().getFileSizeBytes() <= 0) {
-                throw new ValidationException("FILE fileSizeBytes must be greater than 0");
-            }
-            return isBlank(request.getContent()) ? "" : request.getContent().trim();
-        }
-
-        throw new ValidationException("Unsupported message type");
+        MessageValidator validator = MessageValidatorFactory.getValidator(request.getType());
+        return validator.validate(request);
     }
 
     /**
