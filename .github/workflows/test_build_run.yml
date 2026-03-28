@@ -31,7 +31,11 @@ jobs:
       run: |
         cd ./StudyBuddy
         chmod +x mvnw
-        ./mvnw test
+        ./mvnw test \
+          -Dspring.mail.host=localhost \
+          -Dspring.mail.port=2525 \
+          -Dspring.mail.username=dummy \
+          -Dspring.mail.password=dummy
 
     # Step 3. Build the Docker Image
     - name: Docker Build
