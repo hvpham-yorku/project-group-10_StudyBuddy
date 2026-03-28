@@ -18,6 +18,14 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
+    # Step 1.5. Inject Firebase Credentials
+    - name: Create Firebase Service Account File
+      env:
+        FIREBASE_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      run: |
+        mkdir -p ./StudyBuddy/src/main/resources
+        echo "$FIREBASE_SECRET" > ./StudyBuddy/src/main/resources/serviceAccountKey.json
+
     # # Step 2. Run the unit tests
     - name: Unit Tests
       run: |
