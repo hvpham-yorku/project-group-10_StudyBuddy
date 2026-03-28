@@ -35,7 +35,8 @@ jobs:
           -Dspring.mail.host=localhost \
           -Dspring.mail.port=2525 \
           -Dspring.mail.username=dummy \
-          -Dspring.mail.password=dummy
+          -Dspring.mail.password=dummy \
+          -Dfirebase.credentials.path=classpath:serviceAccountKey.json
 
     # Step 3. Build the Docker Image
     - name: Docker Build
