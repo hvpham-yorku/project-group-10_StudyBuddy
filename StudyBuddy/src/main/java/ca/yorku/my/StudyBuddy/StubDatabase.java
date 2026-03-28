@@ -9,11 +9,28 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class StubDatabase {
+    public static class ReportRecord {
+        public final String reporterUserId;
+        public final String reportedUserId;
+        public final String category;
+        public final String details;
+        public final long createdAt;
+
+        public ReportRecord(String reporterUserId, String reportedUserId, String category, String details, long createdAt) {
+            this.reporterUserId = reporterUserId;
+            this.reportedUserId = reportedUserId;
+            this.category = category;
+            this.details = details;
+            this.createdAt = createdAt;
+        }
+    }
+
     public static final List<Student> STUDENTS = new CopyOnWriteArrayList<>();
     public static final List<Event> EVENTS = new CopyOnWriteArrayList<>();
     public static final List<Chat> CHATS = new CopyOnWriteArrayList<>();
     public static final List<Message> MESSAGES = new CopyOnWriteArrayList<>();
     public static final List<FriendRequest> FRIEND_REQUESTS = new CopyOnWriteArrayList<>();
+    public static final List<ReportRecord> REPORTS = new CopyOnWriteArrayList<>();
 
     static {
         Student s1 = new Student("u1", "Alex", "Johnson");
@@ -122,5 +139,6 @@ public class StubDatabase {
         CHATS.clear();
         MESSAGES.clear();
         FRIEND_REQUESTS.clear();
+        REPORTS.clear();
     }
 }

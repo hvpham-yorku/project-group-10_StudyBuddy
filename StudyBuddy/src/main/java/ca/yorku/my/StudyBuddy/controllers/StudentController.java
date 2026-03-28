@@ -53,10 +53,6 @@ public class StudentController {
 	        if (req.courses() != null) {
 	            studentRepository.updateCourses(studentID, req.courses());
 	        }
-	        
-	        if (req.courses() != null) {
-	            studentRepository.updateCourses(studentID, req.courses());
-	        }
 
 	        if (req.studyVibes() != null) {
 	            studentRepository.updateStudyVibes(studentID, req.studyVibes());

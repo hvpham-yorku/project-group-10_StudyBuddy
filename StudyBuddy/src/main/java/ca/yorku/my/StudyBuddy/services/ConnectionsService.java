@@ -255,14 +255,45 @@ public class ConnectionsService implements ConnectionsRepository {
 
 	@Override
 	public List<ConnectionDTO> getPendingConnections(String myUserId) {
-		// TODO Auto-generated method stub
-		return null;
+        try {
+            return getPendingRequests(myUserId);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
 	}
 
 	@Override
 	public List<ConnectionDTO> getSentRequests(String myUserId) {
-		// TODO Auto-generated method stub
-		return null;
+        List<ConnectionDTO> out = new ArrayList<>();
+        try {
+            QuerySnapshot query = db().collection("connections")
+                    .whereEqualTo("userA", myUserId)
+                    .whereEqualTo("status", "pending")
+                    .get().get();
+
+            for (QueryDocumentSnapshot doc : query.getDocuments()) {
+                String receiverId = doc.getString("userB");
+                if (receiverId == null || receiverId.isBlank()) {
+                    continue;
+                }
+
+                DocumentSnapshot studentDoc = db().collection("students").document(receiverId).get().get();
+                ConnectionDTO dto = new ConnectionDTO();
+                dto.userId = receiverId;
+                if (studentDoc.exists()) {
+                    dto.fullName = studentDoc.getString("fullName");
+                    dto.program = studentDoc.getString("program");
+                    dto.profilePic = studentDoc.getString("avatar");
+                    dto.courses = toStringArray(studentDoc.get("courses"));
+                } else {
+                    dto.courses = new String[0];
+                }
+                out.add(dto);
+            }
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+        return out;
 	}
     
 }

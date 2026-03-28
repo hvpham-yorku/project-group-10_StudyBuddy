@@ -48,14 +48,37 @@ const vibeColors: Record<string, string> = {
 // ✅ Production-ready: use relative base (works in Docker + same-origin)
 const API_BASE = "";
 
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem("studyBuddyToken");
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: getAuthHeader(),
+  });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return (await res.json()) as T;
 }
 
-async function apiPost(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST" });
+async function apiPost(path: string, body?: unknown): Promise<void> {
+  const headers: Record<string, string> = {
+    ...getAuthHeader(),
+  };
+  let payload: BodyInit | undefined;
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers,
+    body: payload,
+  });
   if (!res.ok) throw new Error(`API error ${res.status}`);
 }
 
@@ -113,9 +136,6 @@ export default function Network() {
     fetchRealUser();
   }, []);
 
-  // ✅ quick sanity log (remove later if you want)
-  console.log("authReady:", authReady, "uid:", uid);
-
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"connections" | "requests" | "find">("connections");
 
@@ -136,10 +156,9 @@ export default function Network() {
   // Handle connections
   const handleConnect = async (targetId: string) => {
     try {
-      await fetch(`/api/connections/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      await apiPost(`/api/connections/request`, {
+        myUserId: uid,
+        targetUserId: targetId,
       });
       alert("Connection request sent!");
     } catch (e) {
@@ -149,10 +168,9 @@ export default function Network() {
 
   const handleAccept = async (senderId: string) => {
     try {
-      await fetch(`/api/connections/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      await apiPost(`/api/connections/accept`, {
+        senderId,
+        myUserId: uid,
       });
       // Move from pending to accepted UI
       setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
@@ -166,10 +184,9 @@ export default function Network() {
     if (!window.confirm("Are you sure you want to remove this connection?")) return;
     
     try {
-      await fetch(`/api/connections/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      await apiPost(`/api/connections/remove`, {
+        myUserId: uid,
+        targetUserId: targetId,
       });
       
       // Instantly remove them from the UI
@@ -181,10 +198,9 @@ export default function Network() {
 
   const handleDecline = async (senderId: string) => {
     try {
-      await fetch(`/api/connections/decline`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      await apiPost(`/api/connections/decline`, {
+        senderId,
+        myUserId: uid,
       });
       // Remove from UI
       setPendingRequests(prev => prev.filter(r => r.userId !== senderId));

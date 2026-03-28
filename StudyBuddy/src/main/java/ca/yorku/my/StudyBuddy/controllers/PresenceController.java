@@ -2,11 +2,14 @@ package ca.yorku.my.StudyBuddy.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.PresenceRepository;
 import ca.yorku.my.StudyBuddy.services.PresenceService;
 
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/presence")
@@ -14,21 +17,32 @@ import java.util.Map;
 public class PresenceController {
 
     private final PresenceRepository presenceService;
+    private final AuthRepository authService;
 
-    public PresenceController(PresenceRepository presenceService) {
+    public PresenceController(PresenceRepository presenceService, AuthRepository authService) {
         this.presenceService = presenceService;
+        this.authService = authService;
     }
 
     // MVP: caller passes userId (later you can swap to auth-derived userId)
     @PostMapping("/heartbeat")
-    public ResponseEntity<?> heartbeat(@RequestParam String userId) {
-        presenceService.heartbeat(userId);
+    public ResponseEntity<?> heartbeat(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) String userId) throws Exception {
+        String callerId = authService.verifyFrontendToken(authHeader);
+        if (userId != null && !userId.isBlank() && !Objects.equals(userId, callerId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Cannot heartbeat for another user"));
+        }
+        presenceService.heartbeat(callerId);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
     // Example: /api/presence?uids=omar,vaughn
     @GetMapping
-    public ResponseEntity<Map<String, PresenceService.PresenceRecord>> getPresence(@RequestParam String uids) {
+    public ResponseEntity<Map<String, PresenceService.PresenceRecord>> getPresence(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam String uids) throws Exception {
+        authService.verifyFrontendToken(authHeader);
         return ResponseEntity.ok(presenceService.getPresenceMap(uids));
     }
 }

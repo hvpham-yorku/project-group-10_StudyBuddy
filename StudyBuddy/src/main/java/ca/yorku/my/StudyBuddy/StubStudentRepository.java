@@ -2,7 +2,6 @@ package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
-import ca.yorku.my.StudyBuddy.NotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -134,8 +133,30 @@ public class StubStudentRepository implements StudentRepository {
 	@Override
 	public void reportUser(String reporterUserId, String reportedUserId, String category, String details)
 			throws Exception {
-		// TODO Auto-generated method stub
-		
+        if (reporterUserId == null || reporterUserId.isBlank()) {
+            throw new IllegalArgumentException("Reporter user ID is required");
+        }
+        if (reportedUserId == null || reportedUserId.isBlank()) {
+            throw new IllegalArgumentException("Reported user ID is required");
+        }
+        if (reporterUserId.equals(reportedUserId)) {
+            throw new IllegalArgumentException("You cannot report yourself");
+        }
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Report category is required");
+        }
+
+        // Validate both users exist in current repository profile.
+        getStudent(reporterUserId);
+        getStudent(reportedUserId);
+
+        StubDatabase.REPORTS.add(new StubDatabase.ReportRecord(
+            reporterUserId,
+            reportedUserId,
+            category.trim(),
+            details == null ? "" : details.trim(),
+            System.currentTimeMillis()
+        ));
 	}
     
 }
