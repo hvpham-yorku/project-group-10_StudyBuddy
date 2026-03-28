@@ -18,6 +18,7 @@ import ca.yorku.my.StudyBuddy.dtos.HostDTO;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.EventService;
 import ca.yorku.my.StudyBuddy.services.StudentService;
+import ca.yorku.my.StudyBuddy.mappers.EventMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +28,6 @@ import java.util.concurrent.ExecutionException;
 // This class is responsible for handling HTTP requests related to events.
 // It defines endpoints for creating, retrieving, and deleting events. 
 // It also uses EventService to perform the necessary operations on the Firestore database and returns appropriate HTTP responses based on the outcome of each operation.
-
-
 
 @RestController
 @RequestMapping("/api/events")
@@ -43,6 +42,9 @@ public class EventController {
     
     @Autowired
     private StudentRepository studentService;
+
+    @Autowired
+    private EventMapper eventMapper;
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
@@ -146,19 +148,11 @@ public class EventController {
     
     @GetMapping("/{eventId}")
     public ResponseEntity<EventResponseDTO> getEvent(
-            @PathVariable String eventId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        @PathVariable String eventId,
+        @RequestHeader(value = "Authorization", required = false) String authHeader) {
     	try {
-    		Event event = eventService.getEventById(eventId);
+    	    Event event = eventService.getEventById(eventId);
     		
-    		Student hostStudent = studentService.getStudent(event.getHost());
-            HostDTO hostDTO = new HostDTO(
-                hostStudent.getUserId(),
-                hostStudent.getFullName(),
-                hostStudent.getAvatar()
-            );
-
-            // 1. Identify the user making the request
             String requesterId = null;
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 try {
@@ -168,46 +162,12 @@ public class EventController {
                 }
             }
 
-            // 2. Safely get the raw attendees list and count
-            List<String> rawAttendees = event.getAttendees() != null ? event.getAttendees() : new ArrayList<>();
-            int attendeeCount = rawAttendees.size();
-            
-            // 3. Check if the requester has permission to see the attendees
-            boolean isParticipating = requesterId != null && 
-                (requesterId.equals(event.getHost()) || rawAttendees.contains(requesterId));
-            
-            
-
-            // 4. Filter the list: send the real list if participating, otherwise send empty array
-            List<String> visibleAttendees = isParticipating ? rawAttendees : new ArrayList<>();
+            // --- THE MAGIC HAPPENS HERE ---
+            EventResponseDTO dto = eventMapper.toResponseDTO(event, requesterId);
     		
-            String serverToday = java.time.LocalDate.now().toString();
-            String calculatedStatus = "upcoming";
-            if (event.getDate() != null && event.getDate().compareTo(serverToday) < 0) {
-                calculatedStatus = "past";
-            }
-    		
-    		EventResponseDTO dto = new EventResponseDTO(
-                	event.getId(),
-                	event.getTitle(),
-                	event.getCourse(),
-                	hostDTO,
-                	event.getLocation(),
-                	event.getDate(),
-                	event.getTime(),
-                	event.getDuration(),
-                	event.getDescription(),
-                	event.getMaxParticipants(),
-                    attendeeCount,
-                    visibleAttendees,
-                	event.getTags() != null ? event.getTags() : new ArrayList<>(),
-        			calculatedStatus,
-                	event.getReviews() != null ? event.getReviews() : new ArrayList<>()
-                );
-    		
-    		return ResponseEntity.ok(dto);
+    	    return ResponseEntity.ok(dto);
     	} catch (Exception e) {
-    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    	    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     	}
     }
 
@@ -215,12 +175,11 @@ public class EventController {
     // It returns a no content status if deletion was successful, a forbidden status if the user is not authorized to delete the event, or an error status if there was an issue.
     @GetMapping
     public ResponseEntity<List<EventResponseDTO>> getAllEvents(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
-            // 1. Identify the user making the request
             String requesterId = null;
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 try {
@@ -231,42 +190,9 @@ public class EventController {
             }
 
             for (Event event : events) {
-            	
-            	String serverToday = java.time.LocalDate.now().toString();
-                String calculatedStatus = "upcoming";
-                if (event.getDate() != null && event.getDate().compareTo(serverToday) < 0) {
-                    calculatedStatus = "past";
-                }
-                
-                Student hostStudent = studentService.getStudent(event.getHost());
-                HostDTO hostDTO = new HostDTO(
-                    hostStudent.getUserId(),
-                    hostStudent.getFullName(),
-                    hostStudent.getAvatar()
-                );
-
-                List<String> rawAttendees = event.getAttendees() != null ? event.getAttendees() : new ArrayList<>();
-                int attendeeCount = rawAttendees.size();
-                
-                boolean isParticipating = requesterId != null && 
-                    (requesterId.equals(event.getHost()) || rawAttendees.contains(requesterId));
-
-                List<String> visibleAttendees = isParticipating ? rawAttendees : new ArrayList<>();
-
-                EventResponseDTO dto = new EventResponseDTO(
-                	event.getId(), event.getTitle(), event.getCourse(),
-                	hostDTO,
-                	event.getLocation(), event.getDate(), event.getTime(),
-                	event.getDuration(), event.getDescription(),
-                	event.getMaxParticipants(), 
-                    attendeeCount,
-                    visibleAttendees,
-                	event.getTags() != null ? event.getTags() : new ArrayList<>(), 
-                    calculatedStatus,
-                    event.getReviews() != null ? event.getReviews() : new ArrayList<>()
-                );
-                eventDTOs.add(dto);
+                eventDTOs.add(eventMapper.toResponseDTO(event, requesterId));
             }
+            
             return ResponseEntity.ok(eventDTOs);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
