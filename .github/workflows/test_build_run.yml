@@ -18,13 +18,28 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    # # Step 2. Run the unit tests
-    # SKIP TEMPORARILY TO SPEED UP BUILD, BUT THIS SHOULD BE RE-ENABLED BEFORE FINAL SUBMISSION
-    # - name: Unit Tests
-    #   run: |
-    #     cd ./StudyBuddy
-    #     chmod +x mvnw
-    #     ./mvnw test
+    # Step 1.5. Inject Firebase Credentials
+    - name: Create Firebase Service Account File
+      env:
+        FIREBASE_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      run: |
+        mkdir -p ./StudyBuddy/src/main/resources
+        echo "$FIREBASE_SECRET" > ./StudyBuddy/src/main/resources/serviceAccountKey.json
+
+    # Step 2. Run the unit tests
+    - name: Unit Tests
+      env:
+        FIREBASE_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
+      run: |
+        cd ./StudyBuddy
+        chmod +x mvnw
+        ./mvnw test \
+          -Dspring.mail.host=localhost \
+          -Dspring.mail.port=2525 \
+          -Dspring.mail.username=dummy \
+          -Dspring.mail.password=dummy \
+          -Dfirebase.credentials.path=classpath:serviceAccountKey.json \
+          -Dfirebase.web.api.key="${FIREBASE_API_KEY}"
 
     # Step 3. Build the Docker Image
     - name: Docker Build

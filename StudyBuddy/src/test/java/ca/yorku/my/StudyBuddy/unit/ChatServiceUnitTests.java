@@ -317,6 +317,73 @@ class ChatServiceUnitTests {
 		assertFalse(secondPage.isHasMore());
 	}
 
+	@Test
+	// Verifies that only the other participant sees who is currently typing.
+	void updateTypingStatusShowsOtherParticipantOnly() {
+		ChatService service = newService();
+		CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+		chatRequest.setUserA("u1");
+		chatRequest.setUserB("u2");
+		service.createDirectChat("u1", chatRequest);
+
+		TypingStatusUpdateRequest typingRequest = new TypingStatusUpdateRequest();
+		typingRequest.setTyping(true);
+		service.updateTypingStatus("u1", "u1_u2", typingRequest);
+
+		TypingStatusResponse status = service.getTypingStatus("u2", "u1_u2");
+
+		assertEquals(List.of("u1"), status.getTypingUserIds());
+		assertTrue(status.getExpiresInMs() > 0L);
+		assertFalse(status.getTypingUserIds().contains("u2"));
+	}
+
+	@Test
+	// Verifies that setting typing=false clears the typing indicator.
+	void updateTypingStatusFalseClearsTypingIndicator() {
+		ChatService service = newService();
+		CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+		chatRequest.setUserA("u1");
+		chatRequest.setUserB("u2");
+		service.createDirectChat("u1", chatRequest);
+
+		TypingStatusUpdateRequest startTyping = new TypingStatusUpdateRequest();
+		startTyping.setTyping(true);
+		service.updateTypingStatus("u1", "u1_u2", startTyping);
+
+		TypingStatusUpdateRequest stopTyping = new TypingStatusUpdateRequest();
+		stopTyping.setTyping(false);
+		service.updateTypingStatus("u1", "u1_u2", stopTyping);
+
+		TypingStatusResponse status = service.getTypingStatus("u2", "u1_u2");
+
+		assertTrue(status.getTypingUserIds().isEmpty());
+	}
+
+	@Test
+	// Verifies sync state only flips to changed after a new message is sent.
+	void getMessageSyncStateReportsChangedOnlyAfterMessage() {
+		ChatService service = newService();
+		CreateDirectChatRequest chatRequest = new CreateDirectChatRequest();
+		chatRequest.setUserA("u1");
+		chatRequest.setUserB("u2");
+		service.createDirectChat("u1", chatRequest);
+
+		Map<String, Object> beforeSend = service.getMessageSyncState("u1", "u1_u2", 0L);
+		assertEquals(false, beforeSend.get("changed"));
+		assertEquals(0L, beforeSend.get("latestTimestampEpochMillis"));
+		assertNull(beforeSend.get("latestMessageId"));
+
+		SendMessageDTO messageRequest = new SendMessageDTO();
+		messageRequest.setChatId("u1_u2");
+		messageRequest.setContent("sync check");
+		messageRequest.setType(MessageType.TEXT);
+		service.sendMessage("u1", "u1_u2", messageRequest);
+
+		Map<String, Object> afterSend = service.getMessageSyncState("u1", "u1_u2", 0L);
+		assertEquals(true, afterSend.get("changed"));
+		assertNotNull(afterSend.get("latestMessageId"));
+	}
+
 	private static class TestableChatService extends ChatService {
 		private final Map<String, List<String>> attendedByUser = new HashMap<>();
 		private Set<String> existingEvents = new HashSet<>();
@@ -456,6 +523,14 @@ class ChatServiceUnitTests {
 					.stream()
 					.filter(message -> messageId.equals(message.getMessageId()))
 					.findFirst();
+		}
+
+		@Override
+		public Optional<Message> findLatestMessage(String chatId) {
+			return storage.getOrDefault(chatId, new ArrayList<>())
+					.stream()
+					.max(Comparator.comparingLong(Message::getTimestampEpochMillis)
+							.thenComparing(Message::getMessageId));
 		}
 
 		@Override

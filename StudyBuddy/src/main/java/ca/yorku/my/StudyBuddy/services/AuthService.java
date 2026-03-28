@@ -1,26 +1,29 @@
 package ca.yorku.my.StudyBuddy.services;
-import ca.yorku.my.StudyBuddy.classes.Student;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseToken;
-import com.google.firebase.auth.UserRecord;
-import com.google.cloud.firestore.Firestore;
-import com.google.firebase.cloud.FirestoreClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
+import com.google.firebase.auth.UserRecord;
+import com.google.firebase.cloud.FirestoreClient;
+
+import ca.yorku.my.StudyBuddy.classes.Student;
 
 @Service
 @Profile("firestore")
@@ -136,7 +139,41 @@ public class AuthService implements AuthRepository {
             throw new IllegalStateException("Login Denied: Please verify your YorkU email first.");
         }
 
-        // 3. Return the real ID Token!
+        // 3. Update login streak for the user
+        String uid = user.getUid();
+        String today = LocalDate.now().toString(); // ISO format: yyyy-MM-dd
+        try {
+            Firestore db = FirestoreClient.getFirestore();
+            DocumentReference docRef = db.collection("students").document(uid);
+            DocumentSnapshot doc = docRef.get().get();
+            if (doc.exists()) {
+                String lastLogin = doc.getString("lastLoginDate");
+                Long storedStreak = doc.getLong("loginStreak");
+                int currentStreak = storedStreak != null ? storedStreak.intValue() : 0;
+                int newStreak;
+                if (lastLogin == null) {
+                    newStreak = 1;
+                } else if (lastLogin.equals(today)) {
+                    // Already logged in today — keep existing streak unchanged
+                    newStreak = currentStreak;
+                } else {
+                    LocalDate lastLoginDate = LocalDate.parse(lastLogin);
+                    long daysBetween = ChronoUnit.DAYS.between(lastLoginDate, LocalDate.now());
+                    if (daysBetween == 1) {
+                        newStreak = currentStreak + 1; // Consecutive day
+                    } else {
+                        newStreak = 1; // Streak broken — reset
+                    }
+                }
+                if (!today.equals(lastLogin)) {
+                    docRef.update("loginStreak", newStreak, "lastLoginDate", today).get();
+                }
+            }
+        } catch (Exception e) {
+            // Streak update failure should not block login
+        }
+
+        // 4. Return the real ID Token!
         return idToken;
     }
     
@@ -154,6 +191,17 @@ public class AuthService implements AuthRepository {
 
         // 4. Return the secure UID!
         return decodedToken.getUid();
+    }
+
+    /**
+     * Invalidates the user's current session by revoking refresh tokens in Firebase.
+     * The currently issued ID token may still be valid for a short period, but we clear
+     * it on the client side to enforce logout.
+     */
+    @Override
+    public void logoutUser(String authHeader) throws Exception {
+        String uid = verifyFrontendToken(authHeader);
+        FirebaseAuth.getInstance().revokeRefreshTokens(uid);
     }
 
     /**

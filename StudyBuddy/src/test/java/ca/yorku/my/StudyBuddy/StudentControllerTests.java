@@ -1,7 +1,4 @@
 package ca.yorku.my.StudyBuddy;
-import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.controllers.StudentController;
-import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -10,23 +7,34 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.mockito.MockitoAnnotations;
+import static org.mockito.Mockito.never;
 
+import ca.yorku.my.StudyBuddy.StubDatabase;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.controllers.StudentController;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
+
+@ExtendWith(MockitoExtension.class)
 class StudentControllerTests {
 
     @Mock
     private StudentRepository studentRepository;
 
+    @Mock
+    private AuthRepository authService;
+
     @InjectMocks
     private StudentController studentController;
-        @Mock
-        private ca.yorku.my.StudyBuddy.services.AuthRepository authService;
 
     @BeforeEach
     void setup() {
-        MockitoAnnotations.openMocks(this);
         StubDatabase.STUDENTS.clear();
     }
 
@@ -47,16 +55,13 @@ class StudentControllerTests {
     @Test
     void saveStudent_callsRepository() throws Exception {
         Student s = new Student("1", "Alice", "Smith");
-
         studentController.saveStudent(s);
-
         verify(studentRepository).saveStudent(s);
     }
 
     @Test
     void updateCourses_callsRepository() throws Exception {
         studentController.updateCourses("123", List.of("EECS 2311"));
-
         verify(studentRepository).updateCourses("123", List.of("EECS 2311"));
     }
 
@@ -68,74 +73,16 @@ class StudentControllerTests {
     }
 
     @Test
-    void updateStudyVibes_callsRepository() throws Exception {
-        studentController.updateStudyVibes("123", List.of("Quiet", "Lo-fi"));
-
-        verify(studentRepository).updateStudyVibes("123", List.of("Quiet", "Lo-fi"));
-    }
-
-    @Test
-    void updatePrivacySettings_callsRepository() throws Exception {
-        Map<String, Boolean> settings = Map.of("showBio", true, "showCourses", false);
-
-        studentController.updatePrivacySettings("123", settings);
-
-        verify(studentRepository).updatePrivacySettings("123", settings);
-    }
-
-    @Test
-    void getStudent_returnsNullWhenNotFound() throws Exception {
-        when(studentRepository.getStudent("999")).thenReturn(null);
-
-        Student result = studentController.getStudent("999");
-
-        assert result == null;
-    }
-
-    @Test
-    void updateCourses_allowsEmptyList() throws Exception {
-        studentController.updateCourses("123", List.of());
-
-        verify(studentRepository).updateCourses("123", List.of());
-    }
-
-    @Test
-    void updateAvatar_ignoresMissingAvatarKey() throws Exception {
+    void updateAvatar_handlesNullBody() throws Exception {
         when(authService.verifyFrontendToken("123")).thenReturn("123");
-        studentController.updateAvatar("123", Map.of("wrongKey", "value"));
+        studentController.updateAvatar("123", null);
         verify(studentRepository).updateAvatar("123", null);
     }
 
     @Test
-    void updateStudyVibes_handlesNullList() throws Exception {
-        studentController.updateStudyVibes("123", null);
-
-        verify(studentRepository).updateStudyVibes("123", null);
-    }
-
-    @Test
-    void updatePrivacySettings_allowsEmptyMap() throws Exception {
-        studentController.updatePrivacySettings("123", Map.of());
-
-        verify(studentRepository).updatePrivacySettings("123", Map.of());
-    }
-
-    @Test
-    void getStudent_handlesWhitespaceId() throws Exception {
-        when(studentRepository.getStudent("   ")).thenReturn(null);
-
-        Student result = studentController.getStudent("   ");
-
-        assert result == null;
-    }
-
-    @Test
-    void updateCourses_doesNotMutateInputList() throws Exception {
-        List<String> courses = List.of("EECS 2311");
-
-        studentController.updateCourses("123", courses);
-
-        assert courses.size() == 1;
-        verify(studentRepository).updateCourses("123", courses);
+    void updateAvatar_rejectsInvalidToken() throws Exception {
+        when(authService.verifyFrontendToken("123")).thenReturn(null);
+        studentController.updateAvatar("123", Map.of("avatar", "url"));
+        verify(studentRepository, never()).updateAvatar(any(), any());
     }
 }

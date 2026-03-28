@@ -9,7 +9,9 @@ import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.cloud.FirestoreClient;
 
+import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.classes.Student;
 
 import org.springframework.context.annotation.DependsOn;
@@ -299,6 +301,63 @@ public class EventService implements EventRepository  {
     	Firestore db = FirestoreClient.getFirestore();
     	db.collection("events").document(eventId).update("attendees", deductedAttendees).get();
     	return true;
+    }
+    
+    /**
+     * Add a review to an event in Firestore
+     */
+    @Override
+    public boolean addReview(String eventId, ca.yorku.my.StudyBuddy.classes.Review review) throws Exception {
+        Event e = this.getEventById(eventId);
+        if (e == null) return false;
+        
+        List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
+        if (reviews == null) {
+            reviews = new ArrayList<>();
+        }
+        
+        // Append the new review
+        reviews.add(review);
+        
+        // Push the updated array back to Firestore
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("events").document(eventId).update("reviews", reviews).get();
+        return true;
+    }
+
+    /**
+     * Add a comment to a specific review inside an event in Firestore
+     */
+    @Override
+    public boolean addCommentToReview(String eventId, String reviewId, ca.yorku.my.StudyBuddy.classes.Comment comment) throws Exception {
+        Event e = this.getEventById(eventId);
+        if (e == null) return false;
+        
+        List<ca.yorku.my.StudyBuddy.classes.Review> reviews = e.getReviews();
+        if (reviews == null) return false;
+
+        boolean reviewFound = false;
+        
+        // Find the matching review and inject the comment
+        for (ca.yorku.my.StudyBuddy.classes.Review r : reviews) {
+            if (r.getId() != null && r.getId().equals(reviewId)) {
+                List<ca.yorku.my.StudyBuddy.classes.Comment> comments = r.getComments();
+                if (comments == null) {
+                    comments = new ArrayList<>();
+                }
+                comments.add(comment);
+                r.setComments(comments);
+                reviewFound = true;
+                break;
+            }
+        }
+        
+        if (!reviewFound) return false;
+
+        // Push the entirely updated reviews array (with the nested comment) back to Firestore
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("events").document(eventId).update("reviews", reviews).get();
+        return true;
     }
     
 }

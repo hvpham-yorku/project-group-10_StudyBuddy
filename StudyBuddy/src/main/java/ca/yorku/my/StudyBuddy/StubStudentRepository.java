@@ -1,6 +1,8 @@
 package ca.yorku.my.StudyBuddy;
+
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.NotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,7 @@ public class StubStudentRepository implements StudentRepository {
         return StubDatabase.STUDENTS.stream()
                 .filter(s -> s.getUserId().equals(userId))
                 .findFirst()
-                .orElseThrow(() -> new Exception("Student not found"));
+                .orElseThrow(() -> new NotFoundException("Student not found"));
     }
 
     // Saves a student to the stub database using student ID
@@ -119,6 +121,19 @@ public class StubStudentRepository implements StudentRepository {
 
 	@Override
 	public void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void reportUser(String reporterUserId, String reportedUserId, String category, String details)
+			throws Exception {
 		// TODO Auto-generated method stub
 		
 	}

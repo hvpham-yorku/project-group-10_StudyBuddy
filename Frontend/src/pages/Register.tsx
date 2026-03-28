@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { BookOpen, Eye, EyeOff, AlertCircle, Mail, User, GraduationCap } from "lucide-react";
 
@@ -37,6 +37,14 @@ export default function Register() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
+
+  // "Reverse Guard" -- If user does have valid token, then kick them to the dashboard
+    useEffect(() => {
+      const token = localStorage.getItem("studyBuddyToken");
+      if (token) {
+        navigate("/dashboard");
+      }
+    }, [navigate]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

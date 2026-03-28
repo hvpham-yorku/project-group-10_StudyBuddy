@@ -13,9 +13,10 @@ import ca.yorku.my.StudyBuddy.dtos.MessageResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendFriendRequestDTO;
 import ca.yorku.my.StudyBuddy.dtos.SendMessageDTO;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
-import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.EventRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.validators.MessageValidatorFactory;
+import ca.yorku.my.StudyBuddy.validators.MessageValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -216,38 +217,8 @@ public class ChatService {
      * Validates message payload fields according to message type semantics.
      */
     private String normalizeAndValidateMessagePayload(SendMessageDTO request) {
-        if (request.getType() == MessageType.TEXT) {
-            if (isBlank(request.getContent())) {
-                throw new ValidationException("TEXT message content is required");
-            }
-            return request.getContent().trim();
-        }
-
-        if (request.getType() == MessageType.LINK) {
-            if (isBlank(request.getContent())) {
-                throw new ValidationException("LINK message content is required");
-            }
-            String link = request.getContent().trim();
-            if (!isValidHttpUrl(link)) {
-                throw new ValidationException("LINK content must be a valid http(s) URL");
-            }
-            return link;
-        }
-
-        if (request.getType() == MessageType.FILE) {
-            if (request.getFile() == null) {
-                throw new ValidationException("FILE metadata is required");
-            }
-            if (isBlank(request.getFile().getFileName())) {
-                throw new ValidationException("FILE fileName is required");
-            }
-            if (request.getFile().getFileSizeBytes() == null || request.getFile().getFileSizeBytes() <= 0) {
-                throw new ValidationException("FILE fileSizeBytes must be greater than 0");
-            }
-            return isBlank(request.getContent()) ? "" : request.getContent().trim();
-        }
-
-        throw new ValidationException("Unsupported message type");
+        MessageValidator validator = MessageValidatorFactory.getValidator(request.getType());
+        return validator.validate(request);
     }
 
     /**
@@ -291,6 +262,32 @@ public class ChatService {
         response.setMessages(dtoList);
         response.setHasMore(hasMore);
         response.setNextCursor(dtoList.isEmpty() ? null : dtoList.get(dtoList.size() - 1).getMessageId());
+        return response;
+    }
+
+    /**
+     * Returns whether chat messages changed since a client-provided epoch timestamp.
+     */
+    public Map<String, Object> getMessageSyncState(String actorId, String chatId, long sinceEpochMillis) {
+        Chat chat = chatDAO.findById(chatId).orElse(null);
+        if (chat == null) {
+            throw new NotFoundException("Chat not found");
+        }
+        if (!chat.getParticipantIds().contains(actorId)) {
+            throw new ForbiddenException("Actor is not a participant in this chat");
+        }
+        if (sinceEpochMillis < 0) {
+            throw new ValidationException("sinceEpochMillis must be greater than or equal to 0");
+        }
+
+        Message latest = messageDAO.findLatestMessage(chatId).orElse(null);
+        long latestTimestampEpochMillis = latest == null ? 0L : latest.getTimestampEpochMillis();
+        String latestMessageId = latest == null ? null : latest.getMessageId();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("changed", latestTimestampEpochMillis > sinceEpochMillis);
+        response.put("latestTimestampEpochMillis", latestTimestampEpochMillis);
+        response.put("latestMessageId", latestMessageId);
         return response;
     }
 

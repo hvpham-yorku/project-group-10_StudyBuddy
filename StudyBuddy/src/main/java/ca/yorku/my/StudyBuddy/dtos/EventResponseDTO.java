@@ -18,6 +18,7 @@ public record EventResponseDTO(
 	int duration,
 	String description,
 	int maxParticipants,
+	int attendeeCount,
 	List<String> attendees,
 	List<String> tags,
 	String status,

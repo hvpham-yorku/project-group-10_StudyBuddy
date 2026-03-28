@@ -1,19 +1,11 @@
 package ca.yorku.my.StudyBuddy.controllers;
-import ca.yorku.my.StudyBuddy.services.AuthRepository;
-import ca.yorku.my.StudyBuddy.services.AuthService;
-import ca.yorku.my.StudyBuddy.services.StudentRepository;
-import ca.yorku.my.StudyBuddy.services.StudentService;
-import ca.yorku.my.StudyBuddy.classes.Student;
-import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
-import ca.yorku.my.StudyBuddy.StubDatabase;
-import ca.yorku.my.StudyBuddy.classes.Event;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,12 +15,19 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
+import ca.yorku.my.StudyBuddy.SessionLogService;
+import ca.yorku.my.StudyBuddy.StubDatabase;
+import ca.yorku.my.StudyBuddy.classes.Student;
+import ca.yorku.my.StudyBuddy.dtos.UpdateProfileRequestDTO;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.dtos.ReportUserRequestDTO;
 
 @RestController 
 @RequestMapping("/api/studentcontroller")
-@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT})
+@CrossOrigin(origins = "*")
 
 // This class allows for the student information to be accessed and modified through API calls
 public class StudentController {
@@ -40,9 +39,8 @@ public class StudentController {
 	@Autowired
     private AuthRepository authService;
 
-	// This allows for the session log service to be used in this class
-	// @Autowired
-	// private StudentService studentService;
+	@Autowired
+	private SessionLogService sessionLogService;
 	
 	// This method allows for a student's profile to be updated through an API call. It checks which fields are included in the request and updates those specific fields in the database	
 	@PostMapping("/profile/update")
@@ -88,6 +86,10 @@ public class StudentController {
 	    		studentRepository.updateLocation(studentID, req.location());
 	    	}
 
+	    	if (req.exactLocation() != null) {
+	    		studentRepository.updateExactLocation(studentID, req.exactLocation());
+	    	}
+
 	    	if (req.notifications() != null) {
 	    		studentRepository.updateNotifications(studentID, req.notifications());
 	    	}
@@ -122,6 +124,20 @@ public class StudentController {
 	    }
 	}
 
+	@GetMapping("/profile/session-log")
+	public ResponseEntity<?> getMySessionLog(@RequestHeader("Authorization") String authHeader) {
+	    try {
+	        String uid = authService.verifyFrontendToken(authHeader);
+	        return ResponseEntity.ok(sessionLogService.getSessionLogForStudent(uid));
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+	    } catch (SecurityException e) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to load session log");
+	    }
+	}
+
 	
 	// This method allows for all students in the database to be retrieved through an API call
 	@GetMapping("/getstudents")
@@ -147,95 +163,140 @@ public class StudentController {
 		studentRepository.updateCourses(studentID, courses);
 	}
 
-	// This method allows for a student's study vibe to be updated in the database through an API call
-	@PutMapping("/{studentID}/study-vibes")
-	public void updateStudyVibes(@PathVariable String studentID, @RequestBody List<String> studyVibes) throws Exception {
-		studentRepository.updateStudyVibes(studentID, studyVibes);
-	}
-	
-	// This method allows for a student's privacy settings to be updated in the database through an API call
-	@PutMapping("/{studentID}/privacy-settings")
-	public void updatePrivacySettings(@PathVariable String studentID, @RequestBody Map<String, Boolean> privacySettings) throws Exception {
-		studentRepository.updatePrivacySettings(studentID, privacySettings);
+	// This method allows for a student's study vibes to be updated in the database through an API call
+	@PostMapping("/{studentID}/study-vibes")
+	public ResponseEntity<?> blockStudyVibesPOST() {
+    	return ResponseEntity.status(405).build();
 	}
 
+	// This method allows for a student's study vibe to be updated in the database through an API call
+	@PutMapping(value = "/{studentID}/study-vibes", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> updateStudyVibes(@PathVariable String studentID, @RequestBody(required = false) List<String> vibes) {
+    if (vibes == null || vibes.isEmpty() || vibes.stream().anyMatch(v -> v == null || v.isBlank())) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    try {
+        studentRepository.updateStudyVibes(studentID, vibes);
+        return ResponseEntity.ok().build();
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
 	
-	// Get a student's session log (all events they have attended)
-	// TODO: Modify this
+	// This method allows for a student's privacy settings to be retrieved from the database through an API call
+	@GetMapping("/{studentID}/privacy-settings")
+	public ResponseEntity<?> blockPrivacySettingsGET() {
+    	return ResponseEntity.status(405).build();
+	}
+
+	// This method allows for a student's privacy settings to be updated in the database through an API call
+	@PutMapping(value = "/{studentID}/privacy-settings", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> updatePrivacySettings(
+        @PathVariable String studentID,
+        @RequestBody(required = false) Map<String, Boolean> privacySettings) {
+
+    // Missing body
+    if (privacySettings == null) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    // Empty JSON object
+    if (privacySettings.isEmpty()) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    // Ensure all values are booleans
+    if (privacySettings.values().stream().anyMatch(v -> v == null)) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    try {
+        studentRepository.updatePrivacySettings(studentID, privacySettings);
+        return ResponseEntity.ok().build();
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
+	
+
+	
+	// Get a student's full session log (all past hosted/attended events) by student ID
 	@GetMapping("/getstudent/{studentId}/sessionlog")
-	public List<Event> getStudentSessionLog(@PathVariable String studentId) throws ExecutionException, InterruptedException {
-		// Find student by ID from StubDatabase
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return new ArrayList<>();
+	public ResponseEntity<?> getStudentSessionLog(@PathVariable String studentId) {
+		try {
+			return ResponseEntity.ok(sessionLogService.getSessionLogForStudent(studentId));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to load session log");
 		}
-		return null;
 	}
 	
 	
 	// Get total study time (in minutes) for a student
-	// TODO: Return number of students (depends on student schemas)
 	@GetMapping("/getstudent/{studentId}/totalstudytime")
-	public long getTotalStudyTime(@PathVariable String studentId) throws ExecutionException, InterruptedException {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return 0;
+	public ResponseEntity<?> getTotalStudyTime(@PathVariable String studentId) {
+		try {
+			int totalMinutes = sessionLogService.getSessionLogForStudent(studentId).summary().totalMinutes();
+			return ResponseEntity.ok(totalMinutes);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to load study time");
 		}
-		return 0;
 	}
 	
 	
 	// Get student's session log filtered by course code
-	// TODO: Return the student's session log
 	@GetMapping("/getstudent/{studentId}/sessionlog/course/{courseCode}")
-	public List<Event> getSessionLogByCourse(@PathVariable String studentId, @PathVariable String courseCode) 
-			throws ExecutionException, InterruptedException {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return new ArrayList<>();
+	public ResponseEntity<?> getSessionLogByCourse(@PathVariable String studentId, @PathVariable String courseCode) {
+		try {
+			var filtered = sessionLogService.getSessionLogForStudent(studentId).events().stream()
+					.filter(e -> courseCode.equals(e.course()))
+					.collect(Collectors.toList());
+			return ResponseEntity.ok(filtered);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to load session log");
 		}
-		return null;
-		
-		// List<Event> sessionLog = sessionLogService.getStudentSessionLog(student.getAttendedEventIds());
-		// return sessionLogService.filterSessionLogByCourse(sessionLog, courseCode);
 	}
 	
 	
-	// Mark a student as having attended an event 
-	// TODO: Return the events that the student went to
-	@PostMapping("/getstudent/{studentId}/addeventtosessionlog/{eventId}")
-	public Boolean addEventToSessionLog(@PathVariable String studentId, @PathVariable String eventId) {
-		Student student = StubDatabase.STUDENTS.stream()
-			.filter(s -> s.getUserId().equals(studentId))
-			.findFirst()
-			.orElse(null);
-		
-		if (student == null) {
-			return false;
-		}
-		return null;
-		
-		//sessionLogService.addEventToSessionLog(student, eventId);
-		//return true;
-	}
-
 	// This method allows for a student's profile picture to be updated in the database through an API call
 	@PutMapping("/profile/avatar")
 	public void updateAvatar(@RequestHeader("Authorization") String authHeader, @RequestBody Map<String, String> body) throws Exception {
-	    String studentID = authService.verifyFrontendToken(authHeader);
-	    String newUrl = body.get("avatar");
-	    studentRepository.updateAvatar(studentID, newUrl);
-	}
+
+    String verifiedId = authService.verifyFrontendToken(authHeader);
+
+    if (verifiedId == null) {
+        return;
+    }
+
+    String avatar = null;
+    if (body != null) {
+        avatar = body.get("avatar");
+    }
+
+    studentRepository.updateAvatar(verifiedId, avatar);
+}
+    @PostMapping("/report")
+    public ResponseEntity<?> reportUser(
+        @RequestHeader("Authorization") String authHeader,
+        @RequestBody ReportUserRequestDTO req
+    ) {
+        try {
+            String reporterUserId = authService.verifyFrontendToken(authHeader);
+
+            studentRepository.reportUser(
+				reporterUserId,
+				req.reportedUserId(),
+				req.category(),
+				req.details()
+			);
+
+            return ResponseEntity.ok("Report submitted successfully.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to submit report.");
+        }
+    }
 }

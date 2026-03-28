@@ -25,6 +25,11 @@ public interface MessageDAO {
     Optional<Message> findById(String chatId, String messageId);
 
     /**
+     * Finds the latest message in a chat by descending timestamp ordering.
+     */
+    Optional<Message> findLatestMessage(String chatId);
+
+    /**
      * Lists messages in descending order with an optional cursor.
      */
     List<Message> listMessages(String chatId, int limit, String beforeCursor);

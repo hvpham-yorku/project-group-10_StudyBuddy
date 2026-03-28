@@ -9,6 +9,7 @@ import {
   Users, Circle, X, File, Image as ImageIcon, Link as LinkIcon
 } from "lucide-react";
 import { currentUser } from "../data/mockData";
+import { DEV_ACTOR_STORAGE_KEY, getAuthToken } from "../lib/auth";
 
 type UiMessageType = "text" | "link" | "file";
 
@@ -44,8 +45,6 @@ function formatTypingLabel(names: string[]) {
   return `${names[0]} and ${names.length - 1} others are typing...`;
 }
 
-const DEV_ACTOR_KEY = "studybuddy.dev.actorId";
-
 export default function Chat() {
   const [localChats, setLocalChats] = useState<any[]>([]);
   const knownMembers = [currentUser, ...localChats.flatMap((chat) => chat.members || [])].reduce((acc: any[], member: any) => {
@@ -68,7 +67,7 @@ export default function Chat() {
   const apiUrl = (path: string) => `${API_BASE}${path}`;
   const [devActorId, setDevActorId] = useState<string>(() => {
     if (typeof window === "undefined") return currentUser.id;
-    return window.sessionStorage.getItem(DEV_ACTOR_KEY) || currentUser.id;
+    return window.sessionStorage.getItem(DEV_ACTOR_STORAGE_KEY) || currentUser.id;
   });
 
   const [activeUser, setActiveUser] = useState<any>(currentUser);
@@ -119,6 +118,7 @@ export default function Chat() {
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const typingPollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const latestMessageEpochByChatId = useRef<Record<string, number>>({});
 
   const selectedChat = localChats.find((c) => c.id === selectedChatId);
 
@@ -128,17 +128,20 @@ export default function Chat() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && activeUser?.id) {
-      window.sessionStorage.setItem(DEV_ACTOR_KEY, activeUser.id);
+      window.sessionStorage.setItem(DEV_ACTOR_STORAGE_KEY, activeUser.id);
     }
     setChatBackendIds({});
     setTypingUserIds([]);
     setIsTyping(false);
   }, [activeUser?.id]);
 
-  const authHeaders = {
+  const token = getAuthToken();
+  const authHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("studyBuddyToken") || activeUser?.id}`,
   };
+  if (token) {
+    authHeaders.Authorization = `Bearer ${token}`;
+  }
 
   const loadRealChats = async () => {
     if (!activeUser || !activeUser.id) return; // FIXED: Removed the ID trap!
@@ -169,7 +172,9 @@ export default function Chat() {
       let directChatsList: any[] = [];
       let connectionsData: any[] = [];
       try {
-        const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`);
+        const connRes = await fetch(`/api/connections?userId=${encodeURIComponent(activeUser.id)}`, {
+          headers: authHeaders
+        });
         if (connRes.ok) {
           connectionsData = await connRes.json();
           directChatsList = connectionsData.map((c: any) => ({
@@ -187,7 +192,9 @@ export default function Chat() {
       // 2. Fetch Events (Group Chats)
       let eventChatsList: any[] = [];
       try {
-        const eventsRes = await fetch(`/api/events`);
+        const eventsRes = await fetch(`/api/events`, {
+          headers: authHeaders
+        });
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           const myEvents = eventsData.filter((e: any) => 
@@ -245,9 +252,23 @@ export default function Chat() {
 
   useEffect(() => {
     void loadRealChats();
-    const interval = setInterval(() => { void loadRealChats(); }, 5000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      void loadRealChats();
+    }, 15000);
     return () => clearInterval(interval);
   }, [activeUser?.id]);
+
+  const extractLatestMessageEpoch = (messages: any[]) => {
+    let latest = 0;
+    for (const message of messages || []) {
+      const parsed = Date.parse(String(message?.timestamp || ""));
+      if (!Number.isNaN(parsed) && parsed > latest) {
+        latest = parsed;
+      }
+    }
+    return latest;
+  };
 
   const mapMessageToUi = (chat: any, apiMessage: any) => {
     const sender = chat.members.find((member: any) => member.id === apiMessage.senderId) as any;
@@ -313,9 +334,17 @@ export default function Chat() {
 
       const payload = await response.json();
       const pageMessages = (payload.messages || []).map((msg: any) => mapMessageToUi(chat, msg)).reverse();
+      const latestEpoch = extractLatestMessageEpoch(pageMessages);
 
       setNextCursor(payload.nextCursor || null);
       setHasMoreMessages(Boolean(payload.hasMore));
+
+      if (latestEpoch > 0) {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          latestEpoch
+        );
+      }
 
       setLocalChats((prev) =>
         prev.map((existing) => existing.id === chat.id ? {
@@ -331,12 +360,60 @@ export default function Chat() {
     }
   };
 
+  const pollMessagesIfChanged = async (chat: any) => {
+    if (!chat) return;
+
+    try {
+      const backendChatId = await ensureBackendChat(chat);
+      const sinceEpochMillis = latestMessageEpochByChatId.current[chat.id] || 0;
+      const params = new URLSearchParams({ sinceEpochMillis: String(sinceEpochMillis) });
+
+      const response = await fetch(apiUrl(`/api/chats/${backendChatId}/messages/sync?${params.toString()}`), {
+        headers: authHeaders,
+      });
+
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      if (typeof payload.latestTimestampEpochMillis === "number") {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          payload.latestTimestampEpochMillis
+        );
+      }
+
+      if (payload.changed) {
+        await loadMessages(chat, undefined, false, true);
+      }
+    } catch {
+      // Silent background polling failures should not interrupt chat UX.
+    }
+  };
+
   useEffect(() => {
     const chat = localChats.find((c) => c.id === selectedChatId);
     if (!chat) return;
-    void loadMessages(chat);
-    const interval = setInterval(() => { void loadMessages(chat, undefined, false, true); }, 3000);
-    return () => clearInterval(interval);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const schedule = () => {
+      const nextIntervalMs = document.hidden ? 30000 : 10000;
+      timeoutId = setTimeout(async () => {
+        if (cancelled) return;
+        await pollMessagesIfChanged(chat);
+        if (!cancelled) schedule();
+      }, nextIntervalMs);
+    };
+
+    void loadMessages(chat).then(() => {
+      if (!cancelled) schedule();
+    });
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [selectedChatId, activeUser?.id]);
 
   const sendTypingStatus = async (chat: any, typing: boolean) => {
@@ -389,6 +466,14 @@ export default function Chat() {
 
       const apiMessage = await response.json();
       const newMsg = mapMessageToUi(chat, apiMessage);
+
+      const sentAtEpoch = Date.parse(String(newMsg.timestamp || ""));
+      if (!Number.isNaN(sentAtEpoch)) {
+        latestMessageEpochByChatId.current[chat.id] = Math.max(
+          latestMessageEpochByChatId.current[chat.id] || 0,
+          sentAtEpoch
+        );
+      }
 
       setLocalChats((prev) => prev.map((existing) => existing.id === selectedChatId ? {
           ...existing,

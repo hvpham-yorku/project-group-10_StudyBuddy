@@ -64,10 +64,9 @@ export default function Events() {
         }
         
         // Fetch Events 
-        const response = await fetch("/api/events");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch("/api/events", {
+          headers: token ? { "Authorization": "Bearer " + token } : {}
+        });
         
         const data = await response.json();
         setEvents(data); 
@@ -88,10 +87,27 @@ export default function Events() {
 
   const handleJoin = async (eventId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!student) return; 
-    
+    if (!student) return;
+
     const isCurrentlyJoined = isJoined(eventId);
     const token = localStorage.getItem("studyBuddyToken");
+
+    setEvents((prev) => prev.map((ev) => {
+      if (ev.id === eventId) {
+        const currentAttendees = ev.attendees || [];
+        const newAttendees = isCurrentlyJoined
+          ? currentAttendees.filter((id: string) => id !== student.userId)
+          : [...currentAttendees, student.userId];
+
+        const currentCount = ev.attendeeCount ?? currentAttendees.length;
+        const newCount = isCurrentlyJoined
+          ? Math.max(0, currentCount - 1)
+          : currentCount + 1;
+
+        return { ...ev, attendees: newAttendees, attendeeCount: newCount };
+      }
+      return ev;
+    }));
 
     try {
       const endpoint = isCurrentlyJoined ? "/api/events/leave" : "/api/events/join";
@@ -108,20 +124,8 @@ export default function Events() {
         })
       });
 
-      if (response.ok) {
-        // Instantly update the event directly in the main state array
-        setEvents((prev) => prev.map((ev) => {
-          if (ev.id === eventId) {
-            const currentAttendees = ev.attendees || [];
-            const newAttendees = isCurrentlyJoined
-              ? currentAttendees.filter((id: string) => id !== student.userId)
-              : [...currentAttendees, student.userId];
-            return { ...ev, attendees: newAttendees };
-          }
-          return ev;
-        }));
-      } else {
-        alert("Failed to join the event. Please try again.");
+      if (!response.ok) {
+        console.error("Server rejected the attendance update");
       }
     } catch (err) {
       console.error("Error joining/leaving event:", err);
@@ -281,7 +285,7 @@ export default function Events() {
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full" style={{ fontWeight: 600 }}>
                         {ev.course}
                       </span>
-                      {ev.status === "past" && (
+                      {ev.status === "past" && (isJoined(ev.id) || isMyEvent(ev)) && (
                         <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Past</span>
                       )}
                       {isMyEvent(ev) && (
@@ -311,11 +315,11 @@ export default function Events() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Users size={12} className="shrink-0 text-blue-400" />
-                    <span>{ev.attendees.length}/{ev.maxParticipants} attending</span>
+                    <span>{ev.attendeeCount ?? ev.attendees?.length ?? 0}/{ev.maxParticipants} attending</span>
                     <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="bg-blue-500 h-full rounded-full"
-                        style={{ width: `${Math.min((ev.attendees.length / ev.maxParticipants) * 100, 100)}%` }}
+                        style={{ width: `${Math.min(((ev.attendeeCount ?? ev.attendees?.length ?? 0) / ev.maxParticipants) * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
@@ -378,13 +382,17 @@ export default function Events() {
                     </div>
                   )}
                   {ev.status === "past" && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
-                      className="px-4 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                      style={{ fontWeight: 600 }}
-                    >
-                      Review
-                    </button>
+                    <>
+                      {(isJoined(ev.id) || isMyEvent(ev)) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
+                          className="px-4 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Review
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
         </div>

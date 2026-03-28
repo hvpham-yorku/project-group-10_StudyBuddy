@@ -38,4 +38,10 @@ public class StubAuthRepository implements AuthRepository {
     public String generateResetLink(String email) {
         return "http://localhost:5173/reset-mock";
     }
+
+    @Override
+    public void logoutUser(String authHeader) {
+        // Stub environment: no external token store to revoke.
+        // Simply treat request as successful.
+    }
 }

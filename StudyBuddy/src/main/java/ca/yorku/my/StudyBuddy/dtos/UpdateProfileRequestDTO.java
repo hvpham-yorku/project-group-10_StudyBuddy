@@ -13,6 +13,7 @@ public record UpdateProfileRequestDTO(
         String program,
         String avatar,
         String location,
+        Map<String, Double> exactLocation,
         Boolean twoFAEnabled,
         int autoTimeout,
         Boolean isOnline,

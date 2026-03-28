@@ -38,6 +38,9 @@ public interface StudentRepository {
     // Updates the location of a student based on their input
     void updateLocation(String userId, String location) throws Exception;
 
+    // Updates the exact location coordinates of a student based on their tracked geolocation
+    void updateExactLocation(String userId, Map<String, Double> exactLocation) throws Exception;
+
     // Updates the two-factor authentication setting of a student based on their input
     void updateTwoFAEnabled(String userId, Boolean twoFAEnabled) throws Exception;
 
@@ -52,4 +55,6 @@ public interface StudentRepository {
 
     // Updates events that the user attended
 	void updateAttendedEventIDs(String userId, List<String> attendedEventIds) throws Exception;
+    //reports a user to the admin team for review
+    void reportUser(String reporterUserId, String reportedUserId, String category, String details) throws Exception;
 }

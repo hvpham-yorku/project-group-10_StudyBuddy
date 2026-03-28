@@ -9,13 +9,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.dtos.HostDTO;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 import ca.yorku.my.StudyBuddy.services.EventService;
 import ca.yorku.my.StudyBuddy.services.StudentService;
+import ca.yorku.my.StudyBuddy.mappers.EventMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +28,6 @@ import java.util.concurrent.ExecutionException;
 // This class is responsible for handling HTTP requests related to events.
 // It defines endpoints for creating, retrieving, and deleting events. 
 // It also uses EventService to perform the necessary operations on the Firestore database and returns appropriate HTTP responses based on the outcome of each operation.
-
-
 
 @RestController
 @RequestMapping("/api/events")
@@ -41,6 +42,9 @@ public class EventController {
     
     @Autowired
     private StudentRepository studentService;
+
+    @Autowired
+    private EventMapper eventMapper;
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
@@ -78,112 +82,123 @@ public class EventController {
         }
     }
     
-    // TODO: Make DTO
     @PostMapping("/join")
-    public ResponseEntity<String> joinEvent(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<String> joinEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @RequestBody Map<String, String> payload) {
         try {
-        	// 1. Initiate the service
-    		eventService.joinEvent(payload.get("userId"), payload.get("eventId"));
-        	
-        	// 2. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+            // 1. Verify the token to see who is ACTUALLY making the request
+            String requesterId = authService.verifyFrontendToken(authHeader);
+            String eventId = payload.get("eventId");
+            
+            // 2. Ignore any userId in the payload. Force the requester to only join for themselves.
+            boolean success = eventService.joinEvent(requesterId, eventId);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to join event");
+            }
         } catch (Exception e) {
-        	e.printStackTrace();
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
- // TODO: Make DTO
     @PostMapping("/leave")
-    public ResponseEntity<String> leaveEvent(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<String> leaveEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @RequestBody Map<String, String> payload) {
         try {
-        	// 1. Initiate the service
-    		eventService.leaveEvent(payload.get("userId"), payload.get("eventId"));
-        	
-        	// 2. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body("Left Event!");
+            // 1. Verify who is making the request
+            String requesterId = authService.verifyFrontendToken(authHeader);
+            
+            // 2. Extract who they are trying to remove
+            String targetUserId = payload.get("userId");
+            String eventId = payload.get("eventId");
+            
+            // 3. Verify the user
+            if (!requesterId.equals(targetUserId)) {
+                ca.yorku.my.StudyBuddy.classes.Event event = eventService.getEventById(eventId);
+                
+                if (event == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                }
+                
+                // If they aren't removing themselves and they aren't the host, block request
+                if (!event.getHost().equals(requesterId)) {
+                    System.out.println("SECURITY ALERT: User " + requesterId + " attempted to kick " + targetUserId);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the host can kick users.");
+                }
+            }
+
+            // 4. If they pass the security check, execute the removal
+            boolean success = eventService.leaveEvent(targetUserId, eventId);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.OK).body("Successfully removed from event!");
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to remove from event");
+            }
         } catch (Exception e) {
-        	e.printStackTrace();
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
     @GetMapping("/{eventId}")
-    public ResponseEntity<EventResponseDTO> getEvent(@PathVariable String eventId) {
+    public ResponseEntity<EventResponseDTO> getEvent(
+        @PathVariable String eventId,
+        @RequestHeader(value = "Authorization", required = false) String authHeader) {
     	try {
-    		Event event = eventService.getEventById(eventId);
+    	    Event event = eventService.getEventById(eventId);
     		
-    		Student hostStudent = studentService.getStudent(event.getHost());
-            
-            // Create the HostDTO
-            HostDTO hostDTO = new HostDTO(
-                hostStudent.getUserId(),
-                hostStudent.getFullName(),
-                hostStudent.getAvatar()
-            );
+            String requesterId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                try {
+                    requesterId = authService.verifyFrontendToken(authHeader);
+                } catch (Exception e) {
+                    // Invalid token, treat as anonymous
+                }
+            }
+
+            // --- THE MAGIC HAPPENS HERE ---
+            EventResponseDTO dto = eventMapper.toResponseDTO(event, requesterId);
     		
-    		EventResponseDTO dto = new EventResponseDTO(
-                	event.getId(),
-                	event.getTitle(),
-                	event.getCourse(),
-                	hostDTO,
-                	event.getLocation(),
-                	event.getDate(),
-                	event.getTime(),
-                	event.getDuration(),
-                	event.getDescription(),
-                	event.getMaxParticipants(),
-                	// NULL-SAFETY CHECKS: Never send null arrays to the frontend!
-                	event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
-                	event.getTags() != null ? event.getTags() : new ArrayList<>(),
-                	event.getStatus() != null ? event.getStatus() : "upcoming",
-                	event.getReviews() != null ? event.getReviews() : new ArrayList<>()
-                );
-    		
-    		return ResponseEntity.ok(dto);
+    	    return ResponseEntity.ok(dto);
     	} catch (Exception e) {
-    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    	    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     	}
     }
 
+    // This mapping endpoint allows clients to delete a specific event by sending a DELETE request with the event ID in the URL path and the user ID as a request parameter. 
+    // It returns a no content status if deletion was successful, a forbidden status if the user is not authorized to delete the event, or an error status if there was an issue.
     @GetMapping
-    public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
+    public ResponseEntity<List<EventResponseDTO>> getAllEvents(
+        @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
-            for (Event event : events) {
-                // Fetch the host student details
-                Student hostStudent = studentService.getStudent(event.getHost());
-                
-                // Create the HostDTO
-                HostDTO hostDTO = new HostDTO(
-                    hostStudent.getUserId(),
-                    hostStudent.getFullName(),
-                    hostStudent.getAvatar()
-                );
-
-                // Create the EventResponseDTO with null-safety
-                EventResponseDTO dto = new EventResponseDTO(
-                	event.getId(), event.getTitle(), event.getCourse(),
-                	hostDTO,
-                	event.getLocation(), event.getDate(), event.getTime(),
-                	event.getDuration(), event.getDescription(),
-                	event.getMaxParticipants(), 
-                    event.getAttendees() != null ? event.getAttendees() : new ArrayList<>(),
-                	event.getTags() != null ? event.getTags() : new ArrayList<>(), 
-                    event.getStatus() != null ? event.getStatus() : "upcoming", 
-                    event.getReviews() != null ? event.getReviews() : new ArrayList<>()
-                );
-                eventDTOs.add(dto);
+            String requesterId = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                try {
+                    requesterId = authService.verifyFrontendToken(authHeader);
+                } catch (Exception e) {
+                    // Invalid token, treat as anonymous
+                }
             }
+
+            for (Event event : events) {
+                eventDTOs.add(eventMapper.toResponseDTO(event, requesterId));
+            }
+            
             return ResponseEntity.ok(eventDTOs);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    // This mapping endpoint allows clients to delete a specific event by sending a DELETE request with the event ID in the URL path and the user ID as a request parameter. It returns a no content status if deletion was successful, a forbidden status if the user is not authorized to delete the event, or an error status if there was an issue.
 
     @DeleteMapping("/{eventId}")
     public ResponseEntity<Void> deleteEvent(
@@ -202,6 +217,80 @@ public class EventController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/{eventId}/reviews")
+    public ResponseEntity<?> addReview(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable String eventId,
+            @RequestBody Map<String, Object> payload) {
+
+        try {
+            String userId = authService.verifyFrontendToken(authHeader);
+            
+            int rating = 5;
+            if (payload.containsKey("rating")) {
+                rating = Integer.parseInt(String.valueOf(payload.get("rating")));
+            }
+            String text = String.valueOf(payload.getOrDefault("text", ""));
+
+            Review review = new Review(
+                "r_" + System.currentTimeMillis(),
+                userId,
+                rating,
+                text,
+                java.time.LocalDate.now().toString(),
+                new ArrayList<>()
+            );
+
+            boolean success = eventService.addReview(eventId, review);
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(review);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); 
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/{eventId}/reviews/{reviewId}/comments")
+    public ResponseEntity<?> addReviewComment(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable String eventId,
+            @PathVariable String reviewId,
+            @RequestBody Map<String, Object> payload) {
+
+        try {
+            String userId = authService.verifyFrontendToken(authHeader);
+            
+            // Text Extraction
+            String text = String.valueOf(payload.getOrDefault("text", ""));
+
+            if (text == null || text.trim().isEmpty() || text.equals("null")) {
+                return ResponseEntity.badRequest().body("Comment text cannot be empty");
+            }
+
+            Comment comment = new Comment(
+                "c_" + System.currentTimeMillis(),
+                userId,
+                text,
+                java.time.LocalDate.now().toString()
+            );
+
+            boolean success = eventService.addCommentToReview(eventId, reviewId, comment);
+            
+            if (success) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(comment);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event or Review not found");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
         }
     }
     

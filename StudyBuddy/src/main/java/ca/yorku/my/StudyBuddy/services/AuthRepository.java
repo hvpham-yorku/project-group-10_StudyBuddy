@@ -5,4 +5,5 @@ public interface AuthRepository {
     String loginUser(String email, String password) throws Exception;
     String verifyFrontendToken(String authHeader) throws Exception;
     String generateResetLink(String email) throws Exception;
+    void logoutUser(String authHeader) throws Exception;
 }
