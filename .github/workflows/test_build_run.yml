@@ -19,12 +19,11 @@ jobs:
         cache: maven
 
     # # Step 2. Run the unit tests
-    # SKIP TEMPORARILY TO SPEED UP BUILD, BUT THIS SHOULD BE RE-ENABLED BEFORE FINAL SUBMISSION
-    # - name: Unit Tests
-    #   run: |
-    #     cd ./StudyBuddy
-    #     chmod +x mvnw
-    #     ./mvnw test
+    - name: Unit Tests
+      run: |
+        cd ./StudyBuddy
+        chmod +x mvnw
+        ./mvnw test
 
     # Step 3. Build the Docker Image
     - name: Docker Build
