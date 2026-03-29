@@ -306,7 +306,7 @@ public class AuthService implements AuthRepository {
         try {
             FirebaseAuth.getInstance().getUserByEmail(email);
         } catch (Exception e) {
-            throw new IllegalArgumentException("No account found with this YorkU email.");
+	    return "Request processed.";
         }
 
         // 2. Ask Firebase to send the password reset email itself (no SMTP required)

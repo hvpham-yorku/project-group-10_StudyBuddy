@@ -61,12 +61,11 @@ public class AuthController {
 
         try {
             authService.generateResetLink(email);
-            return ResponseEntity.ok("Reset link generated for " + email);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("An unexpected error occurred.");
+	    System.err.println("Reset password error: " + e.getMessage());
         }
+
+	return ResponseEntity.ok("If this email is registered, a reset link has been sent.");
     }
 
     /**

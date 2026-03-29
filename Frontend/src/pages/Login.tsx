@@ -93,7 +93,7 @@ export default function Login() {
         method: "POST",
       });
       if (response.ok) {
-        setResetMessage("Reset link sent! Check your YorkU inbox.");
+        setResetMessage("If this email is registered, a reset link has been sent to your YorkU inbox.");
       } else {
         const msg = await response.text();
         setError(msg || "Could not send reset link.");
