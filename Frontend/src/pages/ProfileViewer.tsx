@@ -18,7 +18,16 @@ export default function ProfileViewer() {
     async function load() {
       if (!id) return;
       try {
-        const res = await fetch(`/api/studentcontroller/${id}`);
+        // Prevents showing private info without authorization
+        const token = localStorage.getItem("studyBuddyToken");
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`/api/studentcontroller/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (res.ok) {
           const data = await res.json();
           setStudent(data);

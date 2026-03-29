@@ -294,6 +294,20 @@ export default function Network() {
     });
   }, [connections, search]);
 
+  // Filter in the "Find People" tab as well
+  const filteredAvailableUsers = useMemo(() => {
+    const q = search.toLowerCase().trim();
+
+    return availableUsers.filter((u) => {
+      const name = (u.fullName ?? u.userId).toLowerCase();
+      const program = (u.program ?? "").toLowerCase();
+      const courses = (u.courses ?? []).some((co) => co.toLowerCase().includes(q));
+
+      if (!q) return true;
+      return name.includes(q) || program.includes(q) || courses;
+    });
+  }, [availableUsers, search]);
+
   const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.userId) && !declined.includes(r.userId));
 
   const onlineNow = filteredConnections.filter((c) => computePresence(c).isOnline);
@@ -503,7 +517,7 @@ export default function Network() {
       {/* Find People Tab */}
       {activeTab === "find" && (
         <div className="space-y-3">
-          {availableUsers.map((c) => {
+          {filteredAvailableUsers.map((c) => {
             const displayName = c.fullName ?? c.userId;
             return (
               <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
@@ -542,6 +556,12 @@ export default function Network() {
               </div>
             );
           })}
+          {filteredAvailableUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users size={36} className="text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">No people found</p>
+            </div>
+          )}
         </div>
       )}
 
