@@ -23,6 +23,7 @@ import ca.yorku.my.StudyBuddy.dtos.JoinEventRequest;
 import ca.yorku.my.StudyBuddy.dtos.LeaveEventRequest;
 import ca.yorku.my.StudyBuddy.dtos.AddReviewRequest;
 import ca.yorku.my.StudyBuddy.dtos.AddCommentRequest;
+import ca.yorku.my.StudyBuddy.dtos.EventCreateRequest;
 import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.mappers.EventMapper;
@@ -68,36 +69,40 @@ public class EventController {
 
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
-    public ResponseEntity<EventResponseDTO> createEvent(@RequestHeader("Authorization") String authHeader, @RequestBody EventResponseDTO eventDTO) {
+    public ResponseEntity<EventResponseDTO> createEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @Valid @RequestBody EventCreateRequest eventRequest) {
         try {
-        	
-        	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
-        	
+        	// 1. Verify the requester's identity
         	String hostId = authService.verifyFrontendToken(authHeader);
         	
+        	// 2. Create new event from the validated request DTO
         	Event newEvent = new Event(
-        		eventDTO.id(),
-        		eventDTO.title(),
-        		eventDTO.course(),
+        		"event_" + System.currentTimeMillis(),
+        		eventRequest.title(),
+        		eventRequest.course(),
         		hostId,
-        		eventDTO.location(),
-        		eventDTO.date(),
-        		eventDTO.time(),
-        		eventDTO.duration(),
-        		eventDTO.description(),
-        		eventDTO.maxParticipants(),
-        		eventDTO.attendees(),
-        		eventDTO.tags(),
-        		eventDTO.status(),
-        		eventDTO.reviews()
+        		eventRequest.location(),
+        		eventRequest.date(),
+        		eventRequest.time(),
+        		eventRequest.duration(),
+        		eventRequest.description(),
+        		eventRequest.maxParticipants(),
+        		new ArrayList<>(),  // Initialize empty attendees list
+        		eventRequest.tags(),
+        		"ACTIVE",  // Default status
+        		new ArrayList<>()  // Initialize empty reviews list
         	);
         	
-        	// 2. Store the event in firebase
+        	// 3. Store the event in firebase
         	eventService.createEvent(newEvent);
-        		
-        	// 3. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body(eventDTO);
+        	
+        	// 4. Convert to response DTO and return with the host's ID
+        	EventResponseDTO responseDTO = eventMapper.toResponseDTO(newEvent, hostId);
+    		
+        	return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
