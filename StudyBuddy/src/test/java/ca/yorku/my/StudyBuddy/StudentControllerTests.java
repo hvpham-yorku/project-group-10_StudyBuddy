@@ -5,17 +5,16 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
-import ca.yorku.my.StudyBuddy.StubDatabase;
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.controllers.StudentController;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
@@ -44,9 +43,11 @@ class StudentControllerTests {
         s.setProgram("Computer Science");
         s.setCourses(List.of("EECS 2311", "EECS 3311"));
 
+        when(authService.verifyFrontendToken("Bearer 123")).thenReturn("123");
         when(studentRepository.getStudent("123")).thenReturn(s);
 
-        Student result = studentController.getStudent("123");
+        ResponseEntity<?> response = studentController.getStudent("Bearer 123", "123");
+        Student result = (Student) response.getBody();
 
         assert result.getFirstName().equals("John");
         assert result.getProgram().equals("Computer Science");
