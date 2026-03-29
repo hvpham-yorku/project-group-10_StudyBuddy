@@ -482,8 +482,6 @@ I then attempt to search for a specific user by typing “Mr”, where only “M
 
 1. Security Bug: Unauthenticated Connection Endpoints (ID-62)
 
-
-Code Smell / Bug:
 Location: ConnectionsController.java
 The getConnections() endpoint accepted userId directly from the client without verifying the caller's identity. Any user could request connections for arbitrary users.
 
@@ -520,8 +518,6 @@ Commit Message (comment): "Security fix (ID-62): Add authorization checks to all
 
 2. Security Bug: Unauthenticated Presence (ID-62)
 
-
-Code Smell / Bug:
 Location: PresenceController.java
 The getPresence() and heartbeat() endpoints lacked authentication. A person could query who is online/offline and build activity profiles without authorization.
 
@@ -544,8 +540,6 @@ Commit Message (comment): "Security fix (ID-62): Add authorization checks to pre
 
 3. Code Smell: TODO Implementation In Reportuser() (ID-97)
 
-
-Code Smell / Bug:
 Location: StubStudentRepository.java
 The reportUser() method was a TODO stub returning null, making it impossible to test the user reporting system (story ID-97).
 
@@ -575,8 +569,6 @@ Commit Message (comment): "Feature: Implement reportUser() for user reporting sy
 
 4. Code Smell: Null Returns In Connection Service (ID-85)
 
-
-Code Smell / Bug:
 Location: ConnectionsService.java
 getPendingRequests() and getSentRequests() returned null instead of empty lists, forcing callers to do null checks.
 
@@ -600,7 +592,6 @@ Commit Message (comment): "Feature: Implement pending/sent request queries (ID-8
 
 5. Code Smell: Array Initialization Syntax (ID-86)
 
-Code Smell / Bug:
 Location: PresenceService.java
 Array initialization used verbose syntax causing compiler warnings: new DocumentReference[docRefs.size()]
 
@@ -621,8 +612,6 @@ Commit Message (comment): "Refactor: Simplify array initialization in PresenceSe
 
 6. Code Smell: Duplicate Code In Studentcontroller (ID-62)
 
-
-Code Smell / Bug:
 Location: StudentController.java, updateProfile() method
 The courses update block was duplicated, executing the same update twice unnecessarily.
 
@@ -645,7 +634,6 @@ Commit Message (comment): "Code smell: Remove duplicate course update in Student
 7. Code Smell: Debug Logging In Frontend (ID-85/ID-86)
 
 
-Code Smell / Bug:
 Location: Network.tsx
 Temporary debug console.log left in production code: console.log("authReady:", authReady, "uid:", uid)
 
@@ -692,10 +680,9 @@ Commit Message (comment): "Refactor: Centralize API auth and fetch logic (ID-62)
 ---
 
 
-9. Typescript Error: Missing onRemove Prop Type (Network.tsx)
+9. Code Bug: Typescript Error: Missing onRemove Prop Type (Network.tsx)
 
 
-Code Smell / Bug:
 Location: Network.tsx, ConnectionCard component
 The component accepted onRemove prop but didn't define it in the TypeScript interface. The IDE couldn't autocomplete and the compiler failed.
 
@@ -727,5 +714,6 @@ Total Commits Made:
 5. Refactor: Centralize API auth and fetch logic (ID-62)
 6. Refactor: Simplify array initialization in PresenceService
 7. Code smell: Remove temporary debug logging from Network.tsx
-8. TypeScript: Add missing onRemove prop type to ConnectionCard
+8. Code smell: Repeated fetch request code in frontend (ID-62)
+9. Code Bug: TypeScript: Add missing onRemove prop type to ConnectionCard
 
