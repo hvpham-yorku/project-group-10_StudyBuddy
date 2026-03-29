@@ -51,6 +51,21 @@ public class EventController {
     @Autowired
     private EventMapper eventMapper;
 
+    /**
+     * Helper method to extract the requesterId from the authorization header.
+     * Returns null if the header is missing or invalid.
+     */
+    private String extractRequesterId(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                return authService.verifyFrontendToken(authHeader);
+            } catch (Exception e) {
+                // Invalid token, treat as anonymous
+            }
+        }
+        return null;
+    }
+
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
     public ResponseEntity<EventResponseDTO> createEvent(@RequestHeader("Authorization") String authHeader, @RequestBody EventResponseDTO eventDTO) {
@@ -157,14 +172,7 @@ public class EventController {
     	try {
     	    Event event = eventService.getEventById(eventId);
     		
-            String requesterId = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                try {
-                    requesterId = authService.verifyFrontendToken(authHeader);
-                } catch (Exception e) {
-                    // Invalid token, treat as anonymous
-                }
-            }
+            String requesterId = extractRequesterId(authHeader);
 
             // --- THE MAGIC HAPPENS HERE ---
             EventResponseDTO dto = eventMapper.toResponseDTO(event, requesterId);
@@ -184,14 +192,7 @@ public class EventController {
             List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
-            String requesterId = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                try {
-                    requesterId = authService.verifyFrontendToken(authHeader);
-                } catch (Exception e) {
-                    // Invalid token, treat as anonymous
-                }
-            }
+            String requesterId = extractRequesterId(authHeader);
 
             for (Event event : events) {
                 eventDTOs.add(eventMapper.toResponseDTO(event, requesterId));
@@ -279,6 +280,34 @@ public class EventController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event or Review not found");
             }
 
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieve all reviews for a specific event.
+     * Provides cleaner API separation than embedding reviews in event response.
+     */
+    @GetMapping("/{eventId}/reviews")
+    public ResponseEntity<?> getEventReviews(
+            @PathVariable String eventId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Event event = eventService.getEventById(eventId);
+            
+            if (event == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+            }
+            
+            // Return the reviews directly - frontend can now query reviews separately
+            List<Review> reviews = event.getReviews();
+            if (reviews == null) {
+                reviews = new ArrayList<>();
+            }
+            
+            return ResponseEntity.ok(reviews);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
