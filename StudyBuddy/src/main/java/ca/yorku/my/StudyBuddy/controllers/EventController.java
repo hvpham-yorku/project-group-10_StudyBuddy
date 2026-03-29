@@ -30,6 +30,7 @@ import ca.yorku.my.StudyBuddy.mappers.EventMapper;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.EventRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.constants.EventConstants;
 
 // This class is responsible for handling HTTP requests related to events.
 // It defines endpoints for creating, retrieving, and deleting events. 
@@ -57,7 +58,7 @@ public class EventController {
      * Returns null if the header is missing or invalid.
      */
     private String extractRequesterId(String authHeader) {
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith(EventConstants.BEARER_PREFIX)) {
             try {
                 return authService.verifyFrontendToken(authHeader);
             } catch (Exception e) {
@@ -78,7 +79,7 @@ public class EventController {
         	
         	// 2. Create new event from the validated request DTO
         	Event newEvent = new Event(
-        		"event_" + System.currentTimeMillis(),
+        		EventConstants.EVENT_ID_PREFIX + System.currentTimeMillis(),
         		eventRequest.title(),
         		eventRequest.course(),
         		hostId,
@@ -90,7 +91,7 @@ public class EventController {
         		eventRequest.maxParticipants(),
         		new ArrayList<>(),  // Initialize empty attendees list
         		eventRequest.tags(),
-        		"ACTIVE",  // Default status
+        		EventConstants.EVENT_STATUS_ACTIVE,  // Default status
         		new ArrayList<>()  // Initialize empty reviews list
         	);
         	
@@ -119,9 +120,9 @@ public class EventController {
             boolean success = eventService.joinEvent(requesterId, request.eventId());
             
             if (success) {
-                return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+                return ResponseEntity.status(HttpStatus.CREATED).body(EventConstants.SUCCESS_JOINED_EVENT);
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to join event");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(EventConstants.ERROR_FAILED_TO_JOIN);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -146,13 +147,13 @@ public class EventController {
                 ca.yorku.my.StudyBuddy.classes.Event event = eventService.getEventById(eventId);
                 
                 if (event == null) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
                 }
                 
                 // If they aren't removing themselves and they aren't the host, block request
                 if (!event.getHost().equals(requesterId)) {
-                    System.out.println("SECURITY ALERT: User " + requesterId + " attempted to kick " + targetUserId);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the host can kick users.");
+                    System.out.println(String.format(EventConstants.ERROR_SECURITY_ALERT_FORMAT, requesterId, targetUserId));
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(EventConstants.ERROR_ONLY_HOST_CAN_KICK);
                 }
             }
 
@@ -160,9 +161,9 @@ public class EventController {
             boolean success = eventService.leaveEvent(targetUserId, eventId);
             
             if (success) {
-                return ResponseEntity.status(HttpStatus.OK).body("Successfully removed from event!");
+                return ResponseEntity.status(HttpStatus.OK).body(EventConstants.SUCCESS_LEFT_EVENT);
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to remove from event");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(EventConstants.ERROR_FAILED_TO_LEAVE);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -240,7 +241,7 @@ public class EventController {
             String userId = authService.verifyFrontendToken(authHeader);
             
             Review review = new Review(
-                "r_" + System.currentTimeMillis(),
+                EventConstants.REVIEW_ID_PREFIX + System.currentTimeMillis(),
                 userId,
                 request.rating(),
                 request.text().trim(),
@@ -252,11 +253,11 @@ public class EventController {
             if (success) {
                 return ResponseEntity.status(HttpStatus.CREATED).body(review);
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
             }
         } catch (Exception e) {
             e.printStackTrace(); 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
         }
     }
     
@@ -271,7 +272,7 @@ public class EventController {
             String userId = authService.verifyFrontendToken(authHeader);
 
             Comment comment = new Comment(
-                "c_" + System.currentTimeMillis(),
+                EventConstants.COMMENT_ID_PREFIX + System.currentTimeMillis(),
                 userId,
                 request.text().trim(),
                 java.time.LocalDate.now().toString()
@@ -282,12 +283,12 @@ public class EventController {
             if (success) {
                 return ResponseEntity.status(HttpStatus.CREATED).body(comment);
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event or Review not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_REVIEW_NOT_FOUND);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
         }
     }
 
@@ -303,7 +304,7 @@ public class EventController {
             Event event = eventService.getEventById(eventId);
             
             if (event == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
             }
             
             // Return the reviews directly - frontend can now query reviews separately
@@ -315,7 +316,7 @@ public class EventController {
             return ResponseEntity.ok(reviews);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
         }
     }
     
