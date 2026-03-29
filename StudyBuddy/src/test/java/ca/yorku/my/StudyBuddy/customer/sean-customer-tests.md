@@ -707,13 +707,13 @@ Commit Message (comment): "TypeScript: Add missing onRemove prop type to Connect
 Total Commits Made:
 
 
-1. Security fix (ID-62): Add authorization checks to all connection endpoints
-2. Feature: Implement reportUser() for user reporting system (ID-97)
-3. Feature: Implement pending/sent request queries (ID-85)
+1. Code bug: Security fix (ID-62): Add authorization checks to all connection endpoints
+2. Code bug: Feature: Implement reportUser() for user reporting system (ID-97)
+3. Code smell: Feature: Implement pending/sent request queries (ID-85)
 4. Code smell: Remove duplicate course update in StudentController
-5. Refactor: Centralize API auth and fetch logic (ID-62)
-6. Refactor: Simplify array initialization in PresenceService
+5. Code smell: Refactor: Centralize API auth and fetch logic (ID-62)
+6. Code smell: Refactor: Simplify array initialization in PresenceService
 7. Code smell: Remove temporary debug logging from Network.tsx
 8. Code smell: Repeated fetch request code in frontend (ID-62)
-9. Code Bug: TypeScript: Add missing onRemove prop type to ConnectionCard
+9. Code bug: TypeScript: Add missing onRemove prop type to ConnectionCard
 
