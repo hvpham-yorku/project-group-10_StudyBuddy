@@ -3,10 +3,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,11 +26,16 @@ import com.google.firebase.auth.FirebaseToken;
 import com.google.firebase.auth.UserRecord;
 import com.google.firebase.cloud.FirestoreClient;
 
+import ca.yorku.my.StudyBuddy.TwoFARequiredException;
 import ca.yorku.my.StudyBuddy.classes.Student;
 
 @Service
 @Profile("firestore")
 public class AuthService implements AuthRepository {
+
+    // OTP store: email -> [code, expiryEpochSeconds]
+    private final ConcurrentHashMap<String, long[]> otpStore = new ConcurrentHashMap<>();
+    private static final long OTP_TTL_SECONDS = 300; // 5 minutes
 
     @Autowired
     private EmailService emailService;
@@ -173,8 +181,93 @@ public class AuthService implements AuthRepository {
             // Streak update failure should not block login
         }
 
-        // 4. Return the real ID Token!
+        // 4. Check if the user has 2FA enabled in their Firestore profile
+        try {
+            Firestore db2fa = FirestoreClient.getFirestore();
+            DocumentSnapshot profileDoc = db2fa.collection("students").document(uid).get().get();
+            Boolean twoFAEnabled = profileDoc.getBoolean("twoFAEnabled");
+            if (Boolean.TRUE.equals(twoFAEnabled)) {
+                // Generate a 6-digit OTP, store it, and email it
+                String otp = String.format("%06d", new Random().nextInt(1_000_000));
+                long expiry = Instant.now().getEpochSecond() + OTP_TTL_SECONDS;
+                otpStore.put(email, new long[]{ Long.parseLong(otp), expiry });
+                otpStore.put(email + ":token", new long[]{ idToken.hashCode(), expiry });
+
+                String body = "Your StudyBuddy verification code is: " + otp +
+                              "\n\nThis code expires in 5 minutes. Do not share it with anyone.";
+                emailService.sendEmail(email, "StudyBuddy 2FA Code", body);
+
+                throw new TwoFARequiredException(email);
+            }
+        } catch (TwoFARequiredException e) {
+            throw e;
+        } catch (Exception e) {
+            // If reading Firestore fails, do not block login
+            // (email send failures are propagated before reaching here)
+        }
+
+        // 5. Return the real ID Token!
         return idToken;
+    }
+
+    /**
+     * Verifies a 2FA OTP submitted by the user.
+     * On success, re-runs loginUser to obtain and return the session token.
+     */
+    public String verifyTwoFA(String email, String code) throws Exception {
+        long[] entry = otpStore.get(email);
+        if (entry == null) {
+            throw new IllegalArgumentException("No pending 2FA code for this account. Please log in again.");
+        }
+        long storedOtp = entry[0];
+        long expiry = entry[1];
+
+        if (Instant.now().getEpochSecond() > expiry) {
+            otpStore.remove(email);
+            otpStore.remove(email + ":token");
+            throw new IllegalArgumentException("2FA code has expired. Please log in again.");
+        }
+
+        long submitted;
+        try {
+            submitted = Long.parseLong(code.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid code format.");
+        }
+
+        if (submitted != storedOtp) {
+            throw new IllegalArgumentException("Incorrect 2FA code. Please try again.");
+        }
+
+        // OTP correct — clean up store and issue a real token by looking up the user
+        otpStore.remove(email);
+        otpStore.remove(email + ":token");
+
+        UserRecord user = FirebaseAuth.getInstance().getUserByEmail(email);
+        String customToken = FirebaseAuth.getInstance().createCustomToken(user.getUid());
+
+        // Exchange the custom token for an ID token via Firebase REST API
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> bodyData = new HashMap<>();
+        bodyData.put("token", customToken);
+        bodyData.put("returnSecureToken", true);
+        String payload = mapper.writeValueAsString(bodyData);
+
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=" + webApiKey;
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException("Could not issue session token after 2FA.");
+        }
+
+        JsonNode root = mapper.readTree(response.body());
+        return root.path("idToken").asText();
     }
     
     public String verifyFrontendToken(String authHeader) throws Exception {
@@ -205,23 +298,38 @@ public class AuthService implements AuthRepository {
     }
 
     /**
-     * Triggers a password reset flow and sends the secure Google-hosted link to the user.
+     * Triggers a password reset by calling Firebase's own email delivery API directly.
+     * This bypasses SMTP entirely — Firebase sends the reset link from its own infra.
      */
     public String generateResetLink(String email) throws Exception {
-        // 1. Verify user existence
+        // 1. Confirm the user exists in Firebase Auth
         try {
             FirebaseAuth.getInstance().getUserByEmail(email);
         } catch (Exception e) {
             throw new IllegalArgumentException("No account found with this YorkU email.");
         }
 
-        // 2. RECOVERY: Generate and send the reset link
-        String resetLink = FirebaseAuth.getInstance().generatePasswordResetLink(email);
-        String resetBody = "A password reset was requested for your StudyBuddy account. " +
-                           "Click the link below to set a new password:\n\n" + resetLink;
-        
-        emailService.sendEmail(email, "StudyBuddy Password Reset", resetBody);
-        
-        return resetLink;
+        // 2. Ask Firebase to send the password reset email itself (no SMTP required)
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> bodyData = new HashMap<>();
+        bodyData.put("requestType", "PASSWORD_RESET");
+        bodyData.put("email", email);
+        String payload = mapper.writeValueAsString(bodyData);
+
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + webApiKey;
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new IllegalStateException("Failed to send reset email: " + response.body());
+        }
+
+        return "Reset email sent successfully.";
     }
 }

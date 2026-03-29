@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { BookOpen, Eye, EyeOff, AlertCircle, Mail } from "lucide-react";
+import { BookOpen, Eye, EyeOff, AlertCircle, Mail, ArrowLeft } from "lucide-react";
 import { setAuthToken } from "../lib/auth";
 
 export default function Login() {
@@ -15,6 +15,9 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   // "Reverse Guard" -- If user does have valid token, then kick them to the dashboard
   useEffect(() => {
@@ -49,7 +52,11 @@ export default function Login() {
         body: JSON.stringify({ email: email, password: password }),
       });
 
-      if (response.ok) {
+      if (response.status === 202) {
+        // Status 202: 2FA required — OTP has been emailed.
+        // Must check BEFORE response.ok because 202 is also a 2xx (ok) status.
+        navigate("/2fa", { state: { email: email, mode: "otp" } });
+      } else if (response.ok) {
         // Status 200: Verified and logged in!
         const data = await response.text();
 
@@ -60,8 +67,8 @@ export default function Login() {
         window.location.assign("/dashboard");
 
       } else if (response.status === 403) {
-        // Status 403: Backend says email is not verified. Send them to 2FA!
-        navigate("/2fa", { state: { email: email } });
+        // Status 403: Backend says email is not verified. Send them to email verification.
+        navigate("/2fa", { state: { email: email, mode: "verify" } });
       } else {
         setError("Invalid credentials or user not found.");
       }
@@ -71,6 +78,96 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setResetMessage("");
+    if (!validateDomain(resetEmail)) {
+      setError("Only @my.yorku.ca or @yorku.ca email addresses are allowed.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/auth/reset-password?email=${encodeURIComponent(resetEmail)}`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        setResetMessage("Reset link sent! Check your YorkU inbox.");
+      } else {
+        const msg = await response.text();
+        setError(msg || "Could not send reset link.");
+      }
+    } catch {
+      setError("Could not connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (resetMode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+        </div>
+        <div className="w-full max-w-sm relative">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500 flex items-center justify-center mb-3 shadow-lg">
+              <BookOpen size={32} className="text-white" />
+            </div>
+            <h1 className="text-white" style={{ fontSize: "1.75rem", fontWeight: 700 }}>StudyBuddy</h1>
+          </div>
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            <button onClick={() => { setResetMode(false); setError(""); setResetMessage(""); }}
+              className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-4">
+              <ArrowLeft size={15} /> Back to login
+            </button>
+            <h2 className="text-slate-800 mb-1" style={{ fontSize: "1.25rem", fontWeight: 700 }}>Reset Password</h2>
+            <p className="text-slate-500 text-sm mb-6">Enter your YorkU email and we'll send a reset link.</p>
+            {error && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+                <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            )}
+            {resetMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">
+                <p className="text-xs text-green-700">{resetMessage}</p>
+              </div>
+            )}
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-600 mb-1.5" style={{ fontWeight: 500 }}>
+                  York University Email
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="you@my.yorku.ca"
+                    className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50"
+                    required
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors disabled:opacity-60"
+                style={{ fontWeight: 600 }}
+              >
+                {loading ? "Sending..." : "Send Reset Link"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
@@ -151,7 +248,7 @@ export default function Login() {
                 <input type="checkbox" className="rounded border-slate-300 accent-blue-600" />
                 <span className="text-xs text-slate-500">Remember me</span>
               </label>
-              <button type="button" className="text-xs text-blue-600 hover:underline">Forgot password?</button>
+              <button type="button" onClick={() => { setResetMode(true); setResetEmail(email); setError(""); }} className="text-xs text-blue-600 hover:underline">Forgot password?</button>
             </div>
 
             <button

@@ -14,6 +14,8 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import ca.yorku.my.StudyBuddy.TwoFARequiredException;
+
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -189,5 +191,100 @@ class AuthControllerUnitTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Login Failed: User not found."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login returns 202 when 2FA is required")
+    void login_twoFARequired_returns202() throws Exception {
+        Map<String, String> body = Map.of(
+                "email", "test@yorku.ca",
+                "password", "Password123!"
+        );
+
+        when(authService.loginUser("test@yorku.ca", "Password123!"))
+                .thenThrow(new TwoFARequiredException("2FA required"));
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isAccepted())
+                .andExpect(content().string("2FA required"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/verify-2fa returns 200 when OTP is valid")
+    void verifyTwoFA_success_returns200() throws Exception {
+        Map<String, String> body = Map.of(
+                "email", "test@yorku.ca",
+                "code", "123456"
+        );
+
+        when(authService.verifyTwoFA("test@yorku.ca", "123456"))
+                .thenReturn("session-token-abc");
+
+        mvc.perform(post("/api/auth/verify-2fa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("session-token-abc"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/verify-2fa returns 400 when OTP is incorrect")
+    void verifyTwoFA_invalidCode_returns400() throws Exception {
+        Map<String, String> body = Map.of(
+                "email", "test@yorku.ca",
+                "code", "000000"
+        );
+
+        when(authService.verifyTwoFA("test@yorku.ca", "000000"))
+                .thenThrow(new IllegalArgumentException("Incorrect 2FA code. Please try again."));
+
+        mvc.perform(post("/api/auth/verify-2fa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Incorrect 2FA code. Please try again."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/verify-2fa returns 500 on unexpected error")
+    void verifyTwoFA_serverError_returns500() throws Exception {
+        Map<String, String> body = Map.of(
+                "email", "test@yorku.ca",
+                "code", "123456"
+        );
+
+        when(authService.verifyTwoFA("test@yorku.ca", "123456"))
+                .thenThrow(new RuntimeException("Unexpected server failure"));
+
+        mvc.perform(post("/api/auth/verify-2fa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("2FA verification failed."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password returns 200 when email exists")
+    void resetPassword_success_returns200() throws Exception {
+        when(authService.generateResetLink("test@yorku.ca")).thenReturn("link-sent");
+
+        mvc.perform(post("/api/auth/reset-password")
+                        .param("email", "test@yorku.ca"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Reset link generated for test@yorku.ca"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password returns 404 when email not found")
+    void resetPassword_emailNotFound_returns404() throws Exception {
+        when(authService.generateResetLink("unknown@yorku.ca"))
+                .thenThrow(new IllegalArgumentException("No account found for that email."));
+
+        mvc.perform(post("/api/auth/reset-password")
+                        .param("email", "unknown@yorku.ca"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string("No account found for that email."));
     }
 }

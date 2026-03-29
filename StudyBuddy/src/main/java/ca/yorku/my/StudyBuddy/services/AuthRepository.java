@@ -6,4 +6,5 @@ public interface AuthRepository {
     String verifyFrontendToken(String authHeader) throws Exception;
     String generateResetLink(String email) throws Exception;
     void logoutUser(String authHeader) throws Exception;
+    String verifyTwoFA(String email, String code) throws Exception;
 }
