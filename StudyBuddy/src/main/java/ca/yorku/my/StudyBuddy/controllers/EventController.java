@@ -15,9 +15,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.dtos.JoinEventRequest;
+import ca.yorku.my.StudyBuddy.dtos.LeaveEventRequest;
+import ca.yorku.my.StudyBuddy.dtos.AddReviewRequest;
+import ca.yorku.my.StudyBuddy.dtos.AddCommentRequest;
 import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.mappers.EventMapper;
@@ -85,14 +90,13 @@ public class EventController {
     @PostMapping("/join")
     public ResponseEntity<String> joinEvent(
             @RequestHeader("Authorization") String authHeader, 
-            @RequestBody Map<String, String> payload) {
+            @Valid @RequestBody JoinEventRequest request) {
         try {
             // 1. Verify the token to see who is ACTUALLY making the request
             String requesterId = authService.verifyFrontendToken(authHeader);
-            String eventId = payload.get("eventId");
             
             // 2. Ignore any userId in the payload. Force the requester to only join for themselves.
-            boolean success = eventService.joinEvent(requesterId, eventId);
+            boolean success = eventService.joinEvent(requesterId, request.eventId());
             
             if (success) {
                 return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
@@ -108,14 +112,14 @@ public class EventController {
     @PostMapping("/leave")
     public ResponseEntity<String> leaveEvent(
             @RequestHeader("Authorization") String authHeader, 
-            @RequestBody Map<String, String> payload) {
+            @Valid @RequestBody LeaveEventRequest request) {
         try {
             // 1. Verify who is making the request
             String requesterId = authService.verifyFrontendToken(authHeader);
             
             // 2. Extract who they are trying to remove
-            String targetUserId = payload.get("userId");
-            String eventId = payload.get("eventId");
+            String targetUserId = request.userId();
+            String eventId = request.eventId();
             
             // 3. Verify the user
             if (!requesterId.equals(targetUserId)) {
@@ -224,22 +228,16 @@ public class EventController {
     public ResponseEntity<?> addReview(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String eventId,
-            @RequestBody Map<String, Object> payload) {
+            @Valid @RequestBody AddReviewRequest request) {
 
         try {
             String userId = authService.verifyFrontendToken(authHeader);
             
-            int rating = 5;
-            if (payload.containsKey("rating")) {
-                rating = Integer.parseInt(String.valueOf(payload.get("rating")));
-            }
-            String text = String.valueOf(payload.getOrDefault("text", ""));
-
             Review review = new Review(
                 "r_" + System.currentTimeMillis(),
                 userId,
-                rating,
-                text,
+                request.rating(),
+                request.text().trim(),
                 java.time.LocalDate.now().toString(),
                 new ArrayList<>()
             );
@@ -261,22 +259,15 @@ public class EventController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String eventId,
             @PathVariable String reviewId,
-            @RequestBody Map<String, Object> payload) {
+            @Valid @RequestBody AddCommentRequest request) {
 
         try {
             String userId = authService.verifyFrontendToken(authHeader);
-            
-            // Text Extraction
-            String text = String.valueOf(payload.getOrDefault("text", ""));
-
-            if (text == null || text.trim().isEmpty() || text.equals("null")) {
-                return ResponseEntity.badRequest().body("Comment text cannot be empty");
-            }
 
             Comment comment = new Comment(
                 "c_" + System.currentTimeMillis(),
                 userId,
-                text,
+                request.text().trim(),
                 java.time.LocalDate.now().toString()
             );
 
