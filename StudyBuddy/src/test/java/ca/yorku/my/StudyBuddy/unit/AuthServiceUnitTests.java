@@ -20,7 +20,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -243,5 +245,62 @@ public class AuthServiceUnitTests {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
             authService.verifyFrontendToken(invalidHeader));
         assertEquals("Invalid or missing Authorization header.", exception.getMessage());
+    }
+
+    // --- verifyTwoFA tests ---
+    // These tests manipulate the in-memory OTP store directly via reflection
+    // to test edge cases without needing to trigger a full login flow.
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<String, long[]> getOtpStore() {
+        return (ConcurrentHashMap<String, long[]>)
+                org.springframework.test.util.ReflectionTestUtils.getField(authService, "otpStore");
+    }
+
+    @Test
+    void verifyTwoFA_NoPendingCode_ShouldThrow() {
+        // Given: OTP store has no entry for this email
+        getOtpStore().clear();
+
+        // When & Then
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                authService.verifyTwoFA("test@yorku.ca", "123456"));
+        assertEquals("No pending 2FA code for this account. Please log in again.", ex.getMessage());
+    }
+
+    @Test
+    void verifyTwoFA_ExpiredCode_ShouldThrow() {
+        // Given: OTP entry whose expiry is 1 second in the past
+        long expiredEpoch = Instant.now().getEpochSecond() - 1;
+        getOtpStore().put("test@yorku.ca", new long[]{ 123456L, expiredEpoch });
+
+        // When & Then
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                authService.verifyTwoFA("test@yorku.ca", "123456"));
+        assertEquals("2FA code has expired. Please log in again.", ex.getMessage());
+    }
+
+    @Test
+    void verifyTwoFA_WrongCode_ShouldThrow() {
+        // Given: Valid unexpired OTP of 654321, but user submits 000000
+        long futureExpiry = Instant.now().getEpochSecond() + 300;
+        getOtpStore().put("test@yorku.ca", new long[]{ 654321L, futureExpiry });
+
+        // When & Then
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                authService.verifyTwoFA("test@yorku.ca", "000000"));
+        assertEquals("Incorrect 2FA code. Please try again.", ex.getMessage());
+    }
+
+    @Test
+    void verifyTwoFA_InvalidFormat_ShouldThrow() {
+        // Given: Valid unexpired OTP, but user submits non-numeric string
+        long futureExpiry = Instant.now().getEpochSecond() + 300;
+        getOtpStore().put("test@yorku.ca", new long[]{ 123456L, futureExpiry });
+
+        // When & Then
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                authService.verifyTwoFA("test@yorku.ca", "abcxyz"));
+        assertEquals("Invalid code format.", ex.getMessage());
     }
 }

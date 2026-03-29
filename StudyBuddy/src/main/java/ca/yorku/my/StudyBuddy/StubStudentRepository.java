@@ -2,7 +2,6 @@ package ca.yorku.my.StudyBuddy;
 
 import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
-import ca.yorku.my.StudyBuddy.NotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -134,8 +133,32 @@ public class StubStudentRepository implements StudentRepository {
 	@Override
 	public void reportUser(String reporterUserId, String reportedUserId, String category, String details)
 			throws Exception {
-		// TODO Auto-generated method stub
-		
+        // ID-97 smell fix: reject invalid report payloads early in stub mode.
+        if (reporterUserId == null || reporterUserId.isBlank()) {
+            throw new IllegalArgumentException("Reporter user ID is required");
+        }
+        if (reportedUserId == null || reportedUserId.isBlank()) {
+            throw new IllegalArgumentException("Reported user ID is required");
+        }
+        if (reporterUserId.equals(reportedUserId)) {
+            throw new IllegalArgumentException("You cannot report yourself");
+        }
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("Report category is required");
+        }
+
+        // Validate both users exist before storing a report record.
+        getStudent(reporterUserId);
+        getStudent(reportedUserId);
+
+        // Persist report in stub store so UI success reflects real state in this profile.
+        StubDatabase.REPORTS.add(new StubDatabase.ReportRecord(
+            reporterUserId,
+            reportedUserId,
+            category.trim(),
+            details == null ? "" : details.trim(),
+            System.currentTimeMillis()
+        ));
 	}
     
 }

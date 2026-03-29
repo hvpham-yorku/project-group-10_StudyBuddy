@@ -48,14 +48,38 @@ const vibeColors: Record<string, string> = {
 // ✅ Production-ready: use relative base (works in Docker + same-origin)
 const API_BASE = "";
 
+function getAuthHeader(): Record<string, string> {
+  // ID-62 security fix: all network/presence calls must carry the signed-in token.
+  const token = localStorage.getItem("studyBuddyToken");
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: getAuthHeader(),
+  });
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return (await res.json()) as T;
 }
 
-async function apiPost(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST" });
+async function apiPost(path: string, body?: unknown): Promise<void> {
+  const headers: Record<string, string> = {
+    ...getAuthHeader(),
+  };
+  let payload: BodyInit | undefined;
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers,
+    body: payload,
+  });
   if (!res.ok) throw new Error(`API error ${res.status}`);
 }
 
@@ -113,9 +137,6 @@ export default function Network() {
     fetchRealUser();
   }, []);
 
-  // ✅ quick sanity log (remove later if you want)
-  console.log("authReady:", authReady, "uid:", uid);
-
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"connections" | "requests" | "find">("connections");
 
@@ -136,10 +157,10 @@ export default function Network() {
   // Handle connections
   const handleConnect = async (targetId: string) => {
     try {
-      await fetch(`/api/connections/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      // ID-85/ID-62 fix: backend now validates sender identity against token.
+      await apiPost(`/api/connections/request`, {
+        myUserId: uid,
+        targetUserId: targetId,
       });
       alert("Connection request sent!");
     } catch (e) {
@@ -149,10 +170,9 @@ export default function Network() {
 
   const handleAccept = async (senderId: string) => {
     try {
-      await fetch(`/api/connections/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      await apiPost(`/api/connections/accept`, {
+        senderId,
+        myUserId: uid,
       });
       // Move from pending to accepted UI
       setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
@@ -166,10 +186,9 @@ export default function Network() {
     if (!window.confirm("Are you sure you want to remove this connection?")) return;
     
     try {
-      await fetch(`/api/connections/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ myUserId: uid, targetUserId: targetId })
+      await apiPost(`/api/connections/remove`, {
+        myUserId: uid,
+        targetUserId: targetId,
       });
       
       // Instantly remove them from the UI
@@ -181,10 +200,9 @@ export default function Network() {
 
   const handleDecline = async (senderId: string) => {
     try {
-      await fetch(`/api/connections/decline`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderId: senderId, myUserId: uid })
+      await apiPost(`/api/connections/decline`, {
+        senderId,
+        myUserId: uid,
       });
       // Remove from UI
       setPendingRequests(prev => prev.filter(r => r.userId !== senderId));
@@ -275,6 +293,20 @@ export default function Network() {
       return name.includes(q) || program.includes(q) || courses;
     });
   }, [connections, search]);
+
+  // Filter in the "Find People" tab as well
+  const filteredAvailableUsers = useMemo(() => {
+    const q = search.toLowerCase().trim();
+
+    return availableUsers.filter((u) => {
+      const name = (u.fullName ?? u.userId).toLowerCase();
+      const program = (u.program ?? "").toLowerCase();
+      const courses = (u.courses ?? []).some((co) => co.toLowerCase().includes(q));
+
+      if (!q) return true;
+      return name.includes(q) || program.includes(q) || courses;
+    });
+  }, [availableUsers, search]);
 
   const pendingFiltered = pendingRequests.filter((r) => !accepted.includes(r.userId) && !declined.includes(r.userId));
 
@@ -485,7 +517,7 @@ export default function Network() {
       {/* Find People Tab */}
       {activeTab === "find" && (
         <div className="space-y-3">
-          {availableUsers.map((c) => {
+          {filteredAvailableUsers.map((c) => {
             const displayName = c.fullName ?? c.userId;
             return (
               <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
@@ -524,6 +556,12 @@ export default function Network() {
               </div>
             );
           })}
+          {filteredAvailableUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users size={36} className="text-slate-200 mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">No people found</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -593,6 +631,7 @@ function ConnectionCard({
   setInviteModal: (id: string) => void;
   getStatusColor: (c: Connection) => string;
   getStatusLabel: (c: Connection) => string;
+  onRemove: (targetId: string) => void | Promise<void>;
 }) {
   const displayName = connection.fullName ?? connection.userId;
   const program = connection.program ?? "";

@@ -1,11 +1,10 @@
 package ca.yorku.my.StudyBuddy.unit;
 
 import ca.yorku.my.StudyBuddy.controllers.ConnectionsController;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.ConnectionsService;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -14,7 +13,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -28,6 +26,15 @@ class ConnectionsControllerUnitTest {
 
     @MockBean
     private ConnectionsService connectionsService;
+
+        @MockBean
+        private AuthRepository authService;
+
+        private static final String AUTH = "Bearer test-token";
+
+        private void mockAuth() throws Exception {
+                when(authService.verifyFrontendToken(AUTH)).thenReturn("uid_me");
+        }
 
     private ConnectionsService.ConnectionDTO buildDto(
             String userId,
@@ -50,20 +57,29 @@ class ConnectionsControllerUnitTest {
     }
 
     @Test
-    @DisplayName("GET /api/connections without userId returns 400")
-    void getConnections_missingUserId_returns400() throws Exception {
-        mvc.perform(get("/api/connections"))
-                .andExpect(status().isBadRequest());
+        @DisplayName("GET /api/connections without userId uses token identity")
+        void getConnections_missingUserId_usesTokenIdentity() throws Exception {
+                mockAuth();
+                when(connectionsService.getAcceptedConnections("uid_me")).thenReturn(List.of());
 
-        verifyNoInteractions(connectionsService);
+                mvc.perform(get("/api/connections")
+                                                .header("Authorization", AUTH))
+                                .andExpect(status().isOk())
+                                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                                .andExpect(content().json("[]"));
+
+                verify(connectionsService).getAcceptedConnections("uid_me");
     }
 
     @Test
     @DisplayName("GET /api/connections returns 200 and empty list")
     void getConnections_returnsEmptyList() throws Exception {
+        mockAuth();
         when(connectionsService.getAcceptedConnections("uid_me")).thenReturn(List.of());
 
-        mvc.perform(get("/api/connections").param("userId", "uid_me"))
+        mvc.perform(get("/api/connections")
+                        .param("userId", "uid_me")
+                        .header("Authorization", AUTH))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("[]"));
@@ -74,6 +90,7 @@ class ConnectionsControllerUnitTest {
     @Test
     @DisplayName("GET /api/connections returns DTO list with correct JSON structure")
     void getConnections_returnsConnections() throws Exception {
+                mockAuth();
         ConnectionsService.ConnectionDTO dto = buildDto(
                 "uid_other",
                 "Yash",
@@ -86,7 +103,9 @@ class ConnectionsControllerUnitTest {
 
         when(connectionsService.getAcceptedConnections("uid_me")).thenReturn(List.of(dto));
 
-        mvc.perform(get("/api/connections").param("userId", "uid_me"))
+        mvc.perform(get("/api/connections")
+                        .param("userId", "uid_me")
+                        .header("Authorization", AUTH))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].userId").value("uid_other"))
@@ -101,17 +120,24 @@ class ConnectionsControllerUnitTest {
     }
 
     @Test
-    @DisplayName("GET /api/connections/available without userId returns 400")
-    void getAvailable_missingUserId_returns400() throws Exception {
-        mvc.perform(get("/api/connections/available"))
-                .andExpect(status().isBadRequest());
+        @DisplayName("GET /api/connections/available without userId uses token identity")
+        void getAvailable_missingUserId_usesTokenIdentity() throws Exception {
+                mockAuth();
+                when(connectionsService.getAvailableStudents("uid_me")).thenReturn(List.of());
 
-        verifyNoInteractions(connectionsService);
+                mvc.perform(get("/api/connections/available")
+                                                .header("Authorization", AUTH))
+                                .andExpect(status().isOk())
+                                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                                .andExpect(content().json("[]"));
+
+                verify(connectionsService).getAvailableStudents("uid_me");
     }
 
     @Test
     @DisplayName("GET /api/connections/available returns available students")
     void getAvailable_returnsAvailableStudents() throws Exception {
+                mockAuth();
         ConnectionsService.ConnectionDTO dto = buildDto(
                 "uid_2",
                 "Alex",
@@ -124,7 +150,9 @@ class ConnectionsControllerUnitTest {
 
         when(connectionsService.getAvailableStudents("uid_me")).thenReturn(List.of(dto));
 
-        mvc.perform(get("/api/connections/available").param("userId", "uid_me"))
+        mvc.perform(get("/api/connections/available")
+                        .param("userId", "uid_me")
+                        .header("Authorization", AUTH))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].userId").value("uid_2"))
@@ -140,6 +168,7 @@ class ConnectionsControllerUnitTest {
     @Test
     @DisplayName("GET /api/connections/pending returns pending requests")
     void getPending_returnsPendingRequests() throws Exception {
+                mockAuth();
         ConnectionsService.ConnectionDTO dto = buildDto(
                 "uid_sender",
                 "Omar",
@@ -152,7 +181,9 @@ class ConnectionsControllerUnitTest {
 
         when(connectionsService.getPendingRequests("uid_me")).thenReturn(List.of(dto));
 
-        mvc.perform(get("/api/connections/pending").param("userId", "uid_me"))
+        mvc.perform(get("/api/connections/pending")
+                        .param("userId", "uid_me")
+                        .header("Authorization", AUTH))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].userId").value("uid_sender"))
@@ -165,6 +196,7 @@ class ConnectionsControllerUnitTest {
     @Test
     @DisplayName("POST /api/connections/accept calls service and returns success message")
     void acceptRequest_callsService_andReturnsOk() throws Exception {
+                                mockAuth();
         String body = """
                 {
                   "senderId": "uid_sender",
@@ -173,6 +205,7 @@ class ConnectionsControllerUnitTest {
                 """;
 
         mvc.perform(post("/api/connections/accept")
+                        .header("Authorization", AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
@@ -184,6 +217,7 @@ class ConnectionsControllerUnitTest {
     @Test
     @DisplayName("POST /api/connections/decline calls service and returns success message")
     void declineRequest_callsService_andReturnsOk() throws Exception {
+                                mockAuth();
         String body = """
                 {
                   "senderId": "uid_sender",
@@ -192,6 +226,7 @@ class ConnectionsControllerUnitTest {
                 """;
 
         mvc.perform(post("/api/connections/decline")
+                        .header("Authorization", AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
@@ -203,6 +238,7 @@ class ConnectionsControllerUnitTest {
     @Test
     @DisplayName("POST /api/connections/remove calls service and returns success message")
     void removeConnection_callsService_andReturnsOk() throws Exception {
+                                mockAuth();
         String body = """
                 {
                   "myUserId": "uid_me",
@@ -211,6 +247,7 @@ class ConnectionsControllerUnitTest {
                 """;
 
         mvc.perform(post("/api/connections/remove")
+                        .header("Authorization", AUTH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())

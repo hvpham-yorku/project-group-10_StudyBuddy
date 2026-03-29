@@ -1,29 +1,29 @@
 package ca.yorku.my.StudyBuddy.controllers;
-import ca.yorku.my.StudyBuddy.services.EventRepository;
-import ca.yorku.my.StudyBuddy.services.AuthRepository;
-import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import org.apache.catalina.connector.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
 import ca.yorku.my.StudyBuddy.classes.Review;
-import ca.yorku.my.StudyBuddy.classes.Student;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
-import ca.yorku.my.StudyBuddy.dtos.HostDTO;
-import ca.yorku.my.StudyBuddy.services.AuthService;
-import ca.yorku.my.StudyBuddy.services.EventService;
-import ca.yorku.my.StudyBuddy.services.StudentService;
 import ca.yorku.my.StudyBuddy.mappers.EventMapper;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
+import ca.yorku.my.StudyBuddy.services.AuthRepository;
+import ca.yorku.my.StudyBuddy.services.EventRepository;
+import ca.yorku.my.StudyBuddy.services.StudentRepository;
 
 // This class is responsible for handling HTTP requests related to events.
 // It defines endpoints for creating, retrieving, and deleting events. 

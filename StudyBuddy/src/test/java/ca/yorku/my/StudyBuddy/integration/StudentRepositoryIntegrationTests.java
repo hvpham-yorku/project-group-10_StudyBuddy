@@ -6,7 +6,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,7 +44,10 @@ public class StudentRepositoryIntegrationTests {
     @Test
     void getStudent_nonExisting_returns404() throws Exception {
         // Asking for a non-existent student should correctly return a 404 Not Found
-        mockMvc.perform(get("/api/studentcontroller/9999"))
+        mockMvc.perform(
+            get("/api/studentcontroller/9999")
+                .header("Authorization", "Bearer testUser1")
+        )
             .andExpect(status().isNotFound());
     }
 
@@ -59,7 +61,10 @@ public class StudentRepositoryIntegrationTests {
         ).andExpect(status().isOk());
 
         // Now, fetch that exact user and expect a 200 OK
-        mockMvc.perform(get("/api/studentcontroller/testUser1"))
+        mockMvc.perform(
+            get("/api/studentcontroller/testUser1")
+                .header("Authorization", "Bearer testUser1")
+        )
             .andExpect(status().isOk());
     }
     

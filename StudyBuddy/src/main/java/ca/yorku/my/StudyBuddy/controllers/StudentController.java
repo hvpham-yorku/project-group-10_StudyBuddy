@@ -53,10 +53,6 @@ public class StudentController {
 	        if (req.courses() != null) {
 	            studentRepository.updateCourses(studentID, req.courses());
 	        }
-	        
-	        if (req.courses() != null) {
-	            studentRepository.updateCourses(studentID, req.courses());
-	        }
 
 	        if (req.studyVibes() != null) {
 	            studentRepository.updateStudyVibes(studentID, req.studyVibes());
@@ -147,8 +143,16 @@ public class StudentController {
 	
 	// This method allows for a student to be retrieved from the database through an API call using their ID
 	@GetMapping("/{studentID}")
-	public Student getStudent(@PathVariable String studentID) throws Exception {
-		return studentRepository.getStudent(studentID);
+	public ResponseEntity<?> getStudent(
+			@RequestHeader(value = "Authorization", required = false) String authHeader,
+			@PathVariable String studentID) throws Exception {
+		// Security fix (ID-62): require authentication before returning any student profile by ID.
+		try {
+			authService.verifyFrontendToken(authHeader);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+		}
+		return ResponseEntity.ok(studentRepository.getStudent(studentID));
 	}
 
 	// This method allows for a student to be saved to the database through an API call

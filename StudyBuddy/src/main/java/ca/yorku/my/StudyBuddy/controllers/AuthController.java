@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import ca.yorku.my.StudyBuddy.TwoFARequiredException;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.AuthService;
 
@@ -60,26 +61,44 @@ public class AuthController {
 
         try {
             authService.generateResetLink(email);
-            return ResponseEntity.ok("Reset link generated for " + email);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("An unexpected error occurred.");
+	    System.err.println("Reset password error: " + e.getMessage());
         }
+
+	return ResponseEntity.ok("If this email is registered, a reset link has been sent.");
     }
 
     /**
      * Logs a user in by validating account state and returning a session token.
+     * Returns 202 when 2FA is required (OTP has been emailed).
      */
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
         try {
             String sessionToken = authService.loginUser(body.get("email"), body.get("password"));
             return ResponseEntity.ok(sessionToken);
+        } catch (TwoFARequiredException e) {
+            // 2FA required — OTP emailed, frontend should show OTP entry screen
+            return ResponseEntity.status(202).body(e.getMessage());
         } catch (IllegalStateException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Login Failed: User not found.");
+        }
+    }
+
+    /**
+     * Verifies a 2FA OTP and returns a session token on success.
+     */
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<String> verifyTwoFA(@RequestBody Map<String, String> body) {
+        try {
+            String token = authService.verifyTwoFA(body.get("email"), body.get("code"));
+            return ResponseEntity.ok(token);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("2FA verification failed.");
         }
     }
 
