@@ -47,6 +47,7 @@ export default function CreateEvent() {
     if (!form.location) e.location = "Please select a location";
     if (!form.date) e.date = "Please select a date";
     if (!form.time) e.time = "Please select a time";
+    if (form.description.trim().length < 10) e.description = "Description must be at least 10 characters";
     return e;
   };
 
@@ -191,8 +192,9 @@ export default function CreateEvent() {
                 onChange={(e) => set("description", e.target.value)}
                 rows={3}
                 placeholder="What will you cover? What should attendees bring or prepare?"
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-none"
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-none ${errors.description ? "border-red-400" : "border-slate-200"}`}
               />
+              {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
             </div>
           </div>
         </div>
