@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import com.google.firebase.auth.FirebaseAuthException;
 
 import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
@@ -102,6 +104,10 @@ public class EventController {
         	EventResponseDTO responseDTO = eventMapper.toResponseDTO(newEvent, hostId);
     		
         	return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+        } catch (FirebaseAuthException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (ConstraintViolationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

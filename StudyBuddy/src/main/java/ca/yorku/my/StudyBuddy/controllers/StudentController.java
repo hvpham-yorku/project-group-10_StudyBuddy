@@ -47,59 +47,59 @@ public class StudentController {
 	public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String authHeader, @RequestBody UpdateProfileRequestDTO req) {
 	    try {
 	        // Securely get the user's ID from the token!
-	        String studentID = authService.verifyFrontendToken(authHeader);
+	        String studentId = authService.verifyFrontendToken(authHeader);
 
 	        // Keep all your existing if-statements here...
 	        if (req.courses() != null) {
-	            studentRepository.updateCourses(studentID, req.courses());
+	            studentRepository.updateCourses(studentId, req.courses());
 	        }
 
 	        if (req.studyVibes() != null) {
-	            studentRepository.updateStudyVibes(studentID, req.studyVibes());
+	            studentRepository.updateStudyVibes(studentId, req.studyVibes());
 	        }
 
 	        if (req.privacySettings() != null) {
-	            studentRepository.updatePrivacySettings(studentID, req.privacySettings());
+	            studentRepository.updatePrivacySettings(studentId, req.privacySettings());
 	        }
 
 	        if (req.bio() != null) {
-	            studentRepository.updateBio(studentID, req.bio());
+	            studentRepository.updateBio(studentId, req.bio());
 	        }
 
 	    	if (req.year() != null) {
-	    		studentRepository.updateYear(studentID, req.year());
+	    		studentRepository.updateYear(studentId, req.year());
 	    	}
 
 	    	if (req.program() != null) {
-	    		studentRepository.updateProgram(studentID, req.program());
+	    		studentRepository.updateProgram(studentId, req.program());
 	    	}
 
 	    	if (req.avatar() != null) {
-	    		studentRepository.updateAvatar(studentID, req.avatar());
+	    		studentRepository.updateAvatar(studentId, req.avatar());
 	    	}
 
 	    	if (req.location() != null) {
-	    		studentRepository.updateLocation(studentID, req.location());
+	    		studentRepository.updateLocation(studentId, req.location());
 	    	}
 
 	    	if (req.exactLocation() != null) {
-	    		studentRepository.updateExactLocation(studentID, req.exactLocation());
+	    		studentRepository.updateExactLocation(studentId, req.exactLocation());
 	    	}
 
 	    	if (req.notifications() != null) {
-	    		studentRepository.updateNotifications(studentID, req.notifications());
+	    		studentRepository.updateNotifications(studentId, req.notifications());
 	    	}
 
 	    	if(req.twoFAEnabled() != null) {
-	    		studentRepository.updateTwoFAEnabled(studentID, req.twoFAEnabled());
+	    		studentRepository.updateTwoFAEnabled(studentId, req.twoFAEnabled());
 	    	}
 
 	    	if(req.autoTimeout() != 0) {
-	    		studentRepository.updateAutoTimeout(studentID, req.autoTimeout());
+	    		studentRepository.updateAutoTimeout(studentId, req.autoTimeout());
 	    	}
 
 	    	if(req.isOnline() != null) {
-	    		studentRepository.updateOnlineStatus(studentID, req.isOnline());
+	    		studentRepository.updateOnlineStatus(studentId, req.isOnline());
 	    	}
 
 	        return ResponseEntity.ok("Profile updated");
@@ -142,17 +142,17 @@ public class StudentController {
 	}
 	
 	// This method allows for a student to be retrieved from the database through an API call using their ID
-	@GetMapping("/{studentID}")
+	@GetMapping("/{studentId}")
 	public ResponseEntity<?> getStudent(
 			@RequestHeader(value = "Authorization", required = false) String authHeader,
-			@PathVariable String studentID) throws Exception {
+			@PathVariable String studentId) throws Exception {
 		// Security fix (ID-62): require authentication before returning any student profile by ID.
 		try {
 			authService.verifyFrontendToken(authHeader);
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
 		}
-		return ResponseEntity.ok(studentRepository.getStudent(studentID));
+		return ResponseEntity.ok(studentRepository.getStudent(studentId));
 	}
 
 	// This method allows for a student to be saved to the database through an API call
