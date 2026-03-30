@@ -215,6 +215,7 @@ public class EventService implements EventRepository  {
         }
 
         return true;
+    }
     /**
      * Add an attendee to the event given by an ID and save to Firestore
      * @param eventId
