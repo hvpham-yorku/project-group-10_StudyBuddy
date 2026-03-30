@@ -1,5 +1,4 @@
-/* 
- * CreateEvent.tsx
+/* * CreateEvent.tsx
  * Page for creating a new study session event
  */
 
@@ -13,6 +12,8 @@ import { YORK_BUILDINGS, courseOptions, studyVibeOptions } from "../data/mockDat
 
 export default function CreateEvent() {
   const navigate = useNavigate();
+  
+  // --- 1. ALL STATE & REFS ---
   const [form, setForm] = useState({
     title: "",
     course: "",
@@ -32,92 +33,13 @@ export default function CreateEvent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
-  const toggleTag = (tag: string) => {
-    setForm((f) => ({
-      ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag],
-    }));
-  };
-
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!form.title.trim()) e.title = "Session title is required";
-    if (!form.course) e.course = "Please select a course";
-    if (!form.location) e.location = "Please select a location";
-    if (!form.date) e.date = "Please select a date";
-    if (!form.time) e.time = "Please select a time";
-    return e;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-
-    setIsSubmitting(true);
-    setApiError(null);
-
-    const payload = {
-      title: form.title,
-      course: form.course,
-      location: form.location,
-      date: form.date,
-      time: form.time,
-      duration: Number(form.duration),
-      description: form.description,
-      maxParticipants: Number(form.maxParticipants),
-      attendees: [], 
-      tags: form.tags,
-      status: "upcoming",
-      reviews: []
-    };
-
-    try {
-      const response = await fetch("/api/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("studyBuddyToken")}`
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setSubmitted(true);
-      setTimeout(() => navigate("/events"), 1500);
-      
-    } catch (err: any) {
-      console.error("Failed to create event:", err);
-      setApiError("Failed to create session. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <Check size={32} className="text-green-600" />
-          </div>
-          <h2 className="text-slate-800 mb-2" style={{ fontWeight: 700, fontSize: "1.25rem" }}>Session Created!</h2>
-          <p className="text-slate-500 text-sm">Your study session has been posted. Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Autocomplete state
   const [courseSuggestions, setCourseSuggestions] = useState<string[]>([]);
   const [courseSearchLoading, setCourseSearchLoading] = useState(false);
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
   const courseDropdownRef = useRef<HTMLDivElement>(null);
 
+  // --- 2. ALL EFFECTS ---
   // Fetch course suggestions when the user types
   useEffect(() => {
     const query = form.course.trim();
@@ -165,6 +87,98 @@ export default function CreateEvent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- 3. HELPER FUNCTIONS ---
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+  
+  const toggleTag = (tag: string) => {
+    setForm((f) => ({
+      ...f,
+      tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag],
+    }));
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.title.trim()) e.title = "Session title is required";
+    if (!form.course) e.course = "Please select a course";
+    if (!form.location) e.location = "Please select a location";
+    if (!form.date) e.date = "Please select a date";
+    if (!form.time) e.time = "Please select a time";
+    if (!form.description.trim() || form.description.trim().length < 10) {
+      e.description = "Description must be at least 10 characters.";
+    }
+    return e;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    setIsSubmitting(true);
+    setApiError(null);
+
+    const payload = {
+      title: form.title,
+      course: form.course,
+      location: form.location,
+      date: form.date,
+      time: form.time,
+      duration: Number(form.duration),
+      description: form.description,
+      maxParticipants: Number(form.maxParticipants),
+      attendees: [], 
+      tags: form.tags,
+      status: "upcoming",
+      reviews: []
+    };
+
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("studyBuddyToken")}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData && errorData.error) {
+          throw new Error(errorData.error);
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      setSubmitted(true);
+      setTimeout(() => navigate("/events"), 1500);
+      
+    } catch (err: any) {
+      console.error("Failed to create event:", err);
+      setApiError(err.message || "Failed to create session. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- 4. EARLY RETURNS (Must be after all hooks!) ---
+  if (submitted) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <Check size={32} className="text-green-600" />
+          </div>
+          <h2 className="text-slate-800 mb-2" style={{ fontWeight: 700, fontSize: "1.25rem" }}>Session Created!</h2>
+          <p className="text-slate-500 text-sm">Your study session has been posted. Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 5. MAIN RENDER ---
   return (
     <div className="p-6 max-w-2xl mx-auto">
       {/* Header */}
@@ -181,6 +195,11 @@ export default function CreateEvent() {
         </div>
       </div>
 
+      {apiError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
+          <span className="font-bold">Error:</span> {apiError}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Session Title */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -274,6 +293,7 @@ export default function CreateEvent() {
                 placeholder="What will you cover? What should attendees bring or prepare?"
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-none"
               />
+              {errors.description && <p className="text-xs text-red-500 mt-0.5">{errors.description}</p>}
             </div>
           </div>
         </div>
@@ -405,10 +425,11 @@ export default function CreateEvent() {
           </button>
           <button
             type="submit"
-            className="flex-1 py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm transition-colors"
+            disabled={isSubmitting}
+            className="flex-1 py-3 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-sm transition-colors"
             style={{ fontWeight: 600 }}
           >
-            Create Session
+            {isSubmitting ? "Creating..." : "Create Session"}
           </button>
         </div>
       </form>
