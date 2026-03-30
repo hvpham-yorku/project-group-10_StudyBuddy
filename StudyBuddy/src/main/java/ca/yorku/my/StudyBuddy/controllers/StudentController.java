@@ -161,70 +161,9 @@ public class StudentController {
 		studentRepository.saveStudent(student);
 	}
 
-	// This method allows for a student's courses to be updated in the database through an API call
-	@PutMapping("/{studentID}/courses")
-	public void updateCourses(@PathVariable String studentID, @RequestBody List<String> courses) throws Exception {
-		studentRepository.updateCourses(studentID, courses);
-	}
-
-	// This method allows for a student's study vibes to be updated in the database through an API call
-	@PostMapping("/{studentID}/study-vibes")
-	public ResponseEntity<?> blockStudyVibesPOST() {
-    	return ResponseEntity.status(405).build();
-	}
-
-	// This method allows for a student's study vibe to be updated in the database through an API call
-	@PutMapping(value = "/{studentID}/study-vibes", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<?> updateStudyVibes(@PathVariable String studentID, @RequestBody(required = false) List<String> vibes) {
-    if (vibes == null || vibes.isEmpty() || vibes.stream().anyMatch(v -> v == null || v.isBlank())) {
-        return ResponseEntity.badRequest().build();
-    }
-
-    try {
-        studentRepository.updateStudyVibes(studentID, vibes);
-        return ResponseEntity.ok().build();
-    } catch (Exception e) {
-        return ResponseEntity.internalServerError().build();
-    }
-}
-
-	
-	// This method allows for a student's privacy settings to be retrieved from the database through an API call
-	@GetMapping("/{studentID}/privacy-settings")
-	public ResponseEntity<?> blockPrivacySettingsGET() {
-    	return ResponseEntity.status(405).build();
-	}
-
-	// This method allows for a student's privacy settings to be updated in the database through an API call
-	@PutMapping(value = "/{studentID}/privacy-settings", consumes = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<?> updatePrivacySettings(
-        @PathVariable String studentID,
-        @RequestBody(required = false) Map<String, Boolean> privacySettings) {
-
-    // Missing body
-    if (privacySettings == null) {
-        return ResponseEntity.badRequest().build();
-    }
-
-    // Empty JSON object
-    if (privacySettings.isEmpty()) {
-        return ResponseEntity.badRequest().build();
-    }
-
-    // Ensure all values are booleans
-    if (privacySettings.values().stream().anyMatch(v -> v == null)) {
-        return ResponseEntity.badRequest().build();
-    }
-
-    try {
-        studentRepository.updatePrivacySettings(studentID, privacySettings);
-        return ResponseEntity.ok().build();
-    } catch (Exception e) {
-        return ResponseEntity.internalServerError().build();
-    }
-}
-
-	
+	// Profile updates are handled exclusively via the authenticated POST /profile/update endpoint.
+	// The legacy unauthenticated PUT endpoints for courses, study-vibes, and privacy-settings
+	// have been removed as they allowed any caller to modify any student's data without authentication.
 
 	
 	// Get a student's full session log (all past hosted/attended events) by student ID
