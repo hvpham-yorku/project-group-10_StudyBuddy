@@ -24,7 +24,6 @@ export default function CreateEvent() {
     description: "",
     maxParticipants: "8",
     tags: [] as string[],
-    isPrivate: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -394,23 +393,6 @@ export default function CreateEvent() {
                 {vibe}
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* Privacy */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-slate-700 text-sm" style={{ fontWeight: 600 }}>Private Session</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Only invited students can join. Won't appear on the map.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => set("isPrivate", !form.isPrivate)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${form.isPrivate ? "bg-blue-600" : "bg-slate-200"}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isPrivate ? "translate-x-5" : "translate-x-0.5"}`}></div>
-            </button>
           </div>
         </div>
 
