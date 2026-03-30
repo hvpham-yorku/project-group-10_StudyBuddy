@@ -1,9 +1,8 @@
-/* 
- * CreateEvent.tsx
+/* * CreateEvent.tsx
  * Page for creating a new study session event
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, BookOpen,
@@ -13,6 +12,8 @@ import { YORK_BUILDINGS, courseOptions, studyVibeOptions } from "../data/mockDat
 
 export default function CreateEvent() {
   const navigate = useNavigate();
+  
+  // --- 1. ALL STATE & REFS ---
   const [form, setForm] = useState({
     title: "",
     course: "",
@@ -23,7 +24,6 @@ export default function CreateEvent() {
     description: "",
     maxParticipants: "8",
     tags: [] as string[],
-    isPrivate: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -32,7 +32,63 @@ export default function CreateEvent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Autocomplete state
+  const [courseSuggestions, setCourseSuggestions] = useState<string[]>([]);
+  const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
+  const courseDropdownRef = useRef<HTMLDivElement>(null);
+
+  // --- 2. ALL EFFECTS ---
+  // Fetch course suggestions when the user types
+  useEffect(() => {
+    const query = form.course.trim();
+    if (!query || !showCourseSuggestions) {
+      setCourseSuggestions([]);
+      setCourseSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      setCourseSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/courses/search?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+        if (response.ok) {
+          const suggestions: string[] = await response.json();
+          setCourseSuggestions(suggestions);
+        }
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          setCourseSuggestions([]);
+        }
+      } finally {
+        setCourseSearchLoading(false);
+      }
+    }, 180); // 180ms debounce so we don't spam the server on every keystroke
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [form.course, showCourseSuggestions]);
+
+  // Close the dropdown if the user clicks outside of it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(event.target as Node)) {
+        setShowCourseSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // --- 3. HELPER FUNCTIONS ---
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+  
   const toggleTag = (tag: string) => {
     setForm((f) => ({
       ...f,
@@ -47,6 +103,9 @@ export default function CreateEvent() {
     if (!form.location) e.location = "Please select a location";
     if (!form.date) e.date = "Please select a date";
     if (!form.time) e.time = "Please select a time";
+    if (!form.description.trim() || form.description.trim().length < 10) {
+      e.description = "Description must be at least 10 characters.";
+    }
     return e;
   };
 
@@ -59,7 +118,6 @@ export default function CreateEvent() {
     setIsSubmitting(true);
     setApiError(null);
 
-    // Note that backend and frontend types are slightly different
     const payload = {
       title: form.title,
       course: form.course,
@@ -86,6 +144,10 @@ export default function CreateEvent() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData && errorData.error) {
+          throw new Error(errorData.error);
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -94,12 +156,13 @@ export default function CreateEvent() {
       
     } catch (err: any) {
       console.error("Failed to create event:", err);
-      setApiError("Failed to create session. Please try again.");
+      setApiError(err.message || "Failed to create session. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // --- 4. EARLY RETURNS (Must be after all hooks!) ---
   if (submitted) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
@@ -114,6 +177,7 @@ export default function CreateEvent() {
     );
   }
 
+  // --- 5. MAIN RENDER ---
   return (
     <div className="p-6 max-w-2xl mx-auto">
       {/* Header */}
@@ -130,6 +194,11 @@ export default function CreateEvent() {
         </div>
       </div>
 
+      {apiError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-2">
+          <span className="font-bold">Error:</span> {apiError}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Session Title */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -154,16 +223,46 @@ export default function CreateEvent() {
                 <label className="block text-xs text-slate-600 mb-1.5" style={{ fontWeight: 500 }}>
                   <span className="flex items-center gap-1"><BookOpen size={12} />Course *</span>
                 </label>
-                <div className="relative">
-                  <select
+                <div className="relative" ref={courseDropdownRef}>
+                  <BookOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
                     value={form.course}
-                    onChange={(e) => set("course", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 appearance-none pr-8"
-                  >
-                    <option value="">Select course...</option>
-                    {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    onChange={(e) => {
+                      set("course", e.target.value.toUpperCase());
+                      setShowCourseSuggestions(true);
+                    }}
+                    onFocus={() => setShowCourseSuggestions(true)}
+                    placeholder="e.g. EECS 3311"
+                    autoComplete="off"
+                    className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                  />
+                  
+                  {/* Dropdown Menu */}
+                  {showCourseSuggestions && form.course.trim() !== "" && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {courseSearchLoading ? (
+                        <div className="px-3 py-2 text-sm text-slate-500">Searching courses...</div>
+                      ) : courseSuggestions.length > 0 ? (
+                        courseSuggestions.map((courseOption) => (
+                          <button
+                            key={courseOption}
+                            type="button"
+                            onClick={() => {
+                              set("course", courseOption);
+                              setShowCourseSuggestions(false);
+                            }}
+                            className="block w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-slate-700 transition-colors"
+                          >
+                            {courseOption}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500">
+                          No matching York courses found
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {errors.course && <p className="text-xs text-red-500 mt-0.5">{errors.course}</p>}
               </div>
@@ -191,8 +290,10 @@ export default function CreateEvent() {
                 onChange={(e) => set("description", e.target.value)}
                 rows={3}
                 placeholder="What will you cover? What should attendees bring or prepare?"
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-none"
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-none ${errors.description ? "border-red-400" : "border-slate-200"}`}
               />
+              {errors.description && <p className="text-xs text-red-500 mt-0.5">{errors.description}</p>}
+
             </div>
           </div>
         </div>
@@ -296,23 +397,6 @@ export default function CreateEvent() {
           </div>
         </div>
 
-        {/* Privacy */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-slate-700 text-sm" style={{ fontWeight: 600 }}>Private Session</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Only invited students can join. Won't appear on the map.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => set("isPrivate", !form.isPrivate)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${form.isPrivate ? "bg-blue-600" : "bg-slate-200"}`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isPrivate ? "translate-x-5" : "translate-x-0.5"}`}></div>
-            </button>
-          </div>
-        </div>
-
         {/* Submit */}
         <div className="flex gap-3">
           <button
@@ -324,10 +408,11 @@ export default function CreateEvent() {
           </button>
           <button
             type="submit"
-            className="flex-1 py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm transition-colors"
+            disabled={isSubmitting}
+            className="flex-1 py-3 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-sm transition-colors"
             style={{ fontWeight: 600 }}
           >
-            Create Session
+            {isSubmitting ? "Creating..." : "Create Session"}
           </button>
         </div>
       </form>

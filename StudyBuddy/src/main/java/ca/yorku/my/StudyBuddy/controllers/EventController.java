@@ -15,15 +15,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 import ca.yorku.my.StudyBuddy.classes.Comment;
 import ca.yorku.my.StudyBuddy.classes.Event;
+import ca.yorku.my.StudyBuddy.dtos.JoinEventRequest;
+import ca.yorku.my.StudyBuddy.dtos.LeaveEventRequest;
+import ca.yorku.my.StudyBuddy.dtos.AddReviewRequest;
+import ca.yorku.my.StudyBuddy.dtos.AddCommentRequest;
+import ca.yorku.my.StudyBuddy.dtos.EventCreateRequest;
 import ca.yorku.my.StudyBuddy.classes.Review;
 import ca.yorku.my.StudyBuddy.dtos.EventResponseDTO;
 import ca.yorku.my.StudyBuddy.mappers.EventMapper;
 import ca.yorku.my.StudyBuddy.services.AuthRepository;
 import ca.yorku.my.StudyBuddy.services.EventRepository;
 import ca.yorku.my.StudyBuddy.services.StudentRepository;
+import ca.yorku.my.StudyBuddy.constants.EventConstants;
 
 // This class is responsible for handling HTTP requests related to events.
 // It defines endpoints for creating, retrieving, and deleting events. 
@@ -46,38 +53,57 @@ public class EventController {
     @Autowired
     private EventMapper eventMapper;
 
+    /**
+     * Helper method to extract the requesterId from the authorization header.
+     * Returns null if the header is missing or invalid.
+     */
+    private String extractRequesterId(String authHeader) {
+        if (authHeader != null && authHeader.startsWith(EventConstants.BEARER_PREFIX)) {
+            try {
+                return authService.verifyFrontendToken(authHeader);
+            } catch (Exception e) {
+                // Invalid token, treat as anonymous
+            }
+        }
+        return null;
+    }
+
     // This mapping endpoint allows clients to create a new event by sending a POST request with event details in the request body. It returns the created event with its generated ID if successful, or an error status if there was an issue.
     @PostMapping
-    public ResponseEntity<EventResponseDTO> createEvent(@RequestHeader("Authorization") String authHeader, @RequestBody EventResponseDTO eventDTO) {
+    public ResponseEntity<EventResponseDTO> createEvent(
+            @RequestHeader("Authorization") String authHeader, 
+            @Valid @RequestBody EventCreateRequest eventRequest) {
         try {
-        	
-        	// 1. Create new event; This is where DTO comes in handy so as to filter out any other values
-        	
+        	// 1. Verify the requester's identity
         	String hostId = authService.verifyFrontendToken(authHeader);
         	
+        	// 2. Create new event from the validated request DTO
         	Event newEvent = new Event(
-        		eventDTO.id(),
-        		eventDTO.title(),
-        		eventDTO.course(),
+        		EventConstants.EVENT_ID_PREFIX + System.currentTimeMillis(),
+        		eventRequest.title(),
+        		eventRequest.course(),
         		hostId,
-        		eventDTO.location(),
-        		eventDTO.date(),
-        		eventDTO.time(),
-        		eventDTO.duration(),
-        		eventDTO.description(),
-        		eventDTO.maxParticipants(),
-        		eventDTO.attendees(),
-        		eventDTO.tags(),
-        		eventDTO.status(),
-        		eventDTO.reviews()
+        		eventRequest.location(),
+        		eventRequest.date(),
+        		eventRequest.time(),
+        		eventRequest.duration(),
+        		eventRequest.description(),
+        		eventRequest.maxParticipants(),
+        		new ArrayList<>(),  // Initialize empty attendees list
+        		eventRequest.tags(),
+        		EventConstants.EVENT_STATUS_ACTIVE,  // Default status
+        		new ArrayList<>()  // Initialize empty reviews list
         	);
         	
-        	// 2. Store the event in firebase
+        	// 3. Store the event in firebase
         	eventService.createEvent(newEvent);
-        		
-        	// 3. Print it back to user to indicate success
-        	return ResponseEntity.status(HttpStatus.CREATED).body(eventDTO);
+        	
+        	// 4. Convert to response DTO and return with the host's ID
+        	EventResponseDTO responseDTO = eventMapper.toResponseDTO(newEvent, hostId);
+    		
+        	return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -85,19 +111,18 @@ public class EventController {
     @PostMapping("/join")
     public ResponseEntity<String> joinEvent(
             @RequestHeader("Authorization") String authHeader, 
-            @RequestBody Map<String, String> payload) {
+            @Valid @RequestBody JoinEventRequest request) {
         try {
             // 1. Verify the token to see who is ACTUALLY making the request
             String requesterId = authService.verifyFrontendToken(authHeader);
-            String eventId = payload.get("eventId");
             
             // 2. Ignore any userId in the payload. Force the requester to only join for themselves.
-            boolean success = eventService.joinEvent(requesterId, eventId);
+            boolean success = eventService.joinEvent(requesterId, request.eventId());
             
             if (success) {
-                return ResponseEntity.status(HttpStatus.CREATED).body("Joined Event!");
+                return ResponseEntity.status(HttpStatus.CREATED).body(EventConstants.SUCCESS_JOINED_EVENT);
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to join event");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(EventConstants.ERROR_FAILED_TO_JOIN);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -108,27 +133,27 @@ public class EventController {
     @PostMapping("/leave")
     public ResponseEntity<String> leaveEvent(
             @RequestHeader("Authorization") String authHeader, 
-            @RequestBody Map<String, String> payload) {
+            @Valid @RequestBody LeaveEventRequest request) {
         try {
             // 1. Verify who is making the request
             String requesterId = authService.verifyFrontendToken(authHeader);
             
             // 2. Extract who they are trying to remove
-            String targetUserId = payload.get("userId");
-            String eventId = payload.get("eventId");
+            String targetUserId = request.userId();
+            String eventId = request.eventId();
             
             // 3. Verify the user
             if (!requesterId.equals(targetUserId)) {
                 ca.yorku.my.StudyBuddy.classes.Event event = eventService.getEventById(eventId);
                 
                 if (event == null) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
                 }
                 
                 // If they aren't removing themselves and they aren't the host, block request
                 if (!event.getHost().equals(requesterId)) {
-                    System.out.println("SECURITY ALERT: User " + requesterId + " attempted to kick " + targetUserId);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the host can kick users.");
+                    System.out.println(String.format(EventConstants.ERROR_SECURITY_ALERT_FORMAT, requesterId, targetUserId));
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(EventConstants.ERROR_ONLY_HOST_CAN_KICK);
                 }
             }
 
@@ -136,9 +161,9 @@ public class EventController {
             boolean success = eventService.leaveEvent(targetUserId, eventId);
             
             if (success) {
-                return ResponseEntity.status(HttpStatus.OK).body("Successfully removed from event!");
+                return ResponseEntity.status(HttpStatus.OK).body(EventConstants.SUCCESS_LEFT_EVENT);
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to remove from event");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(EventConstants.ERROR_FAILED_TO_LEAVE);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -153,14 +178,7 @@ public class EventController {
     	try {
     	    Event event = eventService.getEventById(eventId);
     		
-            String requesterId = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                try {
-                    requesterId = authService.verifyFrontendToken(authHeader);
-                } catch (Exception e) {
-                    // Invalid token, treat as anonymous
-                }
-            }
+            String requesterId = extractRequesterId(authHeader);
 
             // --- THE MAGIC HAPPENS HERE ---
             EventResponseDTO dto = eventMapper.toResponseDTO(event, requesterId);
@@ -180,14 +198,7 @@ public class EventController {
             List<Event> events = eventService.getAllEvents();
             List<EventResponseDTO> eventDTOs = new ArrayList<>();
 
-            String requesterId = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                try {
-                    requesterId = authService.verifyFrontendToken(authHeader);
-                } catch (Exception e) {
-                    // Invalid token, treat as anonymous
-                }
-            }
+            String requesterId = extractRequesterId(authHeader);
 
             for (Event event : events) {
                 eventDTOs.add(eventMapper.toResponseDTO(event, requesterId));
@@ -224,22 +235,16 @@ public class EventController {
     public ResponseEntity<?> addReview(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String eventId,
-            @RequestBody Map<String, Object> payload) {
+            @Valid @RequestBody AddReviewRequest request) {
 
         try {
             String userId = authService.verifyFrontendToken(authHeader);
             
-            int rating = 5;
-            if (payload.containsKey("rating")) {
-                rating = Integer.parseInt(String.valueOf(payload.get("rating")));
-            }
-            String text = String.valueOf(payload.getOrDefault("text", ""));
-
             Review review = new Review(
-                "r_" + System.currentTimeMillis(),
+                EventConstants.REVIEW_ID_PREFIX + System.currentTimeMillis(),
                 userId,
-                rating,
-                text,
+                request.rating(),
+                request.text().trim(),
                 java.time.LocalDate.now().toString(),
                 new ArrayList<>()
             );
@@ -248,11 +253,11 @@ public class EventController {
             if (success) {
                 return ResponseEntity.status(HttpStatus.CREATED).body(review);
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
             }
         } catch (Exception e) {
             e.printStackTrace(); 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
         }
     }
     
@@ -261,22 +266,15 @@ public class EventController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String eventId,
             @PathVariable String reviewId,
-            @RequestBody Map<String, Object> payload) {
+            @Valid @RequestBody AddCommentRequest request) {
 
         try {
             String userId = authService.verifyFrontendToken(authHeader);
-            
-            // Text Extraction
-            String text = String.valueOf(payload.getOrDefault("text", ""));
-
-            if (text == null || text.trim().isEmpty() || text.equals("null")) {
-                return ResponseEntity.badRequest().body("Comment text cannot be empty");
-            }
 
             Comment comment = new Comment(
-                "c_" + System.currentTimeMillis(),
+                EventConstants.COMMENT_ID_PREFIX + System.currentTimeMillis(),
                 userId,
-                text,
+                request.text().trim(),
                 java.time.LocalDate.now().toString()
             );
 
@@ -285,12 +283,40 @@ public class EventController {
             if (success) {
                 return ResponseEntity.status(HttpStatus.CREATED).body(comment);
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event or Review not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_REVIEW_NOT_FOUND);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieve all reviews for a specific event.
+     * Provides cleaner API separation than embedding reviews in event response.
+     */
+    @GetMapping("/{eventId}/reviews")
+    public ResponseEntity<?> getEventReviews(
+            @PathVariable String eventId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Event event = eventService.getEventById(eventId);
+            
+            if (event == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(EventConstants.ERROR_EVENT_NOT_FOUND);
+            }
+            
+            // Return the reviews directly - frontend can now query reviews separately
+            List<Review> reviews = event.getReviews();
+            if (reviews == null) {
+                reviews = new ArrayList<>();
+            }
+            
+            return ResponseEntity.ok(reviews);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventConstants.ERROR_SERVER_GENERAL + e.getMessage());
         }
     }
     
