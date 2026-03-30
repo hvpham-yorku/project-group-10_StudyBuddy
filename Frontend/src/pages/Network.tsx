@@ -154,6 +154,9 @@ export default function Network() {
 
   const [inviteModal, setInviteModal] = useState<string | null>(null);
 
+  // Code smell fix (ID-78): replaced alert() with inline state-driven feedback
+  const [connectNotice, setConnectNotice] = useState<string | null>(null);
+
   // Handle connections
   const handleConnect = async (targetId: string) => {
     try {
@@ -162,7 +165,9 @@ export default function Network() {
         myUserId: uid,
         targetUserId: targetId,
       });
-      alert("Connection request sent!");
+      // Code smell fix (ID-78): use inline notice instead of blocking alert()
+      setConnectNotice("Connection request sent!");
+      setTimeout(() => setConnectNotice(null), 3000);
     } catch (e) {
       console.error("Failed to send request", e);
     }
@@ -184,13 +189,13 @@ export default function Network() {
 
   const handleRemove = async (targetId: string) => {
     if (!window.confirm("Are you sure you want to remove this connection?")) return;
-    
+
     try {
       await apiPost(`/api/connections/remove`, {
         myUserId: uid,
         targetUserId: targetId,
       });
-      
+
       // Instantly remove them from the UI
       setConnections(prev => prev.filter(c => c.userId !== targetId));
     } catch (e) {
@@ -269,15 +274,20 @@ export default function Network() {
 
     load();
 
-    // Keep heartbeat alive while logged in
-    const id = window.setInterval(() => {
+    // Refactor (ID-100): split heartbeat and data refresh into separate intervals.
+    // Reduced from 5s to 30s to limit unnecessary Firestore reads/writes.
+    const heartbeatId = window.setInterval(() => {
       apiPost(`/api/presence/heartbeat?userId=${encodeURIComponent(uid)}`).catch(() => { });
+    }, 30000);
+
+    const refreshId = window.setInterval(() => {
       load(true);
-    }, 5000);
+    }, 30000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      window.clearInterval(heartbeatId);
+      window.clearInterval(refreshId);
     };
   }, [authReady, uid]);
 
@@ -354,6 +364,13 @@ export default function Network() {
           </p>
         </div>
       </div>
+
+      {/* Code smell fix (ID-78): inline success notice shown after sending a connection request */}
+      {connectNotice && (
+        <div className="mb-3 px-4 py-2 bg-green-50 text-green-700 text-sm rounded-xl border border-green-200">
+          {connectNotice}
+        </div>
+      )}
 
       {/* Search & Tabs */}
       <div className="relative mb-4">
@@ -460,7 +477,7 @@ export default function Network() {
               return (
                 <div key={r.userId} className="bg-white rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start gap-4">
-                    <div 
+                    <div
                       className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => navigate(`/profile/${r.userId}`)}
                     >
@@ -473,8 +490,8 @@ export default function Network() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p 
-                        className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block" 
+                      <p
+                        className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block"
                         style={{ fontWeight: 600 }}
                         onClick={() => navigate(`/profile/${r.userId}`)}
                       >
@@ -521,7 +538,7 @@ export default function Network() {
             const displayName = c.fullName ?? c.userId;
             return (
               <div key={c.userId} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-4">
-                <div 
+                <div
                   className="w-11 h-11 rounded-xl overflow-hidden bg-blue-100 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => navigate(`/profile/${c.userId}`)}
                 >
@@ -537,8 +554,8 @@ export default function Network() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p 
-                    className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block" 
+                  <p
+                    className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors inline-block"
                     style={{ fontWeight: 600 }}
                     onClick={() => navigate(`/profile/${c.userId}`)}
                   >
@@ -639,7 +656,7 @@ function ConnectionCard({
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-start gap-4">
-        <div 
+        <div
           className="relative shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => navigate(`/profile/${connection.userId}`)}
         >
@@ -661,8 +678,8 @@ function ConnectionCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p 
-              className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors" 
+            <p
+              className="text-slate-800 text-sm cursor-pointer hover:text-blue-600 transition-colors"
               style={{ fontWeight: 600 }}
               onClick={() => navigate(`/profile/${connection.userId}`)}
             >
@@ -704,7 +721,6 @@ function ConnectionCard({
             title="Invite to session"
           >
             <CalendarPlus size={15} />
-            
           </button>
           <button
             onClick={() => onRemove(connection.userId)}

@@ -113,12 +113,16 @@ export default function Chat() {
   const [showAttach, setShowAttach] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
-  
+  const [isUploading, setIsUploading] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout>>(null);
   const typingPollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const latestMessageEpochByChatId = useRef<Record<string, number>>({});
+
+  // Refactor (ID-100): cache the student directory to avoid re-fetching on every poll cycle
+  const studentCacheRef = useRef<{ data: any[]; fetchedAt: number } | null>(null);
 
   const selectedChat = localChats.find((c) => c.id === selectedChatId);
 
@@ -145,12 +149,24 @@ export default function Chat() {
 
   const loadRealChats = async () => {
     if (!activeUser || !activeUser.id) return;
-    
+
     try {
+      // Refactor (ID-100): use cached student directory instead of fetching on every poll
       let allStudents: any[] = [];
       try {
-        const stuRes = await fetch("/api/studentcontroller/getstudents");
-        if (stuRes.ok) allStudents = await stuRes.json();
+        const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+        if (
+          studentCacheRef.current &&
+          Date.now() - studentCacheRef.current.fetchedAt < CACHE_TTL_MS
+        ) {
+          allStudents = studentCacheRef.current.data;
+        } else {
+          const stuRes = await fetch("/api/studentcontroller/getstudents");
+          if (stuRes.ok) {
+            allStudents = await stuRes.json();
+            studentCacheRef.current = { data: allStudents, fetchedAt: Date.now() };
+          }
+        }
       } catch (e) {
         console.warn("Could not load global directory", e);
       }
@@ -177,16 +193,16 @@ export default function Chat() {
         if (connRes.ok) {
           connectionsData = await connRes.json();
           directChatsList = connectionsData.map((c: any) => ({
-            id: `direct_${c.userId}`, 
+            id: `direct_${c.userId}`,
             name: resolveUser(c.userId, c.fullName).name,
             type: "direct",
-            members: [ activeUser, resolveUser(c.userId, c.fullName, c.profilePic) ],
+            members: [activeUser, resolveUser(c.userId, c.fullName, c.profilePic)],
             lastMessage: { sender: "", text: "Say hello!", timestamp: new Date().toISOString(), read: true },
             unreadCount: 0,
             messages: []
           }));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // 2. Fetch Events (Group Chats)
       let eventChatsList: any[] = [];
@@ -196,7 +212,7 @@ export default function Chat() {
         });
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
-          const myEvents = eventsData.filter((e: any) => 
+          const myEvents = eventsData.filter((e: any) =>
             e.host?.id === activeUser.id || (e.attendees && e.attendees.includes(activeUser.id))
           );
 
@@ -206,21 +222,20 @@ export default function Chat() {
               ...[...(e.attendees || []), e.host?.id]
                 .filter((id: string) => id && id !== activeUser.id)
                 .map((id: string) => {
-                const friend = connectionsData.find((c: any) => c.userId === id);
-                const isHost = e.host?.id === id;
-                // Use the helper to guarantee a name is found
-                return resolveUser(id, friend ? friend.fullName : (isHost ? e.host?.name : id), friend ? friend.profilePic : (isHost ? e.host?.avatar : null));
-              })
+                  const friend = connectionsData.find((c: any) => c.userId === id);
+                  const isHost = e.host?.id === id;
+                  return resolveUser(id, friend ? friend.fullName : (isHost ? e.host?.name : id), friend ? friend.profilePic : (isHost ? e.host?.avatar : null));
+                })
             ];
 
             const uniqueMembers = Array.from(new Map(membersList.map(m => [m.id, m])).values());
 
             return {
               id: `event_${e.id}`,
-              eventId: e.id, 
+              eventId: e.id,
               name: e.title || e.course || "Study Session",
               type: "group",
-              isLiveEvent: true, 
+              isLiveEvent: true,
               members: uniqueMembers,
               lastMessage: { sender: "System", text: "Welcome to the event chat!", timestamp: new Date().toISOString(), read: true },
               unreadCount: 0,
@@ -228,22 +243,22 @@ export default function Chat() {
             };
           });
         }
-      } catch (e) {}
+      } catch (e) { }
 
       const combinedChats = [...directChatsList, ...eventChatsList];
-      
+
       setLocalChats((prev) => {
         return combinedChats.map((newChat: any) => {
           const existingChat = prev.find((c) => c.id === newChat.id);
           return existingChat ? { ...newChat, messages: existingChat.messages, lastMessage: existingChat.lastMessage } : newChat;
         });
       });
-      
+
       setSelectedChatId((currentId) => {
         if (!currentId && combinedChats.length > 0) return combinedChats[0].id;
         return currentId;
       });
-      
+
     } catch (e) {
       console.error("Failed to load chats", e);
     }
@@ -273,7 +288,7 @@ export default function Chat() {
     const sender = chat.members.find((member: any) => member.id === apiMessage.senderId) as any;
     const rawType = String(apiMessage.type || "TEXT").toUpperCase();
     const uiType: UiMessageType = rawType === "FILE" ? "file" : rawType === "LINK" ? "link" : "text";
-    
+
     return {
       id: apiMessage.messageId,
       senderId: apiMessage.senderId,
@@ -282,12 +297,14 @@ export default function Chat() {
       text: apiMessage.content,
       timestamp: apiMessage.timestamp,
       type: uiType,
-      ...(apiMessage.file && { attachment: {
-        name: apiMessage.file.fileName,
-        sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
-        mimeType: apiMessage.file.mimeType,
-        storagePath: apiMessage.file.storagePath,
-      }})
+      ...(apiMessage.file && {
+        attachment: {
+          name: apiMessage.file.fileName,
+          sizeBytes: Number(apiMessage.file.fileSizeBytes || 0),
+          mimeType: apiMessage.file.mimeType,
+          storagePath: apiMessage.file.storagePath,
+        }
+      })
     };
   };
 
@@ -421,7 +438,7 @@ export default function Chat() {
       await fetch(apiUrl(`/api/chats/${backendChatId}/typing`), {
         method: "PUT", headers: authHeaders, body: JSON.stringify({ typing }),
       });
-    } catch {}
+    } catch { }
   };
 
   const stopTypingAndNotify = async () => {
@@ -447,8 +464,7 @@ export default function Chat() {
     }
   };
 
-  const [isUploading, setIsUploading] = useState(false);
-
+  // Bug fix (ID-80): handle file selection, upload, and send as FILE message
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -461,8 +477,7 @@ export default function Chat() {
 
     try {
       const backendChatId = await ensureBackendChat(chat);
-      
-      // 1. Upload the file to the server
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -478,13 +493,12 @@ export default function Chat() {
       if (!uploadResponse.ok) throw new Error("Failed to upload file");
       const fileData = await uploadResponse.json();
 
-      // 2. Send the message containing the file attachment metadata
       const msgResponse = await fetch(apiUrl(`/api/chats/${backendChatId}/messages`), {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ 
-          chatId: backendChatId, 
-          content: file.name, // Fallback text
+        body: JSON.stringify({
+          chatId: backendChatId,
+          content: file.name,
           type: "FILE",
           file: fileData
         }),
@@ -495,20 +509,18 @@ export default function Chat() {
       const apiMessage = await msgResponse.json();
       const newMsg = mapMessageToUi(chat, apiMessage);
 
-      // 3. Instantly update the UI
       setLocalChats((prev) => prev.map((existing) => existing.id === selectedChatId ? {
         ...existing,
         messages: [...existing.messages, newMsg],
         lastMessage: { sender: "You", text: "Sent an attachment", timestamp: newMsg.timestamp, read: true },
-      } : existing
-      ));
-      
+      } : existing));
+
     } catch (error: any) {
       console.error("Upload error:", error);
       setChatError("Failed to upload attachment");
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -543,8 +555,7 @@ export default function Chat() {
         ...existing,
         messages: [...existing.messages, newMsg],
         lastMessage: { sender: "You", text: newMsg.text, timestamp: newMsg.timestamp, read: true },
-      } : existing
-      ));
+      } : existing));
       setMessageInput("");
       setIsTyping(false);
       void sendTypingStatus(chat, false);
@@ -558,7 +569,7 @@ export default function Chat() {
   const sendFriendRequest = async () => {
     const chat = localChats.find((existing) => existing.id === selectedChatId);
     if (!chat || chat.type !== "direct" || isSendingFriendRequest) return;
-    
+
     const target = chat.members.find((member: any) => member.id !== activeUser.id);
     if (!target) return;
 
@@ -600,7 +611,7 @@ export default function Chat() {
             />
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto">
           {filteredChats.map((chat) => {
             const isSelected = chat.id === selectedChatId;
@@ -651,26 +662,24 @@ export default function Chat() {
                 <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} gap-2`}>
                   <div className={`max-w-xs lg:max-w-sm flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                     {!isMe && <p className="text-xs text-slate-400 mb-1 ml-1">{msg.senderName}</p>}
-		    <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? "bg-blue-700 text-white rounded-br-sm" : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? "bg-blue-700 text-white rounded-br-sm" : "bg-white text-slate-800 shadow-sm border border-slate-100 rounded-bl-sm"}`}>
                       {msg.type === "file" && msg.attachment ? (
                         <div className="flex flex-col gap-2">
-                          {/* If it's an image, display it */}
                           {msg.attachment.mimeType?.startsWith("image/") ? (
-                            <img 
-                              src={apiUrl(msg.attachment.storagePath!)} 
-                              alt={msg.attachment.name} 
-                              className="max-w-[200px] md:max-w-[250px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity" 
+                            <img
+                              src={apiUrl(msg.attachment.storagePath!)}
+                              alt={msg.attachment.name}
+                              className="max-w-[200px] md:max-w-[250px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={() => window.open(apiUrl(msg.attachment.storagePath!), '_blank')}
                             />
                           ) : (
-                            /* If it's a generic file, show a download link */
-                            <a 
-                              href={apiUrl(msg.attachment.storagePath!)} 
-                              target="_blank" 
-                              rel="noreferrer" 
+                            <a
+                              href={apiUrl(msg.attachment.storagePath!)}
+                              target="_blank"
+                              rel="noreferrer"
                               className={`flex items-center gap-2 underline decoration-1 underline-offset-2 ${isMe ? "text-white" : "text-blue-600"}`}
                             >
-                              <File size={16} /> 
+                              <File size={16} />
                               <span className="truncate max-w-[180px] block">{msg.attachment.name}</span>
                             </a>
                           )}
@@ -683,6 +692,17 @@ export default function Chat() {
                 </div>
               );
             })}
+
+            {/* Bug fix (ID-81): render TypingIndicator when other users are typing */}
+            {typingUserIds.length > 0 && (
+              <div className="flex justify-start gap-2">
+                <TypingIndicator />
+                <span className="text-xs text-slate-400 self-end mb-1">
+                  {formatTypingLabel(typingUserIds.map((uid) => toMemberProfile(uid).name))}
+                </span>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -690,25 +710,36 @@ export default function Chat() {
             {friendRequestNotice && <div className="mb-2 text-xs text-green-700 bg-green-50 p-2 rounded">{friendRequestNotice}</div>}
             {chatError && <div className="mb-2 text-xs text-red-600 bg-red-50 p-2 rounded">{chatError}</div>}
 
-	    <button 
-                onClick={() => fileInputRef.current?.click()} 
-                disabled={isUploading}
-                className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                title="Attach file"
-              >
-                <Paperclip size={20} />
-              </button>
-              <input 
-                type="file" 
-                className="hidden" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
+            {/* Bug fix (ID-80): file input and paperclip button properly placed inside the input bar */}
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
                 accept="image/*,application/pdf,.doc,.docx,.txt"
               />
-            
-            <div className="flex items-center gap-3">
-              <input value={messageInput} onChange={(e) => handleTyping(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void sendMessage()} placeholder="Message..." className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none" />
-              <button onClick={sendMessage} disabled={!messageInput.trim() || isSending} className="w-9 h-9 rounded-xl bg-blue-700 text-white flex justify-center items-center">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex justify-center items-center hover:bg-slate-200 transition-colors disabled:opacity-50 shrink-0"
+                title="Attach file"
+                type="button"
+              >
+                <Paperclip size={15} />
+              </button>
+              <input
+                value={messageInput}
+                onChange={(e) => handleTyping(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
+                placeholder="Message..."
+                className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!messageInput.trim() || isSending}
+                className="w-9 h-9 rounded-xl bg-blue-700 text-white flex justify-center items-center"
+              >
                 <Send size={15} />
               </button>
             </div>
