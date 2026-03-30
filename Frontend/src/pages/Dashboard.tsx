@@ -387,7 +387,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-xs text-slate-400">{(ev.attendees || []).length}/{ev.maxParticipants}</div>
+		    <div className="text-xs text-slate-400">{ev.attendeeCount ?? (ev.attendees || []).length}/{ev.maxParticipants}</div>
                     <div className="text-xs text-slate-400">attendees</div>
                     <ArrowRight size={14} className="text-slate-300 group-hover:text-blue-500 transition-colors ml-auto mt-1" />
                   </div>
