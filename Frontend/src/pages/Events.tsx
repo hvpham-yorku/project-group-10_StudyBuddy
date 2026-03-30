@@ -40,8 +40,8 @@ export default function Events() {
   const filtered = events.filter((ev) => {
     const matchSearch =
       ev.title.toLowerCase().includes(search.toLowerCase()) ||
-      ev.course.toLowerCase().includes(search.toLowerCase()) ||
-      ev.location.toLowerCase().includes(search.toLowerCase());
+	ev.course.toLowerCase().includes(search.toLowerCase()) ||
+	ev.location.toLowerCase().includes(search.toLowerCase());
     const matchCourse = filterCourse === "All" || ev.course === filterCourse;
     const matchStatus = filterStatus === "all" || ev.status === filterStatus;
     return matchSearch && matchCourse && matchStatus;
@@ -133,31 +133,31 @@ export default function Events() {
   };
 
   const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
-  e.stopPropagation(); // Prevents navigating to the event details page
-  console.log(eventId);
-  if (!window.confirm("Are you sure you want to cancel this event?")) return;
+    e.stopPropagation(); // Prevents navigating to the event details page
+    console.log(eventId);
+    if (!window.confirm("Are you sure you want to cancel this event?")) return;
 
-  try {
+    try {
 
-    const token = localStorage.getItem("studyBuddyToken");
+      const token = localStorage.getItem("studyBuddyToken");
 
-    const response = await fetch(`/api/events/${eventId}`, {
+      const response = await fetch(`/api/events/${eventId}`, {
         method: "DELETE",
         headers: {
           "Authorization": "Bearer " + token
         }
       });
 
-    if (response.ok) {
-      setEvents((prev) => prev.filter((ev) => ev.id !== eventId));
-    } else {
-      console.error("Failed to delete event:", response.status);
-      alert("Something went wrong trying to delete the event.");
+      if (response.ok) {
+	setEvents((prev) => prev.filter((ev) => ev.id !== eventId));
+      } else {
+	console.error("Failed to delete event:", response.status);
+	alert("Something went wrong trying to delete the event.");
+      }
+    } catch (err) {
+      console.error("Error deleting event:", err);
     }
-  } catch (err) {
-    console.error("Error deleting event:", err);
-  }
-};
+  };
 
   const isMyEvent = (ev: typeof events[0]) => student && ev.host.id === student.userId;
   const isJoined = (id: string) => {
@@ -166,8 +166,8 @@ export default function Events() {
     return ev?.attendees?.includes(student.userId) ?? false;
   };
 
-  return (
-    <div className="p-6 max-w-5xl mx-auto">
+return (
+    <div className="p-6 max-w-7xl mx-auto w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -180,7 +180,7 @@ export default function Events() {
           style={{ fontWeight: 600 }}
         >
           <Plus size={16} />
-          Host Session
+			      Host Session
         </button>
       </div>
 
@@ -200,7 +200,7 @@ export default function Events() {
           className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm transition-colors ${showFilters ? "bg-blue-50 border-blue-300 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
         >
           <Filter size={15} />
-          Filters
+				Filters
           <ChevronDown size={14} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
         </button>
       </div>
@@ -246,7 +246,7 @@ export default function Events() {
             key={s}
             onClick={() => setFilterStatus(s)}
             className={`px-4 py-2.5 text-sm capitalize border-b-2 -mb-px transition-colors ${filterStatus === s ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
+            }`}
             style={{ fontWeight: filterStatus === s ? 600 : 400 }}
           >
             {s}
@@ -266,11 +266,11 @@ export default function Events() {
             onClick={() => navigate("/events/create")}
             className="mt-3 text-blue-600 text-sm hover:underline"
           >
-            Create the first one!
+             Create the first one!
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+	<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filtered.map((ev) => (
             <div
               key={ev.id}
@@ -337,10 +337,10 @@ export default function Events() {
                   ))}
                 </div>
 
-                {/* Host & Action */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 overflow-hidden">
+		{/* Host & Action */}
+                <div className="flex items-center justify-between gap-3 mt-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 overflow-hidden shrink-0">
                       {ev.host.avatar ? (
                         <img src={ev.host.avatar} alt={ev.host.name} className="w-full h-full object-cover" />
                       ) : (
@@ -349,56 +349,57 @@ export default function Events() {
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-slate-500">by <span style={{ fontWeight: 600 }} className="text-slate-700">{ev.host.name}</span></span>
+                    <span className="text-xs text-slate-500 truncate">
+									by <span style={{ fontWeight: 600 }} className="text-slate-700">{ev.host.name}</span>
+                    </span>
                   </div>
 
                   {ev.status === "upcoming" && (
-                    <div className="flex items-center gap-2">
-
+                    <div className="flex items-center gap-2 shrink-0">
                       {/* Delete User's Own Event  */}
                       {student && ev.host.id === student.userId &&(
-                      <button
-                        onClick={(e) => handleDeleteEvent(ev.id, e)}
-                        className="px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200 hover:bg-red-400 bg-red-500 text-white transition-colors"
-                        style={{ fontWeight: 600 }}
-                      >
-                        Cancel My Event
-                      </button>
+			<button
+                          onClick={(e) => handleDeleteEvent(ev.id, e)}
+                          className="px-4 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200 hover:bg-red-400 bg-red-500 text-white transition-colors"
+                          style={{ fontWeight: 600 }}
+			>
+                           Cancel My Event
+			</button>
                       )}
 
                       {/* Join an event */}
                       {student && ev.host.id !== student.userId && (
-                      <button
-                        onClick={(e) => handleJoin(ev.id, e)}
-                        className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
-                          ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
+			<button
+                          onClick={(e) => handleJoin(ev.id, e)}
+                          className={`px-4 py-1.5 rounded-lg text-xs transition-colors ${isJoined(ev.id)
+                            ? "bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
                           }`}
-                        style={{ fontWeight: 600 }}
-                      >
-                        {isJoined(ev.id) ? "Cancel" : "Join"}
-                      </button>
+                          style={{ fontWeight: 600 }}
+			>
+                          {isJoined(ev.id) ? "Cancel" : "Join"}
+			</button>
                       )}
                     </div>
                   )}
                   {ev.status === "past" && (
-                    <>
+                    <div className="shrink-0">
                       {(isJoined(ev.id) || isMyEvent(ev)) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); navigate(`/events/${ev.id}`); }}
                           className="px-4 py-1.5 rounded-lg text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
                           style={{ fontWeight: 600 }}
                         >
-                          Review
+                           Review
                         </button>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
-        </div>
-      </div>
-    ))}
-</div>
+              </div>
+	    </div>
+	  ))}
+	</div>
       )}
     </div>
   );

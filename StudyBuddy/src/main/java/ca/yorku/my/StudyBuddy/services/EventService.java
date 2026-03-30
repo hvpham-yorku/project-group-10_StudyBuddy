@@ -17,6 +17,7 @@ import ca.yorku.my.StudyBuddy.classes.Student;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
@@ -37,6 +38,12 @@ import java.util.concurrent.ExecutionException;
 public class EventService implements EventRepository  {
 
     private static final String COLLECTION_NAME = "events";
+    private final StudentRepository studentRepository;
+
+    @Autowired
+    public EventService(StudentRepository studentRepository) {
+        this.studentRepository = studentRepository;
+    }
 
     /**
      * Creates an event 
@@ -148,33 +155,27 @@ public class EventService implements EventRepository  {
      */
     @Override
     public boolean joinEvent(String currentUserId, String eventId) throws Exception, ExecutionException, InterruptedException {
-        StudentService ss = new StudentService();
-        Student s;
-        try {
-            s = ss.getStudent(currentUserId);
-        } catch (Exception e) {
-            return false;
+        Student student = studentRepository.getStudent(currentUserId);
+        Event event = getEventById(eventId);
+
+        if (student == null) {
+            throw new IllegalArgumentException("Student does not exist");
         }
-        
-        Event e = getEventById(eventId);
-            
-        if (s == null) {
-            throw new Exception("Student does not exist!");
-        } else if (e == null) {
-            throw new Exception("Event does not exist!");
-        } else {
-            List<String> newAttendedEventIds = s.getAttendedEventIds();
-            if (newAttendedEventIds == null) newAttendedEventIds = new ArrayList<>();
-            
-            // Prevent duplicates in student document
-            if (!newAttendedEventIds.contains(e.getId())) {
-                newAttendedEventIds.add(e.getId());
-                ss.updateAttendedEventIDs(currentUserId, newAttendedEventIds);
-            }
-            
-            addAttendee(eventId, currentUserId);
-            return true;
+        if (event == null) {
+            throw new IllegalArgumentException("Event does not exist");
         }
+
+        List<String> attended = student.getAttendedEventIds() == null
+            ? new ArrayList<>()
+            : new ArrayList<>(student.getAttendedEventIds());
+
+        if (!attended.contains(eventId)) {
+            attended.add(eventId);
+            studentRepository.updateAttendedEventIDs(currentUserId, attended);
+        }
+
+        addAttendee(eventId, currentUserId);
+        return true;
     }
     
     /**
@@ -187,52 +188,34 @@ public class EventService implements EventRepository  {
      */
     @Override
     public boolean leaveEvent(String currentUserId, String eventId) throws ExecutionException, InterruptedException {
-    	try {
-			StudentService ss = new StudentService();
-	    	Student s = ss.getStudent(currentUserId);
-	    	Event e = getEventById(eventId);
-        	
-        // Check if user and event exist
-    	if (s != null && e!= null) {
-    		// Update event attendees
-    		this.removeAttendee(eventId, currentUserId);
-    		
-    		// Update student's attended events
-    		List<String> newAttendedEventIds = s.getAttendedEventIds();
-    		
-    		// TODO: This logic should go in StudentService instead of Event. Fix it!
-    		// Edge case: Can't leave an event if you didn't join any event
-    		if (s.getAttendedEventIds() == null) {
-    			ss.updateAttendedEventIDs(currentUserId, null);
-    		}
-    		
-    		// Edge case: Can't leave an event you didn't even join
-    		int removeIndex = newAttendedEventIds.indexOf(eventId);
-    		if (removeIndex == -1) {
-    			return false;
-    		} else { // Otherwise, it exists and we should remove it;
-    			newAttendedEventIds.remove(removeIndex);
-    			ss.updateAttendedEventIDs(currentUserId, newAttendedEventIds);
-    		}
-    		
-    		// Update event students
-    		List<String> newAttendees = e.getAttendees();
-    		int attendeeIndex = newAttendees.indexOf(eventId);
-    		
-    		if (attendeeIndex != -1) {
-    			newAttendees.remove(attendeeIndex);
-    			e.setAttendees(newAttendees);
-    		}
-    		
-    		e.setAttendees(newAttendees);
-    	}
-    	} catch (Exception error) {
-    		return false;
-    	}
-    	
-    	return true;
+        try {
+            Student student = studentRepository.getStudent(currentUserId);
+            Event event = getEventById(eventId);
+
+            // Check if user and event exist
+            if (student != null && event != null) {
+                // Update event attendees
+                this.removeAttendee(eventId, currentUserId);
+
+                // Update student's attended events
+                List<String> attended = student.getAttendedEventIds();
+
+                if (student.getAttendedEventIds() == null) {
+                    studentRepository.updateAttendedEventIDs(currentUserId, null);
+                } else {
+                    int removeIndex = attended.indexOf(eventId);
+                    if (removeIndex != -1) {
+                        attended.remove(removeIndex);
+                        studentRepository.updateAttendedEventIDs(currentUserId, attended);
+                    }
+                }
+            }
+        } catch (Exception error) {
+            return false;
+        }
+
+        return true;
     }
-    
     /**
      * Add an attendee to the event given by an ID and save to Firestore
      * @param eventId
@@ -242,27 +225,25 @@ public class EventService implements EventRepository  {
      */
     @Override
     public boolean addAttendee(String eventId, String studentId) throws Exception {
-        StudentService ss = new StudentService();
         try {
-            ss.getStudent(studentId);
+            studentRepository.getStudent(studentId);
         } catch (Exception e) {
             return false;
         }
-        
-        Event e = this.getEventById(eventId);
-        if (e == null) return false;
-        else {
-            List<String> newAttendees = e.getAttendees();
-            if (newAttendees == null) {
-                newAttendees = new ArrayList<>();
-            }
-            
-            // Prevent duplicates in event document
-            if (!newAttendees.contains(studentId)) {
-                newAttendees.add(studentId);
-                Firestore db = FirestoreClient.getFirestore();
-                db.collection("events").document(eventId).update("attendees", newAttendees).get();
-            }
+
+        Event event = this.getEventById(eventId);
+        if (event == null) return false;
+
+        List<String> attendees = event.getAttendees();
+        if (attendees == null) {
+            attendees = new ArrayList<>();
+        }
+
+        // Prevent duplicates in event document
+        if (!attendees.contains(studentId)) {
+            attendees.add(studentId);
+            Firestore db = FirestoreClient.getFirestore();
+            db.collection("events").document(eventId).update("attendees", attendees).get();
         }
         return true;
     }
@@ -276,31 +257,27 @@ public class EventService implements EventRepository  {
      */
     @Override
     public boolean removeAttendee(String eventId, String studentId) throws Exception {
-    	
-    	StudentService ss = new StudentService();
-    	Student s;
-    	try {
-    		s = ss.getStudent(studentId);
-    	} catch (Exception e) {
-    		return false;
-    	}
-    	
-    	Event e = this.getEventById(eventId);
-    	List<String> deductedAttendees;
-    	if (e == null) return false;
-    	else {
-    		deductedAttendees = e.getAttendees();
-    		if (deductedAttendees == null) {
-    			deductedAttendees = new ArrayList<String>();
-    		}
-    		
-    		int removeIndex = deductedAttendees.indexOf(studentId);
-    		if (removeIndex == -1) return false;
-    		deductedAttendees.remove(removeIndex);
-    	}
-    	Firestore db = FirestoreClient.getFirestore();
-    	db.collection("events").document(eventId).update("attendees", deductedAttendees).get();
-    	return true;
+        try {
+            studentRepository.getStudent(studentId);
+        } catch (Exception e) {
+            return false;
+        }
+
+        Event event = this.getEventById(eventId);
+        if (event == null) return false;
+
+        List<String> attendees = event.getAttendees();
+        if (attendees == null) {
+            attendees = new ArrayList<>();
+        }
+
+        int removeIndex = attendees.indexOf(studentId);
+        if (removeIndex == -1) return false;
+        attendees.remove(removeIndex);
+
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("events").document(eventId).update("attendees", attendees).get();
+        return true;
     }
     
     /**

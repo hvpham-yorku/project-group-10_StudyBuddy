@@ -337,7 +337,7 @@ export default function EventDetails() {
     }
   };
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto w-full">
       {/* Back */}
       <button
         onClick={() => navigate(-1)}

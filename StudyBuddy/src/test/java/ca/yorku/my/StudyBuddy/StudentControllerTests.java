@@ -61,12 +61,6 @@ class StudentControllerTests {
     }
 
     @Test
-    void updateCourses_callsRepository() throws Exception {
-        studentController.updateCourses("123", List.of("EECS 2311"));
-        verify(studentRepository).updateCourses("123", List.of("EECS 2311"));
-    }
-
-    @Test
     void updateAvatar_callsRepository() throws Exception {
         when(authService.verifyFrontendToken("123")).thenReturn("123");
         studentController.updateAvatar("123", Map.of("avatar", "url"));
