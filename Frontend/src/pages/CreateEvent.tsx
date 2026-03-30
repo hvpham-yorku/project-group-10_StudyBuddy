@@ -3,7 +3,7 @@
  * Page for creating a new study session event
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, CalendarDays, Clock, MapPin, Users, BookOpen,
@@ -59,7 +59,6 @@ export default function CreateEvent() {
     setIsSubmitting(true);
     setApiError(null);
 
-    // Note that backend and frontend types are slightly different
     const payload = {
       title: form.title,
       course: form.course,
@@ -114,6 +113,58 @@ export default function CreateEvent() {
     );
   }
 
+  const [courseSuggestions, setCourseSuggestions] = useState<string[]>([]);
+  const [courseSearchLoading, setCourseSearchLoading] = useState(false);
+  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false);
+  const courseDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch course suggestions when the user types
+  useEffect(() => {
+    const query = form.course.trim();
+    if (!query || !showCourseSuggestions) {
+      setCourseSuggestions([]);
+      setCourseSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      setCourseSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/courses/search?q=${encodeURIComponent(query)}&limit=20`,
+          { signal: controller.signal }
+        );
+        if (response.ok) {
+          const suggestions: string[] = await response.json();
+          setCourseSuggestions(suggestions);
+        }
+      } catch (error: any) {
+        if (error?.name !== "AbortError") {
+          setCourseSuggestions([]);
+        }
+      } finally {
+        setCourseSearchLoading(false);
+      }
+    }, 180); // 180ms debounce so we don't spam the server on every keystroke
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [form.course, showCourseSuggestions]);
+
+  // Close the dropdown if the user clicks outside of it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(event.target as Node)) {
+        setShowCourseSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="p-6 max-w-2xl mx-auto">
       {/* Header */}
@@ -154,16 +205,46 @@ export default function CreateEvent() {
                 <label className="block text-xs text-slate-600 mb-1.5" style={{ fontWeight: 500 }}>
                   <span className="flex items-center gap-1"><BookOpen size={12} />Course *</span>
                 </label>
-                <div className="relative">
-                  <select
+                <div className="relative" ref={courseDropdownRef}>
+                  <BookOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
                     value={form.course}
-                    onChange={(e) => set("course", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 appearance-none pr-8"
-                  >
-                    <option value="">Select course...</option>
-                    {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    onChange={(e) => {
+                      set("course", e.target.value.toUpperCase());
+                      setShowCourseSuggestions(true);
+                    }}
+                    onFocus={() => setShowCourseSuggestions(true)}
+                    placeholder="e.g. EECS 3311"
+                    autoComplete="off"
+                    className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                  />
+                  
+                  {/* Dropdown Menu */}
+                  {showCourseSuggestions && form.course.trim() !== "" && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {courseSearchLoading ? (
+                        <div className="px-3 py-2 text-sm text-slate-500">Searching courses...</div>
+                      ) : courseSuggestions.length > 0 ? (
+                        courseSuggestions.map((courseOption) => (
+                          <button
+                            key={courseOption}
+                            type="button"
+                            onClick={() => {
+                              set("course", courseOption);
+                              setShowCourseSuggestions(false);
+                            }}
+                            className="block w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-slate-700 transition-colors"
+                          >
+                            {courseOption}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500">
+                          No matching York courses found
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {errors.course && <p className="text-xs text-red-500 mt-0.5">{errors.course}</p>}
               </div>
