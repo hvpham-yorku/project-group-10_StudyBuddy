@@ -37,7 +37,7 @@ public class StudentController {
 	private StudentRepository studentRepository;
 	
 	@Autowired
-    private AuthRepository authService;
+	private AuthRepository authService;
 
 	@Autowired
 	private SessionLogService sessionLogService;
